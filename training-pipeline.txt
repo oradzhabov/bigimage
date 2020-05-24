@@ -1,0 +1,26 @@
+* Collect following data for customer/projid to some "source data folder"
+customer/projid/orthophoto/orthophoto_export.tif 
+customer/projid/orthophoto/tiles/gdalinfo.txt 
+customer/projid/orthophoto/tiles/mapdata.json 
+customer/projid/dem/color_relief/color_relief.tif 
+customer/projid/dem/color_relief/color_relief.txt
+
+files "gdalinfo.txt" and "mapdata.json" required only if file
+customer/projid/orthophoto/user_muckpile.json exist.
+
+
+* Setup script "PrepareData.py" to "source data folder" and "result data folder"
+- As No Customers as no ProjId filenames should not contain dots '.' symbols
+- it will create intermediate data in "result data folder"/CURRENT_DATE
+- remember path to CURRENT_DATE, because it will be used later during training
+- if file "user_muckpile.json" exist, mask-file fill be created
+
+* Put file VIA.html into folder "result data folder"/CURRENT_DATE/masks
+
+* Use VIA.html to create annotations for dataset.
+- Pay attention that image resolution could be different to source image resolution(units->meter, particular meter per pixel[mppx])
+- To quickly read all images into VIA, copy content of file "result data folder"/CURRENT_DATE/masks/image_list.txt 
+into field of VIA dialog "Add File using URL" which appeared by button "Add URL"
+- Export result to json-file.
+
+* Setup network by params in "config.py"

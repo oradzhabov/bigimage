@@ -1,0 +1,8 @@
+FPN
+http://openaccess.thecvf.com/content_cvpr_2018_workshops/papers/w4/Seferbekov_Feature_Pyramid_Network_CVPR_2018_paper.pdf
+
+Focal loss
+https://towardsdatascience.com/demystifying-focal-loss-i-a-more-focused-version-of-cross-entropy-loss-f49e4b044213
+
+How to add more channels: "Add extra convolution layer to map N -> 3 channels data and train with pretrained weights"
+https://segmentation-models.readthedocs.io/en/latest/tutorial.html#training-with-non-rgb-data
