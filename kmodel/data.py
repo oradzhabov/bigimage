@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import keras
-from .utils import get_tiled_bbox
+from .kutils import get_tiled_bbox
 from sklearn.model_selection import train_test_split
 from osgeo import gdal, osr
 
@@ -228,8 +228,9 @@ class Dataset(object):
 
         # apply pre-processing
         if self.preprocessing:
-            sample = self.preprocessing(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
+            # sample = self.preprocessing(image=image, mask=mask)
+            # image, mask = sample['image'], sample['mask']
+            image = self.preprocessing(image)
 
         return image, mask
 
@@ -253,7 +254,7 @@ class Dataloder(keras.utils.Sequence):
 
         data = []
         for j in range(start, stop):
-            data.append(self.dataset[self.indexes[j]])
+            data.append(self.dataset[self.indexes[j % len(self.indexes)]])
 
         # transpose list of lists
         batch = [np.stack(samples, axis=0) for samples in zip(*data)]

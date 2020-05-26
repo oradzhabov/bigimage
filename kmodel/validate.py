@@ -1,12 +1,12 @@
 import os
 import numpy as np
-from data import get_data, Dataset, Dataloder
-from model import create_model
-from config import cfg
-from train import read_sample, get_validation_augmentation, get_preprocessing, visualize, denormalize
+from .data import get_data, Dataset, Dataloder
+from .model import create_model
+from .config import cfg
+from .train import read_sample, get_validation_augmentation, visualize, denormalize
 
 
-if __name__ == '__main__':
+def run():
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -24,9 +24,9 @@ if __name__ == '__main__':
     model, weights_path, preprocess_input, metrics = create_model(conf=cfg, compile_model=True)
 
     test_dataset = Dataset(data_reader, data_dir, ids_test,
-                           min_mask_ratio=0.0,
-                           # augmentation=get_validation_augmentation(cfg),  # do not crop
-                           preprocessing=get_preprocessing(preprocess_input))
+                           min_mask_ratio=0.01,
+                           augmentation=get_validation_augmentation(cfg),
+                           preprocessing=preprocess_input)
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
     test_random_items_n = 15

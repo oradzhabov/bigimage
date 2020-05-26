@@ -61,7 +61,8 @@ def get_training_augmentation(conf):
         # shift_limit ((float, float) or float) – shift factor range for both height and width. If shift_limit is
         # a single float value, the range will be (-shift_limit, shift_limit). Absolute values for lower and upper
         # bounds should lie in range [0, 1]. Default: (-0.0625, 0.0625).
-        alb.ShiftScaleRotate(scale_limit=0.2, rotate_limit=45, shift_limit=0.2, p=1, border_mode=0),
+        # alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=45, shift_limit=0.5, p=1, border_mode=0),
+        alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=90, p=1, border_mode=0),
 
         # Pad side of the image / max if side is less than desired number.
         alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh, always_apply=True, border_mode=0),
@@ -112,23 +113,6 @@ def get_validation_augmentation(conf):
     return alb.Compose(test_transform)
 
 
-def get_preprocessing(preprocessing_fn):
-    """Construct preprocessing transform
-
-    Args:
-        preprocessing_fn (callbale): data normalization function
-            (can be specific for each pretrained neural network)
-    Return:
-        transform: albumentations.Compose
-
-    """
-
-    _transform = [
-        alb.Lambda(image=preprocessing_fn),
-    ]
-    return alb.Compose(_transform)
-
-
 def read_sample(img_path, himg_path, mask_path):
     # read data
     img = cv2.imread(img_path)
@@ -149,13 +133,6 @@ def read_sample(img_path, himg_path, mask_path):
     if mask.shape[-1] != 1:
         background = 1 - mask.sum(axis=-1, keepdims=True)
         mask = np.concatenate((mask, background), axis=-1)
-
-    working_scale = 0.25
-    img = cv2.resize(img, None, fx=working_scale, fy=working_scale, interpolation=cv2.INTER_AREA)
-    mask = cv2.resize(mask, None, fx=working_scale, fy=working_scale, interpolation=cv2.INTER_NEAREST)
-    # Resize could corrupt mask's shape from [n,n,1] to [n,n]
-    if len(mask.shape) == 2:
-        mask = mask[..., np.newaxis]
 
     return img, mask
 
@@ -186,20 +163,25 @@ def run():
             image=image,
             muckpile_mask=mask[..., 0].squeeze()
         )
-
+    """
     if False:
         # Lets look at augmented data we have
-        dataset = Dataset(data_reader, data_dir, ids_train, augmentation=get_training_augmentation(cfg))
+        dataset = Dataset(data_reader,
+                          data_dir,
+                          ids_train,
+                          min_mask_ratio=0.01,
+                          augmentation=get_training_augmentation(cfg)
+                          )
 
-        image, mask = dataset[0]  # get some sample
-        print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
-        print('mask shape,dtype,min,max: ', mask.shape, mask.dtype, np.min(mask), np.max(mask))
+        for i in range(15):
+            image, mask = dataset[i]
+            print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
+            print('mask shape,dtype,min,max: ', mask.shape, mask.dtype, np.min(mask), np.max(mask))
 
-        visualize(
-            image=image,
-            muckpile_mask=mask[..., 0].squeeze(),
-        )
-    """
+            visualize(
+                image=image,
+                muckpile_mask=mask[..., 0].squeeze(),
+            )
 
     # ****************************************************************************************************************
     # Create model
@@ -210,12 +192,12 @@ def run():
     train_dataset = Dataset(data_reader, data_dir, ids_train,
                             min_mask_ratio=0.01,
                             augmentation=get_training_augmentation(cfg),
-                            preprocessing=get_preprocessing(preprocess_input))
+                            preprocessing=preprocess_input)
     # Dataset for validation images
     valid_dataset = Dataset(data_reader, data_dir, ids_test,
-                            min_mask_ratio=0.0,
+                            min_mask_ratio=0.01,
                             augmentation=get_validation_augmentation(cfg),
-                            preprocessing=get_preprocessing(preprocess_input))
+                            preprocessing=preprocess_input)
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)
@@ -265,10 +247,10 @@ def run():
 
     # Plot training & validation accuracy values
     plt.subplot(132)
-    plt.plot(history.history['acc'])
-    plt.plot(history.history['val_acc'])
-    plt.title('Model accuracy')
-    plt.ylabel('accuracy')
+    plt.plot(history.history['f1-score'])
+    plt.plot(history.history['val_f1-score'])
+    plt.title('Model F1-score')
+    plt.ylabel('F1-score')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
 
