@@ -4,7 +4,11 @@ import numpy as np
 import keras
 from .kutils import get_tiled_bbox
 from sklearn.model_selection import train_test_split
-from osgeo import gdal, osr
+from osgeo import gdal
+import multiprocessing as mp
+import albumentations as alb
+import segmentation_models as sm
+from .parallel import SimpleProcessor
 
 
 def get_ids(root_folder):
@@ -21,64 +25,6 @@ def get_ids(root_folder):
     ids_filtered = sorted(ids_filtered)
 
     return ids_filtered
-
-"""
-def get_scaled_img(geotiff_path):
-    if not os.path.isfile(geotiff_path):
-        print('ERROR: File {} does not exist'.format(geotiff_path))
-        return None
-
-    gtif = gdal.Open(geotiff_path)
-
-    # Also load as a gdal image to get geotransform
-    # (world file) info
-    geoTrans = gtif.GetGeoTransform()
-
-    scale = np.fabs((geoTrans[1], geoTrans[5], 0.0))
-    tiepoint = np.array((geoTrans[0], geoTrans[3]))
-
-    # Obtain length UNITS
-    prj = gtif.GetProjection()
-    srs = osr.SpatialReference(wkt=prj)
-    unit = srs.GetAttrValue('unit')
-    print('GeoTIFF length units: {}'.format(unit))
-    scale_to_meter = 1.0
-    if unit != 'metre':
-        scale_to_meter = 0.3048
-
-    # Rescale to be able read it to numpy
-    tmp_down_file = ".tmp_downsample.tif"
-    w, h, ch = gtif.RasterXSize, gtif.RasterYSize, gtif.RasterCount
-    raster_size = w * h * ch
-    # mem_threshold_bytes = 100000000
-    mem_threshold_bytes = 10000
-    rescale = math.sqrt(mem_threshold_bytes / raster_size)
-    if rescale < 1.0:
-        gtif = gdal.Translate(tmp_down_file, geotiff_path,
-                              options="-outsize {} {} -ot Byte -r nearest -co NUM_THREADS=ALL_CPUS".
-                              format(int(w * rescale), int(h * rescale)))
-        geoTrans = gtif.GetGeoTransform()
-
-        scale = np.fabs((geoTrans[1], geoTrans[5], 1.0))
-
-    # Read data
-    im = gtif.ReadAsArray()  # channel first
-    del gtif
-    if os.path.isfile(tmp_down_file):
-        os.remove(tmp_down_file)
-
-    if im.ndim > 2:
-        im = np.rollaxis(im, 0, 3)  # channel last
-
-    if im.dtype != np.uint8:
-        im = im.astype(np.uint8)
-
-    # RGB->BGR
-    im[..., [0, 1, 2]] = im[..., [2, 1, 0]]
-
-    # meters per pixel, tie point in meters, flag, UINT8 image, original units per meter
-    return [im, scale * scale_to_meter]
-"""
 
 
 def read_image(geotiff_path):
@@ -187,7 +133,7 @@ class Dataset(object):
             ids,
             min_mask_ratio=0.0,
             augmentation=None,
-            preprocessing=None,
+            backbone=""
     ):
         self.ids = list()
         self.images_fps = list()
@@ -211,7 +157,7 @@ class Dataset(object):
                     # print('Not acceptable images mask mean value: {}'.format(mean_mask))
 
         self.augmentation = augmentation
-        self.preprocessing = preprocessing
+        self.backbone = backbone
         self.data_reader = data_reader
 
     def __getitem__(self, i):
@@ -227,10 +173,17 @@ class Dataset(object):
             image, mask = sample['image'], sample['mask']
 
         # apply pre-processing
-        if self.preprocessing:
-            # sample = self.preprocessing(image=image, mask=mask)
-            # image, mask = sample['image'], sample['mask']
-            image = self.preprocessing(image)
+        if len(self.backbone) > 0:
+            # To support thread-safe and process-safe code we should obtain preprocessor on the fly
+            # and do not prepare it before
+            preprocessing = sm.get_preprocessing(self.backbone)
+            if preprocessing:
+                if isinstance(preprocessing, alb.Compose):
+                    sample = preprocessing(image=image)
+                    # image, mask = sample['image'], sample['mask']
+                    image = sample['image']
+                else:
+                    image = preprocessing(image)
 
         return image, mask
 
@@ -238,23 +191,66 @@ class Dataset(object):
         return len(self.ids)
 
 
+def dataloder_loader_per_process(ds, ind):
+    return ds[ind]
+
+
 class Dataloder(keras.utils.Sequence):
-    def __init__(self, dataset, batch_size=1, shuffle=False):
+    @staticmethod
+    def get_cpu_units_nb():
+        return mp.cpu_count()
+
+    def __init__(self, dataset, batch_size=1, shuffle=False, cpu_units_nb=0):
         self.dataset = dataset
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.indexes = np.arange(len(dataset))
 
+        self.pool = None
+        if cpu_units_nb > 0:
+            self.pool = mp.Pool(min(batch_size, cpu_units_nb))
+
+            i = 0
+            start = i * self.batch_size
+            stop = (i + 1) * self.batch_size
+
+            self.loader = SimpleProcessor(dataloder_loader_per_process,
+                                          [(self.dataset, self.indexes[j % len(self.indexes)])
+                                           for j in range(start, stop)],
+                                          self.pool)
+            self.loader.start(self.batch_size)
+
         self.on_epoch_end()
+
+    def __del__(self):
+        if self.pool:
+            self.pool.close()
 
     def __getitem__(self, i):
         # collect batch data
-        start = i * self.batch_size
-        stop = (i + 1) * self.batch_size
 
         data = []
-        for j in range(start, stop):
-            data.append(self.dataset[self.indexes[j % len(self.indexes)]])
+        if self.pool:
+            """
+            data = self.pool.starmap_async(dataloder_loader_per_process,
+                                           [(self.dataset, self.indexes[j % len(self.indexes)])
+                                            for j in range(start, stop)]).get()
+            """
+            data = [x for x in self.loader.get(timeout=3000)]
+            #
+            # Start preparing next batch in shadow processes
+            start = (i + 1) * self.batch_size
+            stop = (i + 2) * self.batch_size
+            self.loader = SimpleProcessor(dataloder_loader_per_process,
+                                          [(self.dataset, self.indexes[j % len(self.indexes)])
+                                           for j in range(start, stop)],
+                                          self.pool)
+            self.loader.start(self.batch_size)
+        else:
+            start = i * self.batch_size
+            stop = (i + 1) * self.batch_size
+            for j in range(start, stop):
+                data.append(self.dataset[self.indexes[j % len(self.indexes)]])
 
         # transpose list of lists
         batch = [np.stack(samples, axis=0) for samples in zip(*data)]

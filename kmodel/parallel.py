@@ -2,6 +2,7 @@
 import threading
 import queue
 
+
 class SimpleProcessor(object):
     def __init__(self, func, args, pool):
         self.func = func
@@ -13,7 +14,7 @@ class SimpleProcessor(object):
         self.running_signal = None
         self.run_thread = None
 
-    def start(self, workers=1, max_queue_size=10):
+    def start(self, max_queue_size=10):
         if not self.is_running():
             # self.pool = Pool(workers)
             self.queue = queue.Queue(max_queue_size)
@@ -33,8 +34,8 @@ class SimpleProcessor(object):
             future = self.pool.apply_async(self.func, arg)
             self.queue.put(future, block=True)
         self.running_signal.set()
-        self.pool.close()
-        self.pool.join()
+        # self.pool.close()
+        # self.pool.join()
     
     def stop(self, timeout=None):
         self.stop_signal.set()
@@ -51,7 +52,7 @@ class SimpleProcessor(object):
         try:
             while not self.running_signal.is_set() or self.queue.unfinished_tasks != 0:
                 future = self.queue.get(block=True)
-                inputs = future.get(timeout=3000)
+                inputs = future.get(timeout=timeout)
                 self.queue.task_done()
                 if inputs is not None:
                     yield inputs
@@ -63,5 +64,5 @@ class SimpleProcessor(object):
     def __del__(self):
         if self.is_running():
             self.stop()
-            self.pool.close()
-            self.pool.join()
+            # self.pool.close()
+            # self.pool.join()

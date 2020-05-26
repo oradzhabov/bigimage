@@ -164,7 +164,8 @@ def run():
             muckpile_mask=mask[..., 0].squeeze()
         )
     """
-    if False:
+    see_sample_augmentations = False
+    if see_sample_augmentations:
         # Lets look at augmented data we have
         dataset = Dataset(data_reader,
                           data_dir,
@@ -186,20 +187,21 @@ def run():
     # ****************************************************************************************************************
     # Create model
     # ****************************************************************************************************************
-    model, weights_path, preprocess_input, _ = create_model(conf=cfg, compile_model=True)
+    model, weights_path, _ = create_model(conf=cfg, compile_model=True)
 
     # Dataset for train images
     train_dataset = Dataset(data_reader, data_dir, ids_train,
                             min_mask_ratio=0.01,
                             augmentation=get_training_augmentation(cfg),
-                            preprocessing=preprocess_input)
+                            backbone=cfg.backbone)
     # Dataset for validation images
     valid_dataset = Dataset(data_reader, data_dir, ids_test,
                             min_mask_ratio=0.01,
                             augmentation=get_validation_augmentation(cfg),
-                            preprocessing=preprocess_input)
+                            backbone=cfg.backbone)
 
-    train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
+    train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True,
+                                 cpu_units_nb=Dataloder.get_cpu_units_nb())
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)
 
     # check shapes for errors

@@ -1,7 +1,7 @@
 import os
 from kmodel.data import get_data, Dataset, Dataloder
 from kmodel.config import cfg
-from kmodel.train import read_sample, get_training_augmentation, visualize, denormalize
+from kmodel.train import read_sample, get_training_augmentation
 import time
 
 
@@ -21,14 +21,14 @@ if __name__ == "__main__":
     train_dataset = Dataset(data_reader, data_dir, ids_train,
                             min_mask_ratio=0.01,
                             augmentation=get_training_augmentation(cfg),
-                            preprocessing=None)
+                            backbone=cfg.backbone
+                            )
 
-    train_dataloader = Dataloder(train_dataset, batch_size=200, shuffle=True)
+    train_dataloader = Dataloder(train_dataset, batch_size=200, shuffle=True, cpu_units_nb=Dataloder.get_cpu_units_nb())
+    # train_dataloader = Dataloder(train_dataset, batch_size=200, shuffle=True)
 
     t1 = time.time()
     a = train_dataloader[0]
     a = train_dataloader[1]
     a = train_dataloader[2]
-    print("1 argument test spends:", time.time() - t1)
-    pass
-
+    print("Spend time: ", time.time() - t1)

@@ -21,12 +21,12 @@ def run():
     # ****************************************************************************************************************
     # Create model
     # ****************************************************************************************************************
-    model, weights_path, preprocess_input, metrics = create_model(conf=cfg, compile_model=True)
+    model, weights_path, metrics = create_model(conf=cfg, compile_model=True)
 
     test_dataset = Dataset(data_reader, data_dir, ids_test,
                            min_mask_ratio=0.01,
                            augmentation=get_validation_augmentation(cfg),
-                           preprocessing=preprocess_input)
+                           backbone=cfg.backbone)
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
     test_random_items_n = 15

@@ -40,15 +40,13 @@ def create_model(conf, compile_model=True):
         # Provide model info for first call of model
         model.summary()
 
-    preprocess_input = sm.get_preprocessing(conf.backbone)
-
     metrics = None
     if compile_model:
         # define optimizer
         optimizer = keras.optimizers.Adam(conf.lr)
 
         # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
-        dice_loss = sm.losses.DiceLoss()
+        # dice_loss = sm.losses.DiceLoss()
         focal_loss = sm.losses.BinaryFocalLoss() if n_classes == 1 else sm.losses.CategoricalFocalLoss()
         # total_loss = dice_loss + (3 * focal_loss)
         total_loss = focal_loss
@@ -59,4 +57,4 @@ def create_model(conf, compile_model=True):
         # compile model with defined optimizer, loss and metrics
         model.compile(optimizer, total_loss, metrics)
 
-    return model, weights_path, preprocess_input, metrics
+    return model, weights_path, metrics
