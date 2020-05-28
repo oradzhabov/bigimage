@@ -145,9 +145,10 @@ class Dataset(object):
             himage_fn = os.path.join(data_dir, 'himgs', fn)
             mask_fn = os.path.join(data_dir, 'masks', os.path.splitext(fn)[0] + '.mask.png')
             if os.path.isfile(image_fn) and os.path.isfile(himage_fn) and os.path.isfile(mask_fn):
-                img = cv2.imread(mask_fn)
-                mean_mask, std_mask = cv2.meanStdDev(img)
-                if np.max(mean_mask) / 255.0 >= min_mask_ratio:
+                img = cv2.imread(mask_fn, cv2.IMREAD_GRAYSCALE)
+                mask_nonzero_nb = np.count_nonzero(img)
+                mask_nonzero_ratio = mask_nonzero_nb / img.size
+                if mask_nonzero_ratio >= min_mask_ratio:
                     self.ids.append(fn)
                     self.images_fps.append(image_fn)
                     self.himages_fps.append(himage_fn)

@@ -4,12 +4,14 @@ import os
 import cv2
 import keras
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import albumentations as alb
 from joblib import Memory
 from .model import create_model
 from .data import get_data, Dataset, Dataloder
 from .config import cfg
+from .PlotLosses import PlotLosses
 
 
 TRIM_GPU = False
@@ -166,6 +168,8 @@ def run():
     """
     see_sample_augmentations = False
     if see_sample_augmentations:
+        matplotlib.use('TkAgg')  # Enable interactive mode
+
         # Lets look at augmented data we have
         dataset = Dataset(data_reader,
                           data_dir,
@@ -174,14 +178,16 @@ def run():
                           augmentation=get_training_augmentation(cfg)
                           )
 
-        for i in range(15):
+        for i in range(150):
             image, mask = dataset[i]
             print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
-            print('mask shape,dtype,min,max: ', mask.shape, mask.dtype, np.min(mask), np.max(mask))
+            print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask), np.count_nonzero(mask)/mask.size)
 
             visualize(
-                image=image,
-                muckpile_mask=mask[..., 0].squeeze(),
+                Image=image[..., :3],
+                Height=image[..., 3],
+                # mask=mask[..., 0].squeeze(),
+                masked_image=(image[..., :3]/255+mask)/2
             )
 
     # ****************************************************************************************************************
@@ -191,7 +197,7 @@ def run():
 
     # Dataset for train images
     train_dataset = Dataset(data_reader, data_dir, ids_train,
-                            min_mask_ratio=0.01,
+                            min_mask_ratio=0.0,
                             augmentation=get_training_augmentation(cfg),
                             backbone=cfg.backbone)
     # Dataset for validation images
@@ -200,8 +206,7 @@ def run():
                             augmentation=get_validation_augmentation(cfg),
                             backbone=cfg.backbone)
 
-    train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True,
-                                 cpu_units_nb=Dataloder.get_cpu_units_nb())
+    train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)
 
     # check shapes for errors
@@ -226,10 +231,12 @@ def run():
         #                              min_delta=0.01,
         #                              patience=40,
         #                              verbose=0, mode='max')
+        PlotLosses(imgfile='log.png', figsize=(8, 4))  # PNG-files processed in Windows & Ubuntu
     ]
 
+    matplotlib.use('Agg')  # Disable TclTk because it sometime crash training!
     # train model
-    history = model.fit_generator(
+    model.fit_generator(
         train_dataloader,
         steps_per_epoch=len(train_dataloader),
         epochs=cfg.epochs,
@@ -237,32 +244,3 @@ def run():
         validation_data=valid_dataloader,
         validation_steps=len(valid_dataloader),
     )
-    # Plot training & validation iou_score values
-    plt.figure(figsize=(30, 5))
-    plt.subplot(131)
-    plt.plot(history.history['iou_score'])
-    plt.plot(history.history['val_iou_score'])
-    plt.title('Model iou_score')
-    plt.ylabel('iou_score')
-    plt.xlabel('Epoch')
-    plt.legend(['Train', 'Test'], loc='upper left')
-
-    # Plot training & validation accuracy values
-    plt.subplot(132)
-    plt.plot(history.history['f1-score'])
-    plt.plot(history.history['val_f1-score'])
-    plt.title('Model F1-score')
-    plt.ylabel('F1-score')
-    plt.xlabel('Epoch')
-    plt.legend(['Train', 'Test'], loc='upper left')
-
-    # Plot training & validation loss values
-    plt.subplot(133)
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('Model loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['Train', 'Test'], loc='upper left')
-
-    plt.show()

@@ -19,7 +19,7 @@ def run():
     data_reader = read_sample
 
     # ****************************************************************************************************************
-    # Create model
+    # Create model. Compile it to obtain metrics
     # ****************************************************************************************************************
     model, weights_path, metrics = create_model(conf=cfg, compile_model=True)
 
@@ -38,9 +38,9 @@ def run():
             pr_mask = model.predict(image).round()
 
             visualize(
-                image=denormalize(image.squeeze()),
-                gt_mask=gt_mask[..., 0].squeeze(),
-                pr_mask=pr_mask[..., 0].squeeze(),
+                image=denormalize(image.squeeze()[..., :3]),
+                groundtruth_mask=gt_mask[..., 0].squeeze(),
+                predicted_mask=pr_mask[..., 0].squeeze(),
             )
 
     print('Evaluate model...')
