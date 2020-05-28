@@ -115,12 +115,12 @@ def get_cropped_ids(conf):
     return output_folder, ids
 
 
-def get_data(conf, test_size):
+def get_data(conf, test_size, shuffle=False):
     # Crop source data(if necessary)
     data_dir, ids = get_cropped_ids(conf)
 
     # Split Train/Test data
-    ids_train, ids_test, _, _ = train_test_split(ids, ids, test_size=test_size, random_state=42, shuffle=True)
+    ids_train, ids_test, _, _ = train_test_split(ids, ids, test_size=test_size, random_state=42, shuffle=shuffle)
 
     return data_dir, ids_train, ids_test
 

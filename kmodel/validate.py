@@ -38,9 +38,10 @@ def run():
             pr_mask = model.predict(image).round()
 
             visualize(
-                image=denormalize(image.squeeze()[..., :3]),
+                #image=denormalize(image.squeeze()[..., :3]),
                 groundtruth_mask=gt_mask[..., 0].squeeze(),
-                predicted_mask=pr_mask[..., 0].squeeze(),
+                #predicted_mask=pr_mask[..., 0].squeeze(),
+                masked_image=(denormalize(image.squeeze()) + pr_mask[0]) / 2
             )
 
     print('Evaluate model...')

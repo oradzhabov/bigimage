@@ -107,10 +107,11 @@ def get_training_augmentation(conf):
 
 
 def get_validation_augmentation(conf):
-    """Add paddings to make image shape divisible by 32"""
+    # Since batch-size in validation is 1, validation could be performed by whole crop-size.
+    # To provide pos
     test_transform = [
-        alb.PadIfNeeded(conf.img_wh, conf.img_wh),
-        alb.RandomCrop(height=conf.img_wh, width=conf.img_wh, always_apply=True),
+        alb.PadIfNeeded(conf.img_wh_crop, conf.img_wh_crop, always_apply=True, border_mode=0),
+        # alb.RandomCrop(height=conf.img_wh_crop, width=conf.img_wh_crop, always_apply=True),
     ]
     return alb.Compose(test_transform)
 
@@ -120,7 +121,7 @@ def read_sample(img_path, himg_path, mask_path):
     img = cv2.imread(img_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    add_height = True
+    add_height = False
     if add_height:
         himg = cv2.imread(himg_path)
         if len(himg.shape) > 2:

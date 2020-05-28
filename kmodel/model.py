@@ -4,7 +4,7 @@ import keras
 
 
 def create_model(conf, compile_model=True):
-    weights_path = './fpn_{}_wh{}_pbf{}.h5'.format(conf.backbone,
+    weights_path = './unet_{}_wh{}_pbf{}.h5'.format(conf.backbone,
                                                    conf.img_wh,
                                                    conf.pyramid_block_filters)
     n_classes = 1
@@ -12,24 +12,28 @@ def create_model(conf, compile_model=True):
 
     weights_init_path = weights_path if os.path.isfile(weights_path) else None
 
-    base_model = sm.FPN(conf.backbone,
+    base_model =sm.Unet(conf.backbone,
                         input_shape=(None, None, 3),
                         classes=n_classes,
                         activation=activation,
                         encoder_weights=conf.encoder_weights if weights_init_path is None else None,
                         encoder_freeze=conf.encoder_freeze,
-                        pyramid_block_filters=conf.pyramid_block_filters,  # default 256
+                        # pyramid_block_filters=conf.pyramid_block_filters,  # default 256
                         weights=None,
-                        pyramid_dropout=0.25
+                        # pyramid_dropout=0.25
                         )
 
-    # Add extra input layer to map custom-channel number to 3-channels input model which can use pre-trained weights
-    inp = keras.layers.Input(shape=(None, None, 4))
-    l1 = keras.layers.Conv2D(3, (1, 1), use_bias=False)(inp)
-    l1 = keras.layers.BatchNormalization()(l1)
-    out = base_model(l1)
+    add_height = False
+    if add_height:
+        # Add extra input layer to map custom-channel number to 3-channels input model which can use pre-trained weights
+        inp = keras.layers.Input(shape=(None, None, 4))
+        l1 = keras.layers.Conv2D(3, (1, 1), use_bias=False)(inp)
+        l1 = keras.layers.BatchNormalization()(l1)
+        out = base_model(l1)
 
-    model = keras.models.Model(inp, out, name=base_model.name)
+        model = keras.models.Model(inp, out, name=base_model.name)
+    else:
+        model = base_model
 
     if weights_init_path is not None:
         # loading model weights
