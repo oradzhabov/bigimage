@@ -11,14 +11,12 @@ import segmentation_models as sm
 from .parallel import SimpleProcessor
 
 
-def get_ids(root_folder):
+def get_ids(root_folder, subfolder_list):
     ids = [i for i in os.listdir(os.path.join(root_folder, 'imgs')) if os.path.splitext(i)[1] == '.png']
     ids_filtered = list()
     for fn in ids:
-        image_fn = os.path.join(root_folder, 'imgs', fn)
-        himage_fn = os.path.join(root_folder, 'himgs', fn)
-        mask_fn = os.path.join(root_folder, 'masks', os.path.splitext(fn)[0] + '.mask.png')
-        if os.path.isfile(image_fn) and os.path.isfile(himage_fn) and os.path.isfile(mask_fn):
+        existance = [os.path.isfile(os.path.join(root_folder, subfolder, fn)) for subfolder in subfolder_list]
+        if all(existance):
             ids_filtered.append(fn)
 
     # Ensure reproducible result list because different OS iterate files with difference
@@ -51,19 +49,16 @@ def read_image(geotiff_path):
 
 
 def crop(input_root, output_root, subfolder_list, file_names, output_shape):
-    if os.path.isdir(output_root):
-        # shutil.rmtree(output_root)
-        return
-
     print('Cropping dataset by size: {}'.format(output_shape))
-    for fname in file_names:
-        for subfolder in subfolder_list:
-            if subfolder == 'masks':
-                fi_path = os.path.join(input_root, subfolder, os.path.splitext(fname)[0] + '.mask.png')
-            else:
-                fi_path = os.path.join(input_root, subfolder, fname)
 
-            # img = cv2.imread(fi_path)
+    for subfolder in subfolder_list:
+        # Left output subfolders if it already exist.
+        # It allows to extend dataset by ne mask-subfolders
+        if os.path.isdir(os.path.join(output_root, subfolder)):
+            continue
+        for fname in file_names:
+            fi_path = os.path.join(input_root, subfolder, fname)
+
             img = read_image(fi_path)
             if img is None:
                 continue
@@ -94,23 +89,25 @@ def crop(input_root, output_root, subfolder_list, file_names, output_shape):
                 crop_img_idx = crop_img_idx + 1
                 if not os.path.isdir(os.path.dirname(patch_path)):
                     os.makedirs(os.path.normpath(os.path.dirname(patch_path)))
-                cv2.imwrite(patch_path, patch)
+                if not os.path.isfile(patch_path):
+                    cv2.imwrite(patch_path, patch)
 
 
 def get_cropped_ids(conf):
+    subfolder_list = ('imgs', 'himgs', 'masks.{}'.format(conf.data_subset))
     output_folder = os.path.join(conf.data_dir, '.train.crop_wh{}'.format(conf.img_wh_crop))
 
     # Crop source data
-    ids = get_ids(conf.data_dir)
+    ids = get_ids(conf.data_dir, subfolder_list)
 
     crop(conf.data_dir,
          output_folder,
-         ('imgs', 'himgs', 'masks'),
+         subfolder_list,
          ids,
          [conf.img_wh_crop, conf.img_wh_crop])
 
     # Redirect data
-    ids = get_ids(output_folder)
+    ids = get_ids(output_folder, subfolder_list)
 
     return output_folder, ids
 
@@ -131,11 +128,12 @@ class Dataset(object):
             data_reader,
             data_dir,
             ids,
+            data_subset,
             min_mask_ratio=0.0,
             augmentation=None,
             backbone=""
     ):
-        self.ids = list()
+        # self.ids = list()
         self.images_fps = list()
         self.himages_fps = list()
         self.masks_fps = list()
@@ -143,13 +141,13 @@ class Dataset(object):
         for fn in ids:
             image_fn = os.path.join(data_dir, 'imgs', fn)
             himage_fn = os.path.join(data_dir, 'himgs', fn)
-            mask_fn = os.path.join(data_dir, 'masks', os.path.splitext(fn)[0] + '.mask.png')
+            mask_fn = os.path.join(data_dir, 'masks.{}'.format(data_subset), fn)
             if os.path.isfile(image_fn) and os.path.isfile(himage_fn) and os.path.isfile(mask_fn):
                 img = cv2.imread(mask_fn, cv2.IMREAD_GRAYSCALE)
                 mask_nonzero_nb = np.count_nonzero(img)
                 mask_nonzero_ratio = mask_nonzero_nb / img.size
                 if mask_nonzero_ratio >= min_mask_ratio:
-                    self.ids.append(fn)
+                    # self.ids.append(fn)
                     self.images_fps.append(image_fn)
                     self.himages_fps.append(himage_fn)
                     self.masks_fps.append(mask_fn)
@@ -189,7 +187,7 @@ class Dataset(object):
         return image, mask
 
     def __len__(self):
-        return len(self.ids)
+        return len(self.images_fps)
 
 
 def dataloder_loader_per_process(ds, ind):

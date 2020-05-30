@@ -3,9 +3,8 @@ import sys
 import json
 import numpy as np
 import cv2
-from .PrepareData import maskExt, get_raster_info
+from .PrepareData import get_raster_info
 
-EXTENSION = maskExt
 BACK_COLOR = (0,)
 FRONT_COLOR = (255,)
 
@@ -35,7 +34,7 @@ def convert(json_filename, json_mppx, preview=False):
                 print('ERROR: {} not found'.format(img_filename))
                 continue
 
-            out_filename = os.path.splitext(os.path.basename(img_filename))[0] + '.' + EXTENSION
+            out_filename = os.path.splitext(os.path.basename(img_filename))[0] + '.png'
             out_filename = os.path.join(os.path.dirname(json_filename), out_filename)
             contours = []
             for region in parameters['regions']:

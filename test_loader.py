@@ -18,7 +18,7 @@ if __name__ == "__main__":
     data_reader = read_sample
 
     # Dataset for train images
-    train_dataset = Dataset(data_reader, data_dir, ids_train,
+    train_dataset = Dataset(data_reader, data_dir, ids_train, '',
                             min_mask_ratio=0.01,
                             augmentation=get_training_augmentation(cfg),
                             backbone=cfg.backbone

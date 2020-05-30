@@ -25,9 +25,10 @@ if TRIM_GPU:
 
 def visualize(**images):
     """PLot images in one row."""
-    n = len(images)
+    img_filtered = {key: value for (key, value) in images.items() if value is not None}
+    n = len(img_filtered)
     plt.figure(figsize=(16, 16))
-    for i, (name, img) in enumerate(images.items()):
+    for i, (name, img) in enumerate(img_filtered.items()):
         plt.subplot(1, n, i + 1)
         plt.xticks([])
         plt.yticks([])
@@ -55,6 +56,7 @@ def get_training_augmentation(conf):
 
         alb.HorizontalFlip(p=0.5),
         alb.VerticalFlip(p=0.5),
+        alb.RandomRotate90(always_apply=False, p=0.5),
         #
         # scale_limit ((float, float) or float) – scaling factor range. If scale_limit is a single float value,
         # the range will be (-scale_limit, scale_limit). Default: (-0.1, 0.1).
@@ -110,6 +112,9 @@ def get_validation_augmentation(conf):
     # Since batch-size in validation is 1, validation could be performed by whole crop-size.
     # To provide pos
     test_transform = [
+        alb.HorizontalFlip(p=0.5),
+        alb.VerticalFlip(p=0.5),
+        alb.RandomRotate90(always_apply=False, p=0.5),
         alb.PadIfNeeded(conf.img_wh_crop, conf.img_wh_crop, always_apply=True, border_mode=0),
         # alb.RandomCrop(height=conf.img_wh_crop, width=conf.img_wh_crop, always_apply=True),
     ]
@@ -172,22 +177,20 @@ def run():
         matplotlib.use('TkAgg')  # Enable interactive mode
 
         # Lets look at augmented data we have
-        dataset = Dataset(data_reader,
-                          data_dir,
-                          ids_train,
+        dataset = Dataset(data_reader, data_dir, ids_train, cfg.data_subset,
                           min_mask_ratio=0.01,
                           augmentation=get_training_augmentation(cfg)
                           )
 
         for i in range(150):
             image, mask = dataset[i]
+            print('name: ', os.path.basename(dataset.images_fps[i % len(dataset.images_fps)]))
             print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
             print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask), np.count_nonzero(mask)/mask.size)
 
             visualize(
                 Image=image[..., :3],
-                Height=image[..., 3],
-                # mask=mask[..., 0].squeeze(),
+                Height=image[..., 3] if image.shape[-1] > 3 else None,
                 masked_image=(image[..., :3]/255+mask)/2
             )
 
@@ -197,12 +200,12 @@ def run():
     model, weights_path, _ = create_model(conf=cfg, compile_model=True)
 
     # Dataset for train images
-    train_dataset = Dataset(data_reader, data_dir, ids_train,
+    train_dataset = Dataset(data_reader, data_dir, ids_train, cfg.data_subset,
                             min_mask_ratio=0.0,
                             augmentation=get_training_augmentation(cfg),
                             backbone=cfg.backbone)
     # Dataset for validation images
-    valid_dataset = Dataset(data_reader, data_dir, ids_test,
+    valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg.data_subset,
                             min_mask_ratio=0.01,
                             augmentation=get_validation_augmentation(cfg),
                             backbone=cfg.backbone)

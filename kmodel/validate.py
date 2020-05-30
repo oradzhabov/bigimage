@@ -23,7 +23,7 @@ def run():
     # ****************************************************************************************************************
     model, weights_path, metrics = create_model(conf=cfg, compile_model=True)
 
-    test_dataset = Dataset(data_reader, data_dir, ids_test,
+    test_dataset = Dataset(data_reader, data_dir, ids_test, cfg.data_subset,
                            min_mask_ratio=0.01,
                            augmentation=get_validation_augmentation(cfg),
                            backbone=cfg.backbone)
@@ -38,9 +38,7 @@ def run():
             pr_mask = model.predict(image).round()
 
             visualize(
-                #image=denormalize(image.squeeze()[..., :3]),
-                groundtruth_mask=gt_mask[..., 0].squeeze(),
-                #predicted_mask=pr_mask[..., 0].squeeze(),
+                groundtruth_mask=(denormalize(image.squeeze()) + gt_mask) / 2,
                 masked_image=(denormalize(image.squeeze()) + pr_mask[0]) / 2
             )
 

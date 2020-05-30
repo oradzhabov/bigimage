@@ -9,7 +9,6 @@ from .mapLoc2EPSG import mapEPSG2Loc
 from osgeo import gdal, osr
 
 
-maskExt = 'mask.png'
 DATETIME_FORMAT = '%Y-%m-%d'  # '%Y-%m-%d_%H-%M-%S'
 
 
@@ -92,13 +91,13 @@ def get_raster_info(img_fname):
     return img_shape, mppx
 
 
-def prepare_dataset(rootdir, destdir, dst_mppx):
+def prepare_dataset(rootdir, destdir, dst_mppx, data_subset):
     print('Prepare dataset...')
 
     # Create destination folders
-    dest_img_folder = destdir + '/imgs'
-    dest_himg_folder = destdir + '/himgs'
-    dest_mask_folder = destdir + '/masks'
+    dest_img_folder = os.path.join(destdir, 'imgs')
+    dest_himg_folder = os.path.join(destdir, 'himgs')
+    dest_mask_folder = os.path.join(destdir, 'masks.{}'.format(data_subset))
     if not os.path.exists(destdir):
         os.makedirs(destdir)
     if not os.path.exists(dest_img_folder):
@@ -194,7 +193,7 @@ def prepare_dataset(rootdir, destdir, dst_mppx):
                         pts_px = np.asarray(pts_px)
                         cv2.fillPoly(mask, [pts_px], color=(255,))
 
-                    dest_mask_fname = os.path.join(dest_mask_folder, uniq_fname + '.' + maskExt)
+                    dest_mask_fname = os.path.join(dest_mask_folder, uniq_fname + '.png')
                     cv2.imwrite(dest_mask_fname, mask)
                     #
                     dataset_strings_collection.append(customer + '/' + dataset + ',' + mod_time)
