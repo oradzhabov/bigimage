@@ -67,20 +67,13 @@ def crop(input_root, output_root, subfolder_list, file_names, output_shape):
             crop_img_idx = 0
             for i in range(len(w0)):
                 cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
-                cr_x2, extr_x2 = (w1[i], 0) if w1[i] < img.shape[1] else (img.shape[1]-1, w1[i] - img.shape[1])
+                cr_x2, extr_x2 = (w1[i], 0) if w1[i] < img.shape[1] else (img.shape[1], w1[i] - img.shape[1])
 
                 cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
-                cr_y2, extr_y2 = (h1[i], 0) if h1[i] < img.shape[0] else (img.shape[0] - 1, h1[i] - img.shape[0])
+                cr_y2, extr_y2 = (h1[i], 0) if h1[i] < img.shape[0] else (img.shape[0], h1[i] - img.shape[0])
 
                 patch = cv2.copyMakeBorder((img[cr_y:cr_y2, cr_x:cr_x2]), extr_y, extr_y2,
                                            extr_x, extr_x2, cv2.BORDER_CONSTANT, value=0)
-                """
-                l_h = h1[i]-h0[i]
-                l_w = w1[i]-w0[i]
-
-                patch = cv2.copyMakeBorder((img[h0[i]:h1[i], w0[i]:w1[i]]), 0, output_shape[0] - l_h,
-                                           0, output_shape[1] - l_w, cv2.BORDER_CONSTANT, value=0)
-                """
 
                 basename = os.path.basename(fi_path)
                 fname_wo_ext = basename[:basename.index('.')]

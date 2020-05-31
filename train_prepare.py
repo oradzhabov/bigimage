@@ -8,8 +8,9 @@ if __name__ == "__main__":
     rootdir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs'
     destdir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs.Result.4'
 
-    mppx = 0.05
-    destdir = os.path.join(destdir, datetime.now().strftime(PrepareData.DATETIME_FORMAT), 'mppx{:.2f}'.format(mppx))
+    mppx = 0.1
+    # destdir = os.path.join(destdir, datetime.now().strftime(PrepareData.DATETIME_FORMAT), 'mppx{:.2f}'.format(mppx))
+    destdir = os.path.join(destdir, '2020-05-24', 'mppx{:.2f}'.format(mppx))
 
     PrepareData.prepare_dataset(rootdir, destdir, mppx, config.cfg.data_subset)
 

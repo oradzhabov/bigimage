@@ -51,7 +51,7 @@ def denormalize(x):
 #     return x.round().clip(0, 1)
 
 
-def get_training_augmentation(conf):
+def get_training_augmentation(conf, is_stub=False):
     train_transform = [
 
         alb.HorizontalFlip(p=0.5),
@@ -66,12 +66,12 @@ def get_training_augmentation(conf):
         # a single float value, the range will be (-shift_limit, shift_limit). Absolute values for lower and upper
         # bounds should lie in range [0, 1]. Default: (-0.0625, 0.0625).
         # alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=45, shift_limit=0.5, p=1, border_mode=0),
-        alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=90, p=1, border_mode=0),
+        alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=90, p=1, border_mode=0, interpolation=cv2.INTER_LANCZOS4),
 
         # Pad side of the image / max if side is less than desired number.
         alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh, always_apply=True, border_mode=0),
 
-        alb.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=1),
+        alb.RandomBrightnessContrast(brightness_limit=(-0.5, 0.2), contrast_limit=0.2, p=1),
         alb.RandomGamma(p=1),
 
         # alb.IAAAdditiveGaussianNoise(p=0.2),
@@ -93,7 +93,7 @@ def get_training_augmentation(conf):
         #    ],
         #    p=0.9,
         # ),
-
+        alb.HueSaturationValue(hue_shift_limit=15, sat_shift_limit=(-20, 10), val_shift_limit=0, p=1.0),
         # alb.OneOf(
         #    [
         #        alb.RandomContrast(p=1),
@@ -105,10 +105,13 @@ def get_training_augmentation(conf):
         # Crop a random part of the input.
         alb.RandomCrop(height=conf.img_wh, width=conf.img_wh, always_apply=True),
     ]
+    if is_stub:
+        return alb.Compose([alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh, always_apply=True, border_mode=0),
+                           alb.RandomCrop(height=conf.img_wh, width=conf.img_wh, always_apply=True)])
     return alb.Compose(train_transform)
 
 
-def get_validation_augmentation(conf):
+def get_validation_augmentation(conf, is_stub=False):
     # Since batch-size in validation is 1, validation could be performed by whole crop-size.
     # To provide pos
     test_transform = [
@@ -118,6 +121,8 @@ def get_validation_augmentation(conf):
         alb.PadIfNeeded(conf.img_wh_crop, conf.img_wh_crop, always_apply=True, border_mode=0),
         # alb.RandomCrop(height=conf.img_wh_crop, width=conf.img_wh_crop, always_apply=True),
     ]
+    if is_stub:
+        return alb.Compose([alb.PadIfNeeded(conf.img_wh_crop, conf.img_wh_crop, always_apply=True, border_mode=0)])
     return alb.Compose(test_transform)
 
 
@@ -178,7 +183,7 @@ def run():
 
         # Lets look at augmented data we have
         dataset = Dataset(data_reader, data_dir, ids_train, cfg.data_subset,
-                          min_mask_ratio=0.01,
+                          min_mask_ratio=cfg.min_mask_ratio,
                           augmentation=get_training_augmentation(cfg)
                           )
 
@@ -201,13 +206,13 @@ def run():
 
     # Dataset for train images
     train_dataset = Dataset(data_reader, data_dir, ids_train, cfg.data_subset,
-                            min_mask_ratio=0.0,
-                            augmentation=get_training_augmentation(cfg),
+                            min_mask_ratio=cfg.min_mask_ratio,
+                            augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug),
                             backbone=cfg.backbone)
     # Dataset for validation images
     valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg.data_subset,
-                            min_mask_ratio=0.01,
-                            augmentation=get_validation_augmentation(cfg),
+                            min_mask_ratio=cfg.min_mask_ratio,
+                            augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug),
                             backbone=cfg.backbone)
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
@@ -235,7 +240,9 @@ def run():
         #                              min_delta=0.01,
         #                              patience=40,
         #                              verbose=0, mode='max')
-        PlotLosses(imgfile='log.png', figsize=(8, 4))  # PNG-files processed in Windows & Ubuntu
+        PlotLosses(imgfile='{}.png'.format(os.path.join(os.path.dirname(weights_path),
+                                                        os.path.splitext(os.path.basename(weights_path))[0])),
+                   figsize=(8, 4))  # PNG-files processed in Windows & Ubuntu
     ]
 
     matplotlib.use('Agg')  # Disable TclTk because it sometime crash training!
