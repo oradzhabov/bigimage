@@ -146,7 +146,6 @@ class Dataset(object):
                 mask_nonzero_nb = np.count_nonzero(img)
                 mask_nonzero_ratio = mask_nonzero_nb / img.size
                 if mask_nonzero_ratio >= min_mask_ratio:
-                    # self.ids.append(fn)
                     self.images_fps.append(image_fn)
                     self.himages_fps.append(himage_fn)
                     self.masks_fps.append(mask_fn)
@@ -191,7 +190,7 @@ class Dataset(object):
         return len(self.images_fps)
 
 
-class Dataset2(Dataset):
+class DataSingle(Dataset):
     def __init__(self, data_reader, img_fname, himg_fname, backbone=""):
         Dataset._initializer(self, data_reader, None, backbone)
 

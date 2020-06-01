@@ -12,7 +12,8 @@ from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 
 if __name__ == "__main__":
     dst_mppx = 0.1
-    src_proj_dir = 'F:/PROJECTS/Strayos/CUSTOMER.SUPPORT/2020.05.27/problemMuckpile/12105/output'
+    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
+    # src_proj_dir = 'F:/PROJECTS/Strayos/CUSTOMER.SUPPORT/2020.05.27/problemMuckpile/12105/output'
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
 
@@ -22,15 +23,14 @@ if __name__ == "__main__":
     if not is_success:
         exit(-1)
 
-    data_reader = read_sample
-    dataset = data.Dataset2(data_reader, dest_img_fname, dest_himg_fname, backbone=config.cfg.backbone)
+    dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, backbone=config.cfg.backbone)
     image, _ = dataset[0]
 
     model, weights_path, metrics = model.create_model(conf=config.cfg, compile_model=True)
 
     pr_mask = predict_img_with_smooth_windowing(
         image,
-        window_size=512,  # 512 enough for 4GB GPU. But it will be better if use 1024
+        window_size=512,  # todo: 512 enough for 4GB GPU. But it will be better if use 1024
         subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
         nb_classes=1,
         pred_func=(
@@ -42,9 +42,9 @@ if __name__ == "__main__":
 
     img_temp = (denormalize(image.squeeze()[..., :3]) * 255).astype(np.uint8)
     cv2.drawContours(img_temp, pr_cntrs, -1, (0, 0, 255), 5)
-    cv2.imwrite(os.path.join(src_proj_dir, 'mpiles_result.png'), img_temp)
+    cv2.imwrite(os.path.join(src_proj_dir, 'debug_mpiles_result.png'), img_temp[..., ::-1])
 
     visualize(
-        title='{}'.format(dataset.get_fname(0)),
+        title='{}'.format(src_proj_dir),
         result=img_temp
     )
