@@ -108,7 +108,8 @@ def get_training_augmentation(conf, is_stub=False):
         alb.RandomCrop(height=conf.img_wh, width=conf.img_wh, always_apply=True),
     ]
     if is_stub:
-        return alb.Compose([alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh, always_apply=True, border_mode=0),
+        return alb.Compose([alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh,
+                                            always_apply=True, border_mode=0),
                            alb.RandomCrop(height=conf.img_wh, width=conf.img_wh, always_apply=True)])
     return alb.Compose(train_transform)
 
@@ -140,14 +141,16 @@ def read_sample(img_path, himg_path, mask_path):
             himg = himg[..., 0][..., np.newaxis]
         img = np.concatenate((img, himg), axis=-1)
 
-    mask = cv2.imread(mask_path, 0).astype('float32') / 255.0
-    if len(mask.shape) == 2:
-        mask = mask[..., np.newaxis]
+    mask = None  # default value
+    if mask_path is not None:
+        mask = cv2.imread(mask_path, 0).astype('float32') / 255.0
+        if len(mask.shape) == 2:
+            mask = mask[..., np.newaxis]
 
-    # add background if mask is not binary
-    if mask.shape[-1] != 1:
-        background = 1 - mask.sum(axis=-1, keepdims=True)
-        mask = np.concatenate((mask, background), axis=-1)
+        # add background if mask is not binary
+        if mask.shape[-1] != 1:
+            background = 1 - mask.sum(axis=-1, keepdims=True)
+            mask = np.concatenate((mask, background), axis=-1)
 
     return img, mask
 

@@ -116,6 +116,15 @@ def get_data(conf, test_size, shuffle=False):
 
 
 class Dataset(object):
+    @staticmethod
+    def _initializer(obj, data_reader, augmentation, backbone):
+        obj.images_fps = list()
+        obj.himages_fps = list()
+        obj.masks_fps = list()
+        obj.augmentation = augmentation
+        obj.backbone = backbone
+        obj.data_reader = data_reader
+
     def __init__(
             self,
             data_reader,
@@ -126,10 +135,7 @@ class Dataset(object):
             augmentation=None,
             backbone=""
     ):
-        # self.ids = list()
-        self.images_fps = list()
-        self.himages_fps = list()
-        self.masks_fps = list()
+        Dataset._initializer(self, data_reader, augmentation, backbone)
 
         for fn in ids:
             image_fn = os.path.join(data_dir, 'imgs', fn)
@@ -148,10 +154,6 @@ class Dataset(object):
                     pass
                     # print('Not acceptable images mask mean value: {}'.format(mean_mask))
 
-        self.augmentation = augmentation
-        self.backbone = backbone
-        self.data_reader = data_reader
-
     def get_fname(self, i):
         i = i % len(self.images_fps)
         return os.path.basename(self.images_fps[i])
@@ -159,7 +161,9 @@ class Dataset(object):
     def __getitem__(self, i):
         i = i % len(self.images_fps)
 
-        img_path, himg_path, mask_path = self.images_fps[i], self.himages_fps[i], self.masks_fps[i]
+        img_path = self.images_fps[i] if i < len(self.images_fps) else None
+        himg_path = self.himages_fps[i] if i < len(self.himages_fps) else None
+        mask_path = self.masks_fps[i] if i < len(self.masks_fps) else None
 
         image, mask = self.data_reader(img_path, himg_path, mask_path)
 
@@ -185,6 +189,14 @@ class Dataset(object):
 
     def __len__(self):
         return len(self.images_fps)
+
+
+class Dataset2(Dataset):
+    def __init__(self, data_reader, img_fname, himg_fname, backbone=""):
+        Dataset._initializer(self, data_reader, None, backbone)
+
+        self.images_fps.append(img_fname)
+        self.himages_fps.append(himg_fname)
 
 
 def dataloder_loader_per_process(ds, ind):

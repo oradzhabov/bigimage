@@ -81,7 +81,7 @@ def get_raster_info(img_fname):
     prj = gtif.GetProjection()
     srs = osr.SpatialReference(wkt=prj)
     unit = srs.GetAttrValue('unit')
-    print('GeoTIFF length units: {}'.format(unit))
+    # print('GeoTIFF length units: {}'.format(unit))
     scale_to_meter = 1.0
     if unit != 'metre':
         scale_to_meter = 0.3048
@@ -89,6 +89,53 @@ def get_raster_info(img_fname):
     mppx = mppx * scale_to_meter
 
     return img_shape, mppx
+
+
+def create_orthophoto(dataset_path, dst_mppx, dest_img_fname):
+    recreated = False
+    src_img_fname = os.path.join(dataset_path, 'orthophoto/orthophoto_export.tif')
+    if not os.path.isfile(src_img_fname):
+        print('ERROR: File {} does not exist'.format(src_img_fname))
+        return False, recreated
+
+    if not os.path.isfile(dest_img_fname):
+        src_img_shape, src_mppx = get_raster_info(src_img_fname)
+        rescale = src_mppx / dst_mppx
+        gdal.Translate(dest_img_fname, src_img_fname,
+                       options="-outsize {} {} -ot Byte -r bilinear".
+                       format(int(src_img_shape[1] * rescale[0]), int(src_img_shape[0] * rescale[1])))
+        recreated = True
+
+    return True, recreated
+
+
+def create_heightmap(dataset_path, dst_img_shape, dest_himg_fname):
+    fname = os.path.join(dataset_path, 'dem/color_relief/color_relief.tif')
+    if not os.path.isfile(fname):
+        print('ERROR: File {0} does not exist'.format(fname))
+        return False
+    himg_bgr = cv2.imread(fname)[:, :, :3]
+    if himg_bgr is None:
+        print('ERROR: Cannot read file {0}'.format(fname))
+        return False
+    himg_gray = color2height(os.path.join(dataset_path, 'dem/color_relief/color_relief.txt'), himg_bgr)
+    himg_gray_resized = cv2.resize(himg_gray, (dst_img_shape[1], dst_img_shape[0]))
+    cv2.imwrite(dest_himg_fname, himg_gray_resized)
+    return True
+
+
+def build_from_project(dataset_path, dst_mppx, dest_img_fname, dest_himg_fname):
+    is_success, bgr_recreated = create_orthophoto(dataset_path, dst_mppx, dest_img_fname)
+    if not is_success:
+        return False
+
+    if not os.path.isfile(dest_himg_fname) or bgr_recreated:
+        dst_img_shape, dst_f_mppx = get_raster_info(dest_img_fname)
+        is_success = create_heightmap(dataset_path, dst_img_shape, dest_himg_fname)
+        if not is_success:
+            return False
+
+    return True
 
 
 def prepare_dataset(rootdir, destdir, dst_mppx, data_subset):
@@ -133,35 +180,12 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset):
             print('Iterate dataset {0}'.format(dataset_path))
             #
             dest_img_fname = os.path.join(dest_img_folder, uniq_fname + '.png')
-            src_img_fname = os.path.join(dataset_path, 'orthophoto/orthophoto_export.tif')
-            if not os.path.isfile(src_img_fname):
-                print('ERROR: File {0} does not exist'.format(src_img_fname))
+            dest_himg_fname = os.path.join(dest_himg_folder, uniq_fname + '.png')
+
+            is_success = build_from_project(dataset_path, dst_mppx, dest_img_fname, dest_himg_fname)
+            if not is_success:
                 continue
 
-            bgr_recreated = False
-            src_img_shape, src_mppx = get_raster_info(src_img_fname)
-            if not os.path.isfile(dest_img_fname):
-                rescale = src_mppx / dst_mppx
-                gdal.Translate(dest_img_fname, src_img_fname,
-                               options="-outsize {} {} -ot Byte -r bilinear".
-                               format(int(src_img_shape[1] * rescale[0]), int(src_img_shape[0] * rescale[1])))
-                bgr_recreated = True
-            dst_img_shape, _ = get_raster_info(dest_img_fname)
-
-            dest_himg_fname = os.path.join(dest_himg_folder, uniq_fname + '.png')
-            if not os.path.isfile(dest_himg_fname) or bgr_recreated:
-                fname = os.path.join(dataset_path, 'dem/color_relief/color_relief.tif')
-                if not os.path.isfile(fname):
-                    print('ERROR: File {0} does not exist'.format(fname))
-                    continue
-                himg_bgr = cv2.imread(fname)[:, :, :3]
-                if himg_bgr is None:
-                    print('ERROR: Cannot read file {0}'.format(fname))
-                    continue
-                himg_gray = color2height(os.path.join(dataset_path, 'dem/color_relief/color_relief.txt'), himg_bgr)
-                himg_gray_resized = cv2.resize(himg_gray, (dst_img_shape[1], dst_img_shape[0]))
-                cv2.imwrite(dest_himg_fname, himg_gray_resized)
-    
             contour_fname = os.path.join(dataset_path, 'orthophoto/user_muckpile.json')
             if os.path.isfile(contour_fname):
                 gdalinfo = os.path.join(dataset_path, 'orthophoto/tiles/gdalinfo.txt')
@@ -184,6 +208,7 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset):
                 with open(contour_fname) as f:
                     json_data = json.load(f)
                     json_contours = json_data['contours']
+                    dst_img_shape, dst_f_mppx = get_raster_info(dest_img_fname)
                     mask = np.zeros(shape=(dst_img_shape[0], dst_img_shape[1], 1), dtype=np.uint8)
 
                     for json_contour in json_contours:
@@ -204,16 +229,3 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset):
     with open(os.path.join(dest_mask_folder, "image_list.txt"), 'w') as f:
         for item in img_fname_list:
             f.write("%s\n" % item)
-
-
-"""
-if __name__ == "__main__":
-    # rootdir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs.short'
-    # destdir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs.short.Result'
-    #
-    rootdir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs'
-    destdir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs.Result.4'
-
-    destdir = os.path.join(destdir, datetime.now().strftime(DATETIME_FORMAT))
-    prepare_dataset(rootdir, destdir)
-"""
