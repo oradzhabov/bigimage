@@ -1,4 +1,5 @@
 import math
+import cv2
 
 
 def get_tiled_bbox(img_shape, tile_size, offset):
@@ -32,3 +33,15 @@ def get_tiled_bbox(img_shape, tile_size, offset):
         ah1 = [i - h_extra_half for i in ah1]
 
     return aw0, aw1, ah0, ah1
+
+
+def get_contours(mask_u8c1):
+    # Find contours
+    ret, thresh = cv2.threshold(mask_u8c1, 127, 255, cv2.THRESH_BINARY)
+
+    if cv2.__version__.startswith("3"):
+        im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    else:
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+
+    return contours

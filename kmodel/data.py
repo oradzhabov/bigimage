@@ -152,6 +152,10 @@ class Dataset(object):
         self.backbone = backbone
         self.data_reader = data_reader
 
+    def get_fname(self, i):
+        i = i % len(self.images_fps)
+        return os.path.basename(self.images_fps[i])
+
     def __getitem__(self, i):
         i = i % len(self.images_fps)
 

@@ -23,17 +23,19 @@ if TRIM_GPU:
     session = tf.Session(config=config)
 
 
-def visualize(**images):
+def visualize(title, **images):
     """PLot images in one row."""
     img_filtered = {key: value for (key, value) in images.items() if value is not None}
     n = len(img_filtered)
-    plt.figure(figsize=(16, 16))
+    fig = plt.figure(figsize=(16, 16))
     for i, (name, img) in enumerate(img_filtered.items()):
         plt.subplot(1, n, i + 1)
         plt.xticks([])
         plt.yticks([])
         plt.title(' '.join(name.split('_')).title())
         plt.imshow(img)
+    if title is not None:
+        fig.suptitle(title, fontsize=16)
     plt.show()
 
 
