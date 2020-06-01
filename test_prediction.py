@@ -13,6 +13,8 @@ from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 if __name__ == "__main__":
     dst_mppx = 0.1
     src_proj_dir = 'F:/PROJECTS/Strayos/CUSTOMER.SUPPORT/2020.05.27/problemMuckpile/12105/output'
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
 
     dest_img_fname = os.path.join(src_proj_dir, 'tmp.png')
     dest_himg_fname = os.path.join(src_proj_dir, 'htmp.png')
@@ -40,6 +42,7 @@ if __name__ == "__main__":
 
     img_temp = (denormalize(image.squeeze()[..., :3]) * 255).astype(np.uint8)
     cv2.drawContours(img_temp, pr_cntrs, -1, (0, 0, 255), 5)
+    cv2.imwrite(os.path.join(src_proj_dir, 'mpiles_result.png'), img_temp)
 
     visualize(
         title='{}'.format(dataset.get_fname(0)),

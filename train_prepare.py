@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     mppx = 0.1
     # destdir = os.path.join(destdir, datetime.now().strftime(PrepareData.DATETIME_FORMAT), 'mppx{:.2f}'.format(mppx))
-    destdir = os.path.join(destdir, '2020-05-24', 'mppx{:.2f}'.format(mppx))
+    destdir = os.path.join(destdir, '2020-05-24a', 'mppx{:.2f}'.format(mppx))
 
     PrepareData.prepare_dataset(rootdir, destdir, mppx, config.cfg.data_subset)
 
