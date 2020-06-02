@@ -36,8 +36,9 @@ def preserve_shape(func):
 
     return wrapped_function
 
+
 @clipped
-def _brightness_contrast_adjust_non_uint(img, alpha=1, beta=0, beta_by_max=False):
+def _brightness_contrast_adjust_non_uint(img, alpha=1., beta=0., beta_by_max=False):
     dtype = img.dtype
     img = img.astype('float32')
 
@@ -53,7 +54,7 @@ def _brightness_contrast_adjust_non_uint(img, alpha=1, beta=0, beta_by_max=False
 
 
 @preserve_shape
-def _brightness_contrast_adjust_uint(img, alpha=1, beta=0, beta_by_max=False):
+def _brightness_contrast_adjust_uint(img, alpha=1., beta=0., beta_by_max=False):
     dtype = np.dtype('uint8')
 
     max_value = MAX_VALUES_BY_DTYPE[dtype]
@@ -73,7 +74,7 @@ def _brightness_contrast_adjust_uint(img, alpha=1, beta=0, beta_by_max=False):
     return img
 
 
-def brightness_contrast_adjust(img, alpha=1, beta=0, beta_by_max=False):
+def brightness_contrast_adjust(img, alpha=1., beta=0., beta_by_max=False):
     if img.dtype == np.uint8:
         return _brightness_contrast_adjust_uint(img, alpha, beta, beta_by_max)
     else:
@@ -81,6 +82,9 @@ def brightness_contrast_adjust(img, alpha=1, beta=0, beta_by_max=False):
 
 
 class RandomBrightnessContrast2(alb.RandomBrightnessContrast):
+    def get_params_dependent_on_targets(self, params):
+        super().get_params_dependent_on_targets(params)
+
     def apply(self, image, alpha=1., beta=0., **params):
         if image.shape[2] < 3:
             return image

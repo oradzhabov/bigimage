@@ -32,10 +32,12 @@ def gamma_transform(img, gamma, eps=1e-7):
 
 
 class RandomGamma2(alb.RandomGamma):
+    def get_params_dependent_on_targets(self, params):
+        super().get_params_dependent_on_targets(params)
+
     def apply(self, image, gamma=1, **params):
         if image.shape[2] < 3:
             return image
         return np.concatenate((gamma_transform(image[..., :3], gamma=gamma, eps=self.eps),
                                image[..., 3:]),
                               axis=-1)
-

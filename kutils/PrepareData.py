@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 import time
 from .color2height import color2height
-from .mapLoc2EPSG import mapEPSG2Loc
+from .mapLoc2EPSG import map_epsg2loc
 from osgeo import gdal, osr
 
 
@@ -44,7 +44,7 @@ def get_geoloc_gata(gdalinfo, mapdata):
     with open(gdalinfo, "r") as f:
         for line in f:
             if line.startswith('Upper Left'):
-                ul = [float(value.strip()) for value in re.search(r'\((.*?)\)', line).group(1).split(',')]
+                _ = [float(value.strip()) for value in re.search(r'\((.*?)\)', line).group(1).split(',')]
             if line.startswith('Lower Left'):
                 ll = [float(value.strip()) for value in re.search(r'\((.*?)\)', line).group(1).split(',')]
             if line.startswith('Upper Right'):
@@ -234,7 +234,7 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset):
 
                     for json_contour in json_contours:
                         pts_wmerc = json_contour['pts_m']
-                        pts_m = mapEPSG2Loc(mapdata, np.array(pts_wmerc), 3857)
+                        pts_m = map_epsg2loc(mapdata, np.array(pts_wmerc), 3857)
                         pts_px = map_contour_meter_pix(dst_img_shape, [pts_m], x0_m, y0_m, x1_m, y1_m)
                         pts_px = np.asarray(pts_px)
                         cv2.fillPoly(mask, [pts_px], color=(255,))

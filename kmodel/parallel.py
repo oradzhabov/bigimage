@@ -57,7 +57,7 @@ class SimpleProcessor(object):
                 if inputs is not None:
                     yield inputs
             self.stop()
-        except:
+        except Exception as _:
             self.stop()
             raise
             

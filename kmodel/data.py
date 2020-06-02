@@ -145,7 +145,9 @@ class Dataset(object):
             image_fn = os.path.join(data_dir, 'imgs', fn)
             himage_fn = os.path.join(data_dir, 'himgs', fn) if self.conf.use_heightmap else None
             mask_fn = os.path.join(data_dir, 'masks.{}'.format(self.conf.data_subset), fn)
-            if os.path.isfile(image_fn) and (himage_fn is None or os.path.isfile(himage_fn)) and os.path.isfile(mask_fn):
+            if os.path.isfile(image_fn) and \
+                    (himage_fn is None or os.path.isfile(himage_fn)) and \
+                    os.path.isfile(mask_fn):
                 img = cv2.imread(mask_fn, cv2.IMREAD_GRAYSCALE)
                 mask_nonzero_nb = np.count_nonzero(img)
                 mask_nonzero_ratio = mask_nonzero_nb / img.size
@@ -153,9 +155,6 @@ class Dataset(object):
                     self.images_fps.append(image_fn)
                     self.himages_fps.append(himage_fn)
                     self.masks_fps.append(mask_fn)
-                else:
-                    pass
-                    # print('Not acceptable images mask mean value: {}'.format(mean_mask))
 
     def get_fname(self, i):
         i = i % len(self.images_fps)
@@ -179,14 +178,14 @@ class Dataset(object):
         if len(self.conf.backbone) > 0:
             # To support thread-safe and process-safe code we should obtain preprocessor on the fly
             # and do not prepare it before
-            preprocessing = self.prep_getter(self.conf.backbone)
-            if preprocessing:
-                if isinstance(preprocessing, alb.Compose):
-                    sample = preprocessing(image=image)
+            preprocessor = self.prep_getter(self.conf.backbone)
+            if preprocessor:
+                if isinstance(preprocessor, alb.Compose):
+                    sample = preprocessor(image=image)
                     # image, mask = sample['image'], sample['mask']
                     image = sample['image']
                 else:
-                    image = preprocessing(image)
+                    image = preprocessor(image)
                     # Operate possible case when custom preprocessor modified data size
                     if mask is not None:
                         if image.shape[:2] != mask.shape[:2]:
@@ -201,7 +200,13 @@ class Dataset(object):
 
 class DataSingle(Dataset):
     def __init__(self, data_reader, img_fname, himg_fname, configure, prep_getter=sm.get_preprocessing):
-        Dataset._initializer(self, data_reader, None, configure, prep_getter)
+        super().__init__(data_reader=data_reader,
+                         data_dir='',
+                         ids=list(),
+                         conf=configure,
+                         min_mask_ratio=0.0,
+                         augmentation=None,
+                         prep_getter=prep_getter)
 
         self.images_fps.append(img_fname)
         self.himages_fps.append(himg_fname)

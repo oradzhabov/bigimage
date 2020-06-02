@@ -52,6 +52,9 @@ def shift_hsv(img, hue_shift, sat_shift, val_shift):
 
 
 class HueSaturationValue2(alb.HueSaturationValue):
+    def get_params_dependent_on_targets(self, params):
+        super().get_params_dependent_on_targets(params)
+
     def apply(self, image, hue_shift=0, sat_shift=0, val_shift=0, **params):
         if image.shape[2] < 3:
             return image

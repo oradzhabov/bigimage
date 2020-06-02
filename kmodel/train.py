@@ -188,7 +188,8 @@ def run(cfg):
             image, mask = dataset[i]
             print('name: ', os.path.basename(dataset.images_fps[i % len(dataset.images_fps)]))
             print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
-            print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask), np.count_nonzero(mask)/mask.size)
+            print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask),
+                  np.count_nonzero(mask)/mask.size)
 
             image_rgb = (denormalize(image.squeeze()[..., :3]) * 255).astype(np.uint8)
             gt_cntrs = get_contours((mask.squeeze() * 255).astype(np.uint8))
@@ -198,6 +199,8 @@ def run(cfg):
                 Image=image_rgb,
                 Height=image[..., 3] if image.shape[-1] > 3 else None,
             )
+
+        return
 
     # ****************************************************************************************************************
     # Create model
@@ -210,7 +213,7 @@ def run(cfg):
                             augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug))
     # Dataset for validation images
     valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
-                            min_mask_ratio=cfg.min_mask_ratio,
+                            min_mask_ratio=0.01,
                             augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug))
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
@@ -225,12 +228,22 @@ def run(cfg):
 
     # define callbacks for learning rate scheduling and best checkpoints saving
     callbacks = [
+        # Save best result
         keras.callbacks.ModelCheckpoint(weights_path,
                                         monitor='val_f1-score',
                                         save_weights_only=True,
                                         save_best_only=True,
                                         mode='max',
                                         verbose=1),
+        # Save the latest result
+        keras.callbacks.ModelCheckpoint('{}_last.h5'.format(os.path.join(os.path.dirname(weights_path),
+                                                            os.path.splitext(os.path.basename(weights_path))[0])),
+                                        monitor='val_f1-score',
+                                        save_weights_only=True,
+                                        save_best_only=False,
+                                        mode='auto',
+                                        verbose=1),
+
         # Adam optimizer SHOULD not control LR
         # keras.callbacks.ReduceLROnPlateau(verbose=1, patience=10, factor=0.2)
         #

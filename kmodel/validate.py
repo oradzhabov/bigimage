@@ -67,7 +67,7 @@ def run(cfg):
             item['image'] = image.squeeze()
             result_list.append(item)
         # sort list to start from the worst result
-        result_list = sorted(result_list, key=lambda item: item['metrics']['f1-score'])
+        result_list = sorted(result_list, key=lambda it: it['metrics']['f1-score'])
 
         for item in result_list:
             image = item['image']

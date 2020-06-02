@@ -18,10 +18,10 @@ if __name__ == "__main__":
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
 
     dest_img_fname = os.path.join(src_proj_dir,
-                                  'tmp_mppx{:.2f}.png'.format(cfg.mmpx))
+                                  'tmp_mppx{:.2f}.png'.format(cfg.mppx))
     dest_himg_fname = os.path.join(src_proj_dir,
-                                   'htmp_mppx{:.2f}.png'.format(cfg.mmpx)) if cfg.use_heightmap else None
-    is_success = PrepareData.build_from_project(src_proj_dir, cfg.mmpx, dest_img_fname, dest_himg_fname)
+                                   'htmp_mppx{:.2f}.png'.format(cfg.mppx)) if cfg.use_heightmap else None
+    is_success = PrepareData.build_from_project(src_proj_dir, cfg.mppx, dest_img_fname, dest_himg_fname)
     if not is_success:
         exit(-1)
 
