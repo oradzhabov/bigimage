@@ -117,13 +117,14 @@ def get_data(conf, test_size, shuffle=False):
 
 class Dataset(object):
     @staticmethod
-    def _initializer(obj, data_reader, augmentation, backbone):
+    def _initializer(obj, data_reader, augmentation, backbone, prep_getter):
         obj.images_fps = list()
         obj.himages_fps = list()
         obj.masks_fps = list()
         obj.augmentation = augmentation
         obj.backbone = backbone
         obj.data_reader = data_reader
+        obj.prep_getter = prep_getter
 
     def __init__(
             self,
@@ -133,9 +134,10 @@ class Dataset(object):
             data_subset,
             min_mask_ratio=0.0,
             augmentation=None,
-            backbone=""
+            backbone="",
+            prep_getter=sm.get_preprocessing
     ):
-        Dataset._initializer(self, data_reader, augmentation, backbone)
+        Dataset._initializer(self, data_reader, augmentation, backbone, prep_getter)
 
         for fn in ids:
             image_fn = os.path.join(data_dir, 'imgs', fn)
@@ -175,7 +177,7 @@ class Dataset(object):
         if len(self.backbone) > 0:
             # To support thread-safe and process-safe code we should obtain preprocessor on the fly
             # and do not prepare it before
-            preprocessing = sm.get_preprocessing(self.backbone)
+            preprocessing = self.prep_getter(self.backbone)
             if preprocessing:
                 if isinstance(preprocessing, alb.Compose):
                     sample = preprocessing(image=image)
@@ -183,6 +185,9 @@ class Dataset(object):
                     image = sample['image']
                 else:
                     image = preprocessing(image)
+                    # Operate possible case when custom preprocessor modified data size
+                    if image.shape[:2] != mask.shape[:2]:
+                        mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
 
         return image, mask
 
@@ -191,8 +196,8 @@ class Dataset(object):
 
 
 class DataSingle(Dataset):
-    def __init__(self, data_reader, img_fname, himg_fname, backbone=""):
-        Dataset._initializer(self, data_reader, None, backbone)
+    def __init__(self, data_reader, img_fname, himg_fname, backbone="", prep_getter=sm.get_preprocessing):
+        Dataset._initializer(self, data_reader, None, backbone, prep_getter)
 
         self.images_fps.append(img_fname)
         self.himages_fps.append(himg_fname)
