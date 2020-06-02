@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import albumentations as alb
+from .albumentations2 import HueSaturationValue2, RandomGamma2, RandomBrightnessContrast2
 from joblib import Memory
 from .model import create_model
 from .data import get_data, Dataset, Dataloder
@@ -73,8 +74,8 @@ def get_training_augmentation(conf, is_stub=False):
         # Pad side of the image / max if side is less than desired number.
         alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh, always_apply=True, border_mode=0),
 
-        alb.RandomBrightnessContrast(brightness_limit=(-0.5, 0.2), contrast_limit=0.2, p=1),
-        alb.RandomGamma(p=1),
+        RandomBrightnessContrast2(brightness_limit=(-0.5, 0.2), contrast_limit=0.2, p=1),
+        RandomGamma2(p=1),
 
         # alb.IAAAdditiveGaussianNoise(p=0.2),
 
@@ -95,7 +96,7 @@ def get_training_augmentation(conf, is_stub=False):
         #    ],
         #    p=0.9,
         # ),
-        alb.HueSaturationValue(hue_shift_limit=15, sat_shift_limit=(-20, 10), val_shift_limit=0, p=1.0),
+        HueSaturationValue2(hue_shift_limit=15, sat_shift_limit=(-20, 10), val_shift_limit=0, p=1.0),
         # alb.OneOf(
         #    [
         #        alb.RandomContrast(p=1),
