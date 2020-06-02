@@ -1,6 +1,6 @@
 import os
 from kmodel.data import get_data, Dataset, Dataloder
-from kmodel.config import cfg
+from config import cfg
 from kmodel.train import read_sample, get_training_augmentation
 import time
 

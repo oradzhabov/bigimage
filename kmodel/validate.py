@@ -3,14 +3,13 @@ import numpy as np
 import cv2
 from .data import get_data, Dataset, Dataloder
 from .model import create_model
-from .config import cfg
 from .train import read_sample, get_validation_augmentation, visualize, denormalize
 from .kutils import get_contours
 from .production import create_model_production, get_preprocessing_production
 import segmentation_models as sm
 
 
-def prepare_model(test_production):
+def prepare_model(cfg, test_production):
     # ****************************************************************************************************************
     # Create model. Compile it to obtain metrics
     # ****************************************************************************************************************
@@ -27,7 +26,7 @@ def prepare_model(test_production):
     return model, weights_path, metrics, prep_getter
 
 
-def run():
+def run(cfg):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -40,7 +39,7 @@ def run():
     data_reader = read_sample
 
     test_production = False
-    model, _, metrics, prep_getter = prepare_model(test_production)
+    model, _, metrics, prep_getter = prepare_model(cfg, test_production)
 
     test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
                            min_mask_ratio=0.01,

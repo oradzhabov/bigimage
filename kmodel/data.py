@@ -87,6 +87,9 @@ def crop(input_root, output_root, subfolder_list, file_names, output_shape):
 
 
 def get_cropped_ids(conf):
+    # Actually here we could control the content of required sub-folders according to enabling height-map.
+    # But it will conflict with mixing train/test data subsets when model partially trained without height-map and
+    # then additionally train with height-map.
     subfolder_list = ('imgs', 'himgs', 'masks.{}'.format(conf.data_subset))
     output_folder = os.path.join(conf.data_dir, '.train.crop_wh{}'.format(conf.img_wh_crop))
 

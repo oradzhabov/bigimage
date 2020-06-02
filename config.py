@@ -1,4 +1,4 @@
-from .EasyDict import EasyDict
+from kutils.EasyDict import EasyDict
 
 cfg = EasyDict()
 
@@ -20,4 +20,4 @@ cfg.data_subset = 'all_piles'
 cfg.img_wh = 512  # 512
 cfg.img_wh_crop = 1024
 cfg.pyramid_block_filters = 256  # default 256
-cfg.use_heightmap = True
+cfg.use_heightmap = False

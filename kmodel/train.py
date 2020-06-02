@@ -11,7 +11,6 @@ from .albumentations2 import HueSaturationValue2, RandomGamma2, RandomBrightness
 from joblib import Memory
 from .model import create_model
 from .data import get_data, Dataset, Dataloder
-from .config import cfg
 from .PlotLosses import PlotLosses
 from .kutils import get_contours
 
@@ -160,8 +159,7 @@ def read_sample(img_path, himg_path, mask_path):
     return img, mask
 
 
-# if __name__ == '__main__':
-def run():
+def run(cfg):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))

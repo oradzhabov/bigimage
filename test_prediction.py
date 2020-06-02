@@ -4,7 +4,7 @@ import cv2
 from kutils import PrepareData
 from kmodel import validate
 from kmodel import data
-from kmodel import config
+from config import cfg
 from kmodel.train import read_sample, denormalize, visualize
 from kmodel.kutils import get_contours
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
@@ -20,15 +20,15 @@ if __name__ == "__main__":
     dest_img_fname = os.path.join(src_proj_dir,
                                   'tmp_mppx{:.2f}.png'.format(dst_mppx))
     dest_himg_fname = os.path.join(src_proj_dir,
-                                   'htmp_mppx{:.2f}.png'.format(dst_mppx)) if config.cfg.use_heightmap else None
+                                   'htmp_mppx{:.2f}.png'.format(dst_mppx)) if cfg.use_heightmap else None
     is_success = PrepareData.build_from_project(src_proj_dir, dst_mppx, dest_img_fname, dest_himg_fname)
     if not is_success:
         exit(-1)
 
     test_production = True
-    model, _, _, prep_getter = validate.prepare_model(test_production)
+    model, _, _, prep_getter = validate.prepare_model(cfg, test_production)
 
-    dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, config.cfg, prep_getter=prep_getter)
+    dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, cfg, prep_getter=prep_getter)
     image, _ = dataset[0]
 
     pr_mask = predict_img_with_smooth_windowing(
