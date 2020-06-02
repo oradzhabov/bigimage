@@ -145,14 +145,13 @@ def create_heightmap(dataset_path, dst_img_shape, dest_himg_fname):
 
 
 def build_from_project(dataset_path, dst_mppx, dest_img_fname, dest_himg_fname):
-    if dest_img_fname is not None:
-        is_success, bgr_recreated = create_orthophoto(dataset_path, dst_mppx, dest_img_fname)
-        if not is_success:
-            return False
+    is_success, bgr_recreated = create_orthophoto(dataset_path, dst_mppx, dest_img_fname)
+    if not is_success:
+        return False
 
     if dest_himg_fname is not None:
         if not os.path.isfile(dest_himg_fname) or bgr_recreated:
-            dst_img_shape, dst_f_mppx = get_raster_info(dest_img_fname)
+            dst_img_shape, _ = get_raster_info(dest_img_fname)
             is_success = create_heightmap(dataset_path, dst_img_shape, dest_himg_fname)
             if not is_success:
                 return False

@@ -11,21 +11,21 @@ from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 
 
 if __name__ == "__main__":
-    dst_mppx = 0.1  # 0.25 for production model
+
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
     src_proj_dir = 'F:/PROJECTS/Strayos/CUSTOMER.SUPPORT/2020.05.27/problemMuckpile/12105/output'
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
 
     dest_img_fname = os.path.join(src_proj_dir,
-                                  'tmp_mppx{:.2f}.png'.format(dst_mppx))
+                                  'tmp_mppx{:.2f}.png'.format(cfg.mmpx))
     dest_himg_fname = os.path.join(src_proj_dir,
-                                   'htmp_mppx{:.2f}.png'.format(dst_mppx)) if cfg.use_heightmap else None
-    is_success = PrepareData.build_from_project(src_proj_dir, dst_mppx, dest_img_fname, dest_himg_fname)
+                                   'htmp_mppx{:.2f}.png'.format(cfg.mmpx)) if cfg.use_heightmap else None
+    is_success = PrepareData.build_from_project(src_proj_dir, cfg.mmpx, dest_img_fname, dest_himg_fname)
     if not is_success:
         exit(-1)
 
-    test_production = True
+    test_production = False
     model, _, _, prep_getter = validate.prepare_model(cfg, test_production)
 
     dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, cfg, prep_getter=prep_getter)

@@ -165,7 +165,8 @@ def run(cfg):
         print('There are no such data folder {}'.format(cfg.data_dir))
         exit(-1)
 
-    data_dir, ids_train, ids_test = get_data(cfg, test_size=0.33)
+    # Prepare data and split to train/test subsets
+    data_dir, ids_train, ids_test = get_data(cfg, test_size=cfg.test_aspect)
 
     # Manage caching data access
     cache_folder = os.path.join(cfg.data_dir, '.cache')
@@ -173,25 +174,13 @@ def run(cfg):
     memory.clear(warn=False)
     data_reader = memory.cache(read_sample) if memory is not None else read_sample
 
-    """
-    if False:
-        dataset = Dataset(data_reader, data_dir, ids_train)
-
-        image, mask = dataset[2]  # get some sample
-        print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
-        print('mask shape,dtype,min,max: ', mask.shape, mask.dtype, np.min(mask), np.max(mask))
-        visualize(
-            image=image,
-            muckpile_mask=mask[..., 0].squeeze()
-        )
-    """
     see_sample_augmentations = False
     if see_sample_augmentations:
         matplotlib.use('TkAgg')  # Enable interactive mode
 
         # Lets look at augmented data we have
         dataset = Dataset(data_reader, data_dir, ids_train, cfg,
-                          min_mask_ratio=cfg.min_mask_ratio,
+                          min_mask_ratio=0.01,
                           augmentation=get_training_augmentation(cfg)
                           )
 

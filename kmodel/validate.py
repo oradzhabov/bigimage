@@ -32,9 +32,8 @@ def run(cfg):
         print('There are no such data folder {}'.format(cfg.data_dir))
         exit(-1)
 
-    # Get all data into test-set
-    # data_dir, ids_test, _ = get_data(cfg, 0.0)
-    data_dir, ids_train, ids_test = get_data(cfg, 0.33)
+    # Prepare data and split to train/test subsets
+    data_dir, ids_train, ids_test = get_data(cfg, test_size=cfg.test_aspect)
 
     data_reader = read_sample
 
