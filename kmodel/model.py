@@ -4,9 +4,9 @@ import keras
 
 
 def create_model(conf, compile_model=True):
-    weights_path = './unet_{}_wh{}_pbf{}.h5'.format(conf.backbone,
-                                                   conf.img_wh,
-                                                   conf.pyramid_block_filters)
+    weights_path = './unet_{}_wh{}_rgb{}.h5'.format(conf.backbone,
+                                                    conf.img_wh,
+                                                    'a' if conf.use_heightmap else '')
     n_classes = 1
     activation = 'sigmoid' if n_classes == 1 else 'softmax'
 
@@ -23,11 +23,12 @@ def create_model(conf, compile_model=True):
                         # pyramid_dropout=0.25
                         )
 
-    add_height = False
-    if add_height:
+    if conf.use_heightmap:
         # Add extra input layer to map custom-channel number to 3-channels input model which can use pre-trained weights
         inp = keras.layers.Input(shape=(None, None, 4))
-        l1 = keras.layers.Conv2D(3, (1, 1), use_bias=False)(inp)
+        l1 = keras.layers.Conv2D(32, (1, 1), use_bias=False)(inp)
+        l1 = keras.layers.BatchNormalization()(l1)
+        l1 = keras.layers.Conv2D(3, (1, 1), use_bias=False)(l1)
         l1 = keras.layers.BatchNormalization()(l1)
         out = base_model(l1)
 
@@ -60,5 +61,7 @@ def create_model(conf, compile_model=True):
 
         # compile model with defined optimizer, loss and metrics
         model.compile(optimizer, total_loss, metrics)
+
+    # base_model.load_weights('./unet_mobilenet_wh512_rgb_f1083.h5')
 
     return model, weights_path, metrics

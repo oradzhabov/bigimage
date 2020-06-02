@@ -124,38 +124,38 @@ def create_heightmap_color(dataset_path, dst_img_shape, dest_himg_fname):
     return True
 
 
-def create_heightmap_dsm(dataset_path, dst_mppx, dest_himg_fname):
+def create_heightmap_dsm(dataset_path, dst_img_shape, dest_himg_fname):
     src_himg_fname = os.path.join(dataset_path, 'dem/dsm.tif')
     if not os.path.isfile(src_himg_fname):
         print('ERROR: File {0} does not exist'.format(src_himg_fname))
         return False
-    src_img_shape, src_mppx = get_raster_info(src_himg_fname)
-    rescale = src_mppx / dst_mppx
     # Param '-scale' without parameters rescales the value's range from min/max to 0/255
     gdal.Translate(dest_himg_fname, src_himg_fname,
                    options="-outsize {} {} -ot Byte -scale -r bilinear".
-                   format(int(src_img_shape[1] * rescale[0]), int(src_img_shape[0] * rescale[1])))
+                   format(int(dst_img_shape[1]), int(dst_img_shape[0])))
     return True
 
 
-def create_heightmap(dataset_path, dst_mppx, dst_img_shape, dest_himg_fname):
+def create_heightmap(dataset_path, dst_img_shape, dest_himg_fname):
     # Using DSM(even u8c1) provides better smoothed results rather using colored height-map
-    if create_heightmap_dsm(dataset_path, dst_mppx, dest_himg_fname):
+    if create_heightmap_dsm(dataset_path, dst_img_shape, dest_himg_fname):
         return True
     print('There are no dsm-file. Try to operate with colored depth map')
     return create_heightmap_color(dataset_path, dst_img_shape, dest_himg_fname)
 
 
 def build_from_project(dataset_path, dst_mppx, dest_img_fname, dest_himg_fname):
-    is_success, bgr_recreated = create_orthophoto(dataset_path, dst_mppx, dest_img_fname)
-    if not is_success:
-        return False
-
-    if not os.path.isfile(dest_himg_fname) or bgr_recreated:
-        dst_img_shape, dst_f_mppx = get_raster_info(dest_img_fname)
-        is_success = create_heightmap(dataset_path, dst_f_mppx, dst_img_shape, dest_himg_fname)
+    if dest_img_fname is not None:
+        is_success, bgr_recreated = create_orthophoto(dataset_path, dst_mppx, dest_img_fname)
         if not is_success:
             return False
+
+    if dest_himg_fname is not None:
+        if not os.path.isfile(dest_himg_fname) or bgr_recreated:
+            dst_img_shape, dst_f_mppx = get_raster_info(dest_img_fname)
+            is_success = create_heightmap(dataset_path, dst_img_shape, dest_himg_fname)
+            if not is_success:
+                return False
 
     return True
 

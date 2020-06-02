@@ -18,11 +18,9 @@ if __name__ == "__main__":
     data_reader = read_sample
 
     # Dataset for train images
-    train_dataset = Dataset(data_reader, data_dir, ids_train, '',
+    train_dataset = Dataset(data_reader, data_dir, ids_train, cfg,
                             min_mask_ratio=0.01,
-                            augmentation=get_training_augmentation(cfg),
-                            backbone=cfg.backbone
-                            )
+                            augmentation=get_training_augmentation(cfg))
 
     train_dataloader = Dataloder(train_dataset, batch_size=200, shuffle=True, cpu_units_nb=Dataloder.get_cpu_units_nb())
     # train_dataloader = Dataloder(train_dataset, batch_size=200, shuffle=True)

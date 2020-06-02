@@ -13,7 +13,7 @@ from .model import create_model
 from .data import get_data, Dataset, Dataloder
 from .config import cfg
 from .PlotLosses import PlotLosses
-
+from .kutils import get_contours
 
 TRIM_GPU = False
 if TRIM_GPU:
@@ -135,11 +135,15 @@ def read_sample(img_path, himg_path, mask_path):
     img = cv2.imread(img_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    add_height = False
-    if add_height:
+    if himg_path is not None:
         himg = cv2.imread(himg_path)
         if len(himg.shape) > 2:
             himg = himg[..., 0][..., np.newaxis]
+
+        if himg.shape[:2] != img.shape[:2]:
+            print('WARNING: Height map has not matched image resolution. To match shape it was scaled.')
+            himg = cv2.resize(himg, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_CUBIC)
+
         img = np.concatenate((img, himg), axis=-1)
 
     mask = None  # default value
@@ -188,7 +192,7 @@ def run():
         matplotlib.use('TkAgg')  # Enable interactive mode
 
         # Lets look at augmented data we have
-        dataset = Dataset(data_reader, data_dir, ids_train, cfg.data_subset,
+        dataset = Dataset(data_reader, data_dir, ids_train, cfg,
                           min_mask_ratio=cfg.min_mask_ratio,
                           augmentation=get_training_augmentation(cfg)
                           )
@@ -199,10 +203,13 @@ def run():
             print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
             print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask), np.count_nonzero(mask)/mask.size)
 
+            image_rgb = (denormalize(image.squeeze()[..., :3]) * 255).astype(np.uint8)
+            gt_cntrs = get_contours((mask.squeeze() * 255).astype(np.uint8))
+            cv2.drawContours(image_rgb, gt_cntrs, -1, (255, 0, 0), 3)
             visualize(
-                Image=image[..., :3],
+                title=dataset.get_fname(i),
+                Image=image_rgb,
                 Height=image[..., 3] if image.shape[-1] > 3 else None,
-                masked_image=(image[..., :3]/255+mask)/2
             )
 
     # ****************************************************************************************************************
@@ -211,15 +218,13 @@ def run():
     model, weights_path, _ = create_model(conf=cfg, compile_model=True)
 
     # Dataset for train images
-    train_dataset = Dataset(data_reader, data_dir, ids_train, cfg.data_subset,
+    train_dataset = Dataset(data_reader, data_dir, ids_train, cfg,
                             min_mask_ratio=cfg.min_mask_ratio,
-                            augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug),
-                            backbone=cfg.backbone)
+                            augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug))
     # Dataset for validation images
-    valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg.data_subset,
+    valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
                             min_mask_ratio=cfg.min_mask_ratio,
-                            augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug),
-                            backbone=cfg.backbone)
+                            augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug))
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)

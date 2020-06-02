@@ -20,7 +20,7 @@ def preprocess(ximg):
 
     # Put here resizing according to working scale(mppx = 0.25)
     trained_mppx = 0.25
-    sc_factor = trained_mppx / 0.25
+    sc_factor = trained_mppx / 0.25  # todo: ???
     nw = int(ximg.shape[1] * sc_factor)
     nh = int(ximg.shape[0] * sc_factor)
     nw = nw + (nw % 2)

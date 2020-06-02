@@ -6,6 +6,25 @@ from .model import create_model
 from .config import cfg
 from .train import read_sample, get_validation_augmentation, visualize, denormalize
 from .kutils import get_contours
+from .production import create_model_production, get_preprocessing_production
+import segmentation_models as sm
+
+
+def prepare_model(test_production):
+    # ****************************************************************************************************************
+    # Create model. Compile it to obtain metrics
+    # ****************************************************************************************************************
+    if test_production:
+        model, weights_path, metrics = create_model_production(conf=cfg, compile_model=True)
+        prep_getter = get_preprocessing_production
+        if not cfg.use_heightmap:
+            print('ERROR: Production utilizes height map. Enable it before in config before running')
+            model = None
+    else:
+        model, weights_path, metrics = create_model(conf=cfg, compile_model=True)
+        prep_getter = sm.get_preprocessing
+
+    return model, weights_path, metrics, prep_getter
 
 
 def run():
@@ -20,15 +39,13 @@ def run():
 
     data_reader = read_sample
 
-    # ****************************************************************************************************************
-    # Create model. Compile it to obtain metrics
-    # ****************************************************************************************************************
-    model, weights_path, metrics = create_model(conf=cfg, compile_model=True)
+    test_production = False
+    model, _, metrics, prep_getter = prepare_model(test_production)
 
-    test_dataset = Dataset(data_reader, data_dir, ids_test, cfg.data_subset,
+    test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
                            min_mask_ratio=0.01,
                            augmentation=get_validation_augmentation(cfg),
-                           backbone=cfg.backbone)
+                           prep_getter=prep_getter)
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
     test_random_items_n = 15
@@ -49,7 +66,7 @@ def run():
                 img_metrics[metric_name] = value
 
             item = dict({'index': i, 'gt_cntrs': gt_cntrs, 'pr_cntrs': pr_cntrs, 'metrics': img_metrics})
-            item['image'] = image
+            item['image'] = image.squeeze()
             result_list.append(item)
         # sort list to start from the worst result
         result_list = sorted(result_list, key=lambda item: item['metrics']['f1-score'])
@@ -61,7 +78,7 @@ def run():
             gt_cntrs = item['gt_cntrs']
             pr_cntrs = item['pr_cntrs']
 
-            img_temp = (denormalize(image.squeeze()[..., :3]) * 255).astype(np.uint8)
+            img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
             cv2.drawContours(img_temp, gt_cntrs, -1, (255, 0, 0), 3)
             cv2.drawContours(img_temp, pr_cntrs, -1, (0, 0, 255), 5)
 
@@ -69,7 +86,8 @@ def run():
                 title='{}, F1:{:.4f}, IoU:{:.4f}'.format(img_fname,
                                                          item['metrics']['f1-score'],
                                                          item['metrics']['iou_score']),
-                result=img_temp
+                Result=img_temp,
+                Height=image[..., 3] if image.shape[-1] > 3 else None,
             )
 
     print('Evaluate model...')

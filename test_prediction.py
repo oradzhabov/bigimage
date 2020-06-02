@@ -2,7 +2,7 @@ import os
 import numpy as np
 import cv2
 from kutils import PrepareData
-from kmodel import model
+from kmodel import validate
 from kmodel import data
 from kmodel import config
 from kmodel.train import read_sample, denormalize, visualize
@@ -11,22 +11,25 @@ from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 
 
 if __name__ == "__main__":
-    dst_mppx = 0.1
-    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
-    # src_proj_dir = 'F:/PROJECTS/Strayos/CUSTOMER.SUPPORT/2020.05.27/problemMuckpile/12105/output'
+    dst_mppx = 0.1  # 0.25 for production model
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
+    src_proj_dir = 'F:/PROJECTS/Strayos/CUSTOMER.SUPPORT/2020.05.27/problemMuckpile/12105/output'
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
 
-    dest_img_fname = os.path.join(src_proj_dir, 'tmp.png')
-    dest_himg_fname = os.path.join(src_proj_dir, 'htmp.png')
+    dest_img_fname = os.path.join(src_proj_dir,
+                                  'tmp_mppx{:.2f}.png'.format(dst_mppx))
+    dest_himg_fname = os.path.join(src_proj_dir,
+                                   'htmp_mppx{:.2f}.png'.format(dst_mppx)) if config.cfg.use_heightmap else None
     is_success = PrepareData.build_from_project(src_proj_dir, dst_mppx, dest_img_fname, dest_himg_fname)
     if not is_success:
         exit(-1)
 
-    dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, backbone=config.cfg.backbone)
-    image, _ = dataset[0]
+    test_production = True
+    model, _, _, prep_getter = validate.prepare_model(test_production)
 
-    model, weights_path, metrics = model.create_model(conf=config.cfg, compile_model=True)
+    dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, config.cfg, prep_getter=prep_getter)
+    image, _ = dataset[0]
 
     pr_mask = predict_img_with_smooth_windowing(
         image,

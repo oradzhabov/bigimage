@@ -117,12 +117,12 @@ def get_data(conf, test_size, shuffle=False):
 
 class Dataset(object):
     @staticmethod
-    def _initializer(obj, data_reader, augmentation, backbone, prep_getter):
+    def _initializer(obj, data_reader, augmentation, configure, prep_getter):
         obj.images_fps = list()
         obj.himages_fps = list()
         obj.masks_fps = list()
         obj.augmentation = augmentation
-        obj.backbone = backbone
+        obj.conf = configure
         obj.data_reader = data_reader
         obj.prep_getter = prep_getter
 
@@ -131,19 +131,18 @@ class Dataset(object):
             data_reader,
             data_dir,
             ids,
-            data_subset,
+            conf,
             min_mask_ratio=0.0,
             augmentation=None,
-            backbone="",
             prep_getter=sm.get_preprocessing
     ):
-        Dataset._initializer(self, data_reader, augmentation, backbone, prep_getter)
+        Dataset._initializer(self, data_reader, augmentation, conf, prep_getter)
 
         for fn in ids:
             image_fn = os.path.join(data_dir, 'imgs', fn)
-            himage_fn = os.path.join(data_dir, 'himgs', fn)
-            mask_fn = os.path.join(data_dir, 'masks.{}'.format(data_subset), fn)
-            if os.path.isfile(image_fn) and os.path.isfile(himage_fn) and os.path.isfile(mask_fn):
+            himage_fn = os.path.join(data_dir, 'himgs', fn) if self.conf.use_heightmap else None
+            mask_fn = os.path.join(data_dir, 'masks.{}'.format(self.conf.data_subset), fn)
+            if os.path.isfile(image_fn) and (himage_fn is None or os.path.isfile(himage_fn)) and os.path.isfile(mask_fn):
                 img = cv2.imread(mask_fn, cv2.IMREAD_GRAYSCALE)
                 mask_nonzero_nb = np.count_nonzero(img)
                 mask_nonzero_ratio = mask_nonzero_nb / img.size
@@ -174,10 +173,10 @@ class Dataset(object):
             image, mask = sample['image'], sample['mask']
 
         # apply pre-processing
-        if len(self.backbone) > 0:
+        if len(self.conf.backbone) > 0:
             # To support thread-safe and process-safe code we should obtain preprocessor on the fly
             # and do not prepare it before
-            preprocessing = self.prep_getter(self.backbone)
+            preprocessing = self.prep_getter(self.conf.backbone)
             if preprocessing:
                 if isinstance(preprocessing, alb.Compose):
                     sample = preprocessing(image=image)
@@ -186,8 +185,10 @@ class Dataset(object):
                 else:
                     image = preprocessing(image)
                     # Operate possible case when custom preprocessor modified data size
-                    if image.shape[:2] != mask.shape[:2]:
-                        mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
+                    if mask is not None:
+                        if image.shape[:2] != mask.shape[:2]:
+                            print('WARNING: Mask has not matched image resolution. To match shape it was scaled.')
+                            mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
 
         return image, mask
 
@@ -196,8 +197,8 @@ class Dataset(object):
 
 
 class DataSingle(Dataset):
-    def __init__(self, data_reader, img_fname, himg_fname, backbone="", prep_getter=sm.get_preprocessing):
-        Dataset._initializer(self, data_reader, None, backbone, prep_getter)
+    def __init__(self, data_reader, img_fname, himg_fname, configure, prep_getter=sm.get_preprocessing):
+        Dataset._initializer(self, data_reader, None, configure, prep_getter)
 
         self.images_fps.append(img_fname)
         self.himages_fps.append(himg_fname)
