@@ -20,7 +20,7 @@ cfg.img_wh_crop = 1024
 #                                                   Network Block
 # ==================================================================================================================== #
 cfg.backbone = 'mobilenet'  # 'resnet34'  # 'mobilenet'  # 'efficientnetb3'
-cfg.encoder_weights = None  # 'imagenet'
+cfg.encoder_weights = 'imagenet'
 cfg.encoder_freeze = False
 cfg.pyramid_block_filters = 256  # default 256
 # ==================================================================================================================== #

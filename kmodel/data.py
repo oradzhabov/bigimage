@@ -148,13 +148,23 @@ class Dataset(object):
             if os.path.isfile(image_fn) and \
                     (himage_fn is None or os.path.isfile(himage_fn)) and \
                     os.path.isfile(mask_fn):
-                img = cv2.imread(mask_fn, cv2.IMREAD_GRAYSCALE)
-                mask_nonzero_nb = np.count_nonzero(img)
-                mask_nonzero_ratio = mask_nonzero_nb / img.size
-                if mask_nonzero_ratio >= min_mask_ratio:
-                    self.images_fps.append(image_fn)
-                    self.himages_fps.append(himage_fn)
-                    self.masks_fps.append(mask_fn)
+
+                # Check is data not empty
+                img = cv2.imread(image_fn)
+                std_data = np.max(cv2.meanStdDev(img)[1])
+                if himage_fn:
+                    img = cv2.imread(himage_fn)
+                    std_himg = np.max(cv2.meanStdDev(img)[1])
+                    std_data = max(std_data, std_himg)
+
+                if std_data > 0.0:
+                    img = cv2.imread(mask_fn, cv2.IMREAD_GRAYSCALE)
+                    mask_nonzero_nb = np.count_nonzero(img)
+                    mask_nonzero_ratio = mask_nonzero_nb / img.size
+                    if mask_nonzero_ratio >= min_mask_ratio:
+                        self.images_fps.append(image_fn)
+                        self.himages_fps.append(himage_fn)
+                        self.masks_fps.append(mask_fn)
 
     def get_fname(self, i):
         i = i % len(self.images_fps)

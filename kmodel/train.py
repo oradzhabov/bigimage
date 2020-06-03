@@ -180,7 +180,7 @@ def run(cfg):
 
         # Lets look at augmented data we have
         dataset = Dataset(data_reader, data_dir, ids_train, cfg,
-                          min_mask_ratio=0.01,
+                          min_mask_ratio=cfg.min_mask_ratio,
                           augmentation=get_training_augmentation(cfg)
                           )
 
@@ -242,7 +242,7 @@ def run(cfg):
                                         save_weights_only=True,
                                         save_best_only=False,
                                         mode='auto',
-                                        verbose=1),
+                                        verbose=0),
 
         # Adam optimizer SHOULD not control LR
         # keras.callbacks.ReduceLROnPlateau(verbose=1, patience=10, factor=0.2)
