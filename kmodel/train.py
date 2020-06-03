@@ -213,7 +213,7 @@ def run(cfg):
                             augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug))
     # Dataset for validation images
     valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
-                            min_mask_ratio=0.01,
+                            min_mask_ratio=cfg.min_mask_ratio,
                             augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug))
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)

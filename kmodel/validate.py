@@ -41,12 +41,12 @@ def run(cfg):
     model, _, metrics, prep_getter = prepare_model(cfg, test_production)
 
     test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
-                           min_mask_ratio=0.01,
+                           min_mask_ratio=0.0,
                            augmentation=get_validation_augmentation(cfg),
                            prep_getter=prep_getter)
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
-    test_random_items_n = 15
+    test_random_items_n = 0
     if test_random_items_n > 0:
         ids = np.random.choice(np.arange(len(test_dataset)), size=test_random_items_n)
         result_list = list()

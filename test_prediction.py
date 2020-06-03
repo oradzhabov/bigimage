@@ -13,7 +13,7 @@ from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 if __name__ == "__main__":
 
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
-    src_proj_dir = 'F:/PROJECTS/Strayos/CUSTOMER.SUPPORT/2020.05.27/problemMuckpile/12105/output'
+    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
 
