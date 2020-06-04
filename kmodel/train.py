@@ -145,16 +145,9 @@ def read_sample(img_path, himg_path, mask_path):
 
         img = np.concatenate((img, himg), axis=-1)
 
-    mask = None  # default value
+    mask = None
     if mask_path is not None:
-        mask = cv2.imread(mask_path, 0).astype('float32') / 255.0
-        if len(mask.shape) == 2:
-            mask = mask[..., np.newaxis]
-
-        # add background if mask is not binary
-        if mask.shape[-1] != 1:
-            background = 1 - mask.sum(axis=-1, keepdims=True)
-            mask = np.concatenate((mask, background), axis=-1)
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE).squeeze()
 
     return img, mask
 
@@ -180,7 +173,7 @@ def run(cfg):
 
         # Lets look at augmented data we have
         dataset = Dataset(data_reader, data_dir, ids_train, cfg,
-                          min_mask_ratio=cfg.min_mask_ratio,
+                          min_mask_ratio=0.01,
                           augmentation=get_training_augmentation(cfg)
                           )
 
@@ -191,9 +184,10 @@ def run(cfg):
             print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask),
                   np.count_nonzero(mask)/mask.size)
 
-            image_rgb = (denormalize(image.squeeze()[..., :3]) * 255).astype(np.uint8)
-            gt_cntrs = get_contours((mask.squeeze() * 255).astype(np.uint8))
-            cv2.drawContours(image_rgb, gt_cntrs, -1, (255, 0, 0), 3)
+            image_rgb = (denormalize(image[..., :3]) * 255).astype(np.uint8)
+            gt_cntrs_list = get_contours((mask * 255).astype(np.uint8))
+            for class_index, class_ctrs in enumerate(gt_cntrs_list):
+                cv2.drawContours(image_rgb, class_ctrs, -1, dataset.get_color(class_index), 3)
             visualize(
                 title=dataset.get_fname(i),
                 Image=image_rgb,

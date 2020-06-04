@@ -19,6 +19,9 @@ def prepare_model(cfg, test_production):
         if not cfg.use_heightmap:
             print('ERROR: Production utilizes height map. Enable it before in config before running')
             model = None
+        if cfg.mppx != 0.25:
+            print('ERROR: Production utilizes 0.25 mppx. Setup it before in config before running')
+            model = None
     else:
         model, weights_path, metrics = create_model(conf=cfg, compile_model=True)
         prep_getter = sm.get_preprocessing
@@ -41,23 +44,23 @@ def run(cfg):
     model, _, metrics, prep_getter = prepare_model(cfg, test_production)
 
     test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
-                           min_mask_ratio=0.0,
+                           min_mask_ratio=0.01,
                            augmentation=get_validation_augmentation(cfg),
                            prep_getter=prep_getter)
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
-    test_random_items_n = 0
+    test_random_items_n = 5
     if test_random_items_n > 0:
         ids = np.random.choice(np.arange(len(test_dataset)), size=test_random_items_n)
         result_list = list()
         for i in ids:
             image, gt_mask = test_dataset[i]
             image = np.expand_dims(image, axis=0)
-            pr_mask = model.predict(image, verbose=0).round()
+            pr_mask = model.predict(image, verbose=0).round()  # todo: round() ?
             scores = model.evaluate(image, np.expand_dims(gt_mask, axis=0), batch_size=1, verbose=0)
 
-            gt_cntrs = get_contours((gt_mask.squeeze() * 255).astype(np.uint8))
-            pr_cntrs = get_contours((pr_mask.squeeze() * 255).astype(np.uint8))
+            gt_cntrs = get_contours((gt_mask * 255).astype(np.uint8))
+            pr_cntrs = get_contours((pr_mask[0] * 255).astype(np.uint8))
             img_metrics = dict()
             for metric, value in zip(metrics, scores[1:]):
                 metric_name = metric if isinstance(metric, str) else metric.__name__
@@ -77,8 +80,10 @@ def run(cfg):
             pr_cntrs = item['pr_cntrs']
 
             img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
-            cv2.drawContours(img_temp, gt_cntrs, -1, (255, 0, 0), 3)
-            cv2.drawContours(img_temp, pr_cntrs, -1, (0, 0, 255), 5)
+            for class_index, class_ctrs in enumerate(gt_cntrs):
+                cv2.drawContours(img_temp, class_ctrs, -1, test_dataset.get_color(class_index), 6)
+            for class_index, class_ctrs in enumerate(pr_cntrs):
+                cv2.drawContours(img_temp, class_ctrs, -1, test_dataset.get_color(class_index), 2)
 
             visualize(
                 title='{}, F1:{:.4f}, IoU:{:.4f}'.format(img_fname,

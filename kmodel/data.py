@@ -1,5 +1,6 @@
 import os
 import cv2
+import random
 import numpy as np
 import keras
 from .kutils import get_tiled_bbox
@@ -121,6 +122,10 @@ def get_data(conf, test_size, shuffle=False):
 class Dataset(object):
     @staticmethod
     def _initializer(obj, data_reader, augmentation, configure, prep_getter):
+        def random_color():
+            levels = range(32, 256, 32)
+            return tuple(random.choice(levels) for _ in range(3))
+
         obj.images_fps = list()
         obj.himages_fps = list()
         obj.masks_fps = list()
@@ -128,6 +133,7 @@ class Dataset(object):
         obj.conf = configure
         obj.data_reader = data_reader
         obj.prep_getter = prep_getter
+        obj.class_colors = [random_color() for _ in range(obj.conf.cls_nb)]
 
     def __init__(
             self,
@@ -170,6 +176,9 @@ class Dataset(object):
         i = i % len(self.images_fps)
         return os.path.basename(self.images_fps[i])
 
+    def get_color(self, class_ind):
+        return self.class_colors[class_ind]
+
     def __getitem__(self, i):
         i = i % len(self.images_fps)
 
@@ -178,6 +187,18 @@ class Dataset(object):
         mask_path = self.masks_fps[i] if i < len(self.masks_fps) else None
 
         image, mask = self.data_reader(img_path, himg_path, mask_path)
+
+        if mask is not None:
+            class_values = np.arange(len(self.conf.classes['class']) if self.conf.classes is not None else 1,
+                                     dtype=np.uint8)
+            # extract certain classes from mask (e.g. cars)
+            masks = [(mask == 255 - v) for v in class_values]
+            mask = np.stack(masks, axis=-1).astype('float32')
+
+            # add background if mask is not binary
+            if mask.shape[-1] != 1:
+                background = 1 - mask.sum(axis=-1, keepdims=True)
+                mask = np.concatenate((mask, background), axis=-1)
 
         # apply augmentations
         if self.augmentation:

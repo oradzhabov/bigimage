@@ -27,6 +27,8 @@ if __name__ == "__main__":
 
     test_production = False
     model, _, _, prep_getter = validate.prepare_model(cfg, test_production)
+    if model is None:
+        exit(-1)
 
     dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, cfg, prep_getter=prep_getter)
     image, _ = dataset[0]
@@ -35,16 +37,17 @@ if __name__ == "__main__":
         image,
         window_size=512,  # todo: 512 enough for 4GB GPU. But it will be better if use 1024
         subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
-        nb_classes=1,
+        nb_classes=cfg.cls_nb,
         pred_func=(
             lambda img_batch_subdiv: model.predict(img_batch_subdiv)
         )
     )
 
-    pr_cntrs = get_contours((pr_mask.squeeze() * 255).astype(np.uint8))
+    img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
+    pr_cntrs_list = get_contours((pr_mask * 255).astype(np.uint8))
+    for class_ind, class_ctrs in enumerate(pr_cntrs_list):
+        cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 5)
 
-    img_temp = (denormalize(image.squeeze()[..., :3]) * 255).astype(np.uint8)
-    cv2.drawContours(img_temp, pr_cntrs, -1, (0, 0, 255), 5)
     cv2.imwrite(os.path.join(src_proj_dir, 'debug_mpiles_result.png'), img_temp[..., ::-1])
 
     visualize(

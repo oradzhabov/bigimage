@@ -4,17 +4,20 @@ import keras
 
 
 def create_model(conf, compile_model=True):
-    weights_path = './unet_{}_wh{}_rgb{}.h5'.format(conf.backbone,
-                                                    conf.img_wh,
-                                                    'a' if conf.use_heightmap else '')
-    n_classes = 1
-    activation = 'sigmoid' if n_classes == 1 else 'softmax'
+    weights_path = './unet_{}_mppx{:.2f}_wh{}_rgb{}_{}cls_{}.h5'.format(conf.backbone,
+                                                                        conf.mppx,
+                                                                        conf.img_wh,
+                                                                        'a' if conf.use_heightmap else '',
+                                                                        conf.cls_nb,
+                                                                        conf.data_subset
+                                                                        )
+    activation = 'sigmoid' if conf.cls_nb == 1 else 'softmax'
 
     weights_init_path = weights_path if os.path.isfile(weights_path) else None
 
     base_model =sm.Unet(conf.backbone,
                         input_shape=(None, None, 3),
-                        classes=n_classes,
+                        classes=conf.cls_nb,
                         activation=activation,
                         encoder_weights=conf.encoder_weights if weights_init_path is None else None,
                         encoder_freeze=conf.encoder_freeze,
@@ -52,7 +55,7 @@ def create_model(conf, compile_model=True):
 
         # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
         # dice_loss = sm.losses.DiceLoss()
-        focal_loss = sm.losses.BinaryFocalLoss() if n_classes == 1 else sm.losses.CategoricalFocalLoss()
+        focal_loss = sm.losses.BinaryFocalLoss() if conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
         # total_loss = dice_loss + (3 * focal_loss)
         total_loss = focal_loss
         # total_loss = 'binary_crossentropy'

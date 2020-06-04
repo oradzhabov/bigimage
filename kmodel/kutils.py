@@ -35,13 +35,19 @@ def get_tiled_bbox(img_shape, tile_size, offset):
     return aw0, aw1, ah0, ah1
 
 
-def get_contours(mask_u8c1):
-    # Find contours
-    ret, thresh = cv2.threshold(mask_u8c1, 127, 255, cv2.THRESH_BINARY)
+def get_contours(mask_u8cn):
+    class_nb = mask_u8cn.shape[2] - 1 if mask_u8cn.shape[2] > 1 else 1
+    contours_list = list()
 
-    if cv2.__version__.startswith("3"):
-        im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
-    else:
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    # Collect contours except background
+    for i in range(class_nb):
+        ret, thresh = cv2.threshold(mask_u8cn[..., i], 127, 255, cv2.THRESH_BINARY)
 
-    return contours
+        if cv2.__version__.startswith("3"):
+            im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+        else:
+            contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+
+        contours_list.append(contours)
+
+    return contours_list
