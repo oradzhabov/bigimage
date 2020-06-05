@@ -11,7 +11,7 @@ from .albumentations2 import HueSaturationValue2, RandomGamma2, RandomBrightness
 from joblib import Memory
 from .data import get_data, Dataset, Dataloder
 from .PlotLosses import PlotLosses
-from .kutils import get_contours
+from .kutils import get_contours, write_text
 
 TRIM_GPU = False
 if TRIM_GPU:
@@ -151,7 +151,7 @@ def read_sample(img_path, himg_path, mask_path):
     return img, mask
 
 
-def run(cfg, solver):
+def run(cfg, solver, review_augmented_sample=False):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -166,13 +166,12 @@ def run(cfg, solver):
     memory.clear(warn=False)
     data_reader = memory.cache(read_sample) if memory is not None else read_sample
 
-    see_sample_augmentations = False
-    if see_sample_augmentations:
+    if review_augmented_sample:
         matplotlib.use('TkAgg')  # Enable interactive mode
 
         # Lets look at augmented data we have
         dataset = Dataset(data_reader, data_dir, ids_train, cfg,
-                          min_mask_ratio=0.01,
+                          min_mask_ratio=cfg.min_mask_ratio,
                           augmentation=get_training_augmentation(cfg),
                           prep_getter=solver.get_prep_getter()
                           )
@@ -188,6 +187,14 @@ def run(cfg, solver):
             gt_cntrs_list = get_contours((mask * 255).astype(np.uint8))
             for class_index, class_ctrs in enumerate(gt_cntrs_list):
                 cv2.drawContours(image_rgb, class_ctrs, -1, dataset.get_color(class_index), 3)
+            if cfg.classes is not None:
+                class_names = cfg.classes['class']
+                for class_index, class_name in enumerate(class_names):
+                    fsc = cfg.img_wh / 512
+                    x = int(6 * fsc)
+                    y = int(30 * (1 + class_index) * fsc)
+                    write_text(image_rgb, class_name, (x, y), dataset.get_color(class_index), fsc)
+
             visualize(
                 title=dataset.get_fname(i),
                 Image=image_rgb,
@@ -215,7 +222,7 @@ def run(cfg, solver):
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)
 
-    # check shapes for errors
+    # Inform general samples info
     train_batch = train_dataloader[0]
     print('X: ', train_batch[0].shape, train_batch[0].dtype, np.min(train_batch[0]), np.max(train_batch[0]))
     print('Y: ', train_batch[1].shape, train_batch[1].dtype, np.min(train_batch[1]), np.max(train_batch[1]))

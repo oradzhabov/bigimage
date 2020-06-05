@@ -4,4 +4,4 @@ from solvers import SegmSolver
 
 if __name__ == "__main__":
     solver = SegmSolver()
-    train.run(cfg, solver)
+    train.run(cfg, solver, review_augmented_sample=False)

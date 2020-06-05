@@ -51,3 +51,24 @@ def get_contours(mask_u8cn):
         contours_list.append(contours)
 
     return contours_list
+
+
+def write_text(img_rgb, text, bottom_left_corner_of_text, fontColor, font_scale=1):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    line_type = 2
+
+    cv2.putText(img_rgb, text,
+                bottom_left_corner_of_text,
+                font,
+                font_scale,
+                (0, 0, 0),
+                thickness=4,
+                lineType=line_type)
+
+    cv2.putText(img_rgb, text,
+                bottom_left_corner_of_text,
+                font,
+                font_scale,
+                fontColor,
+                thickness=1,
+                lineType=line_type)

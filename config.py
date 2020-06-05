@@ -8,12 +8,13 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs'
 cfg.mppx = 0.1
 cfg.data_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs.Result.4/2020-05-24a/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'all_piles'
+cfg.data_subset = 'all_piles'  # 'muckpiles_multiclass'
 # ==================================================================================================================== #
 #                                                Sample Space Block
 # ==================================================================================================================== #
 cfg.use_heightmap = False
-cfg.classes = None  # {'class': ['muckpile', 'pile', 'car']}  # dict with key/value: 'class'/['cls_1','cls_2'], or None
+# dict with key/value: 'class'/['cls_1','cls_2'], or None
+cfg.classes = None  # {'class': ['pile', 'muckpile']}  # {'class': ['muckpile', 'pile', 'car']}
 cfg.cls_nb = (len(cfg.classes['class']) + 1 if len(cfg.classes['class']) > 1 else 1) if cfg.classes is not None else 1
 cfg.min_mask_ratio = 0.0
 cfg.img_wh = 512
