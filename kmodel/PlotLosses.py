@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 
 def translate_metric(x):
-    translations = {'acc': "Accuracy", 'loss': "Loss (cost function)"}
+    translations = {'acc': "Accuracy", 'loss': "Loss"}
     if x in translations:
         return translations[x]
     else:
@@ -36,18 +36,22 @@ class PlotLosses(Callback):
 
         clear_output(wait=True)
         fig = plt.figure(figsize=self.figsize)
-        
+
         for metric_id, metric in enumerate(self.base_metrics):
-            plt.subplot(1, len(self.base_metrics), metric_id + 1)
-            
+            plt.subplot(len(self.base_metrics), 1, metric_id + 1)
+
+            metric_extr_val_value = None
             plt.plot(range(1, len(self.logs) + 1),
                      [log[metric] for log in self.logs],
                      label="training")
             if self.params['do_validation']:
+                val_log_list = [log['val_' + metric] for log in self.logs]
                 plt.plot(range(1, len(self.logs) + 1),
-                         [log['val_' + metric] for log in self.logs],
+                         val_log_list,
                          label="validation")
-            plt.title(translate_metric(metric))
+                metric_extr_val_value = ' (val_min {:.3f})'.format(min(val_log_list)) if metric == 'loss' else \
+                    ' (val_max {:.3f})'.format(max(val_log_list))
+            plt.title(translate_metric(metric) + metric_extr_val_value)
             plt.xlabel('epoch')
             plt.legend(loc='center left')
         
@@ -55,5 +59,5 @@ class PlotLosses(Callback):
         fig.savefig(self.imgfile)
         # draw the plot. Actually it could crash training. To avoid crash add 'matplotlib.use('Agg')' at the start
         plt.draw()
-        plt.pause(2)  # show it for N seconds
+        plt.pause(0.5)  # show it for N seconds
         plt.close(fig)

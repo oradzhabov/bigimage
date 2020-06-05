@@ -124,7 +124,9 @@ class Dataset(object):
     def _initializer(obj, data_reader, augmentation, configure, prep_getter):
         def random_color():
             levels = range(32, 256, 32)
-            return tuple(random.choice(levels) for _ in range(3))
+            return [random.choice(levels) for _ in range(3)]
+        colors_default = [[255, 0, 0], [0, 255, 0], [0, 0, 255],
+                          [255, 255, 0], [255, 0, 255], [0, 255, 255]]
 
         obj.images_fps = list()
         obj.himages_fps = list()
@@ -133,7 +135,10 @@ class Dataset(object):
         obj.conf = configure
         obj.data_reader = data_reader
         obj.prep_getter = prep_getter
-        obj.class_colors = [random_color() for _ in range(obj.conf.cls_nb)]
+
+        if obj.conf.cls_nb > len(colors_default):
+            colors_default = colors_default + [random_color() for _ in range(obj.conf.cls_nb - len(colors_default))]
+        obj.class_colors = colors_default[:obj.conf.cls_nb]
 
     def __init__(
             self,

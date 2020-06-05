@@ -7,7 +7,7 @@ from config import cfg
 from kmodel.train import read_sample, denormalize, visualize
 from kmodel.kutils import get_contours
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
-from solvers import SegmSolver
+from solvers import SegmSolver, ProdSolver
 
 if __name__ == "__main__":
 

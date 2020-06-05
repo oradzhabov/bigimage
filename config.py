@@ -31,5 +31,5 @@ cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 cfg.test_aspect = 0.33
 cfg.batch_size = 4
 cfg.minimize_train_aug = False
-cfg.lr = 0.001
+cfg.lr = 0.0001
 cfg.epochs = 4000

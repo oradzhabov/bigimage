@@ -199,7 +199,7 @@ def run(cfg, solver):
     # ****************************************************************************************************************
     # Create model
     # ****************************************************************************************************************
-    model, weights_path, _, prep_getter = solver.build(conf=cfg, compile_model=True)
+    model, weights_path, metrics, prep_getter = solver.build(conf=cfg, compile_model=True)
 
     # Dataset for train images
     train_dataset = Dataset(data_reader, data_dir, ids_train, cfg,
@@ -217,10 +217,10 @@ def run(cfg, solver):
 
     # check shapes for errors
     train_batch = train_dataloader[0]
-    # assert train_batch[0].shape == (cfg.batch_size, cfg.img_wh, cfg.img_wh, 3)
-    # assert train_batch[1].shape == (cfg.batch_size, cfg.img_wh, cfg.img_wh, n_classes)
     print('X: ', train_batch[0].shape, train_batch[0].dtype, np.min(train_batch[0]), np.max(train_batch[0]))
     print('Y: ', train_batch[1].shape, train_batch[1].dtype, np.min(train_batch[1]), np.max(train_batch[1]))
+    print('Train Samples Nb: ', len(train_dataset))
+    print('Validate Samples Nb: ', len(valid_dataset))
 
     # define callbacks for learning rate scheduling and best checkpoints saving
     callbacks = [
@@ -249,7 +249,7 @@ def run(cfg, solver):
         #                              verbose=0, mode='max')
         PlotLosses(imgfile='{}.png'.format(os.path.join(os.path.dirname(weights_path),
                                                         os.path.splitext(os.path.basename(weights_path))[0])),
-                   figsize=(8, 4))  # PNG-files processed in Windows & Ubuntu
+                   figsize=(12, 4*(1 + len(metrics))))  # PNG-files processed in Windows & Ubuntu
     ]
 
     matplotlib.use('Agg')  # Disable TclTk because it sometime crash training!
