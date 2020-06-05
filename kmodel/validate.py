@@ -2,34 +2,11 @@ import os
 import numpy as np
 import cv2
 from .data import get_data, Dataset, Dataloder
-from .model import create_model
 from .train import read_sample, get_validation_augmentation, visualize, denormalize
 from .kutils import get_contours
-from .production import create_model_production, get_preprocessing_production
-import segmentation_models as sm
 
 
-def prepare_model(cfg, test_production):
-    # ****************************************************************************************************************
-    # Create model. Compile it to obtain metrics
-    # ****************************************************************************************************************
-    if test_production:
-        model, weights_path, metrics = create_model_production(conf=cfg, compile_model=True)
-        prep_getter = get_preprocessing_production
-        if not cfg.use_heightmap:
-            print('ERROR: Production utilizes height map. Enable it before in config before running')
-            model = None
-        if cfg.mppx != 0.25:
-            print('ERROR: Production utilizes 0.25 mppx. Setup it before in config before running')
-            model = None
-    else:
-        model, weights_path, metrics = create_model(conf=cfg, compile_model=True)
-        prep_getter = sm.get_preprocessing
-
-    return model, weights_path, metrics, prep_getter
-
-
-def run(cfg):
+def run(cfg, solver):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -40,8 +17,7 @@ def run(cfg):
 
     data_reader = read_sample
 
-    test_production = False
-    model, _, metrics, prep_getter = prepare_model(cfg, test_production)
+    model, _, metrics, prep_getter = solver.build(cfg, compile_model=True)
 
     test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
                            min_mask_ratio=0.01,

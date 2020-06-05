@@ -1,6 +1,7 @@
 from kmodel import validate
 from config import cfg
-
+from solvers import SegmSolver
 
 if __name__ == "__main__":
-    validate.run(cfg)
+    solver = SegmSolver()
+    validate.run(cfg, solver)

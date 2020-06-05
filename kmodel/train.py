@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import albumentations as alb
 from .albumentations2 import HueSaturationValue2, RandomGamma2, RandomBrightnessContrast2
 from joblib import Memory
-from .model import create_model
 from .data import get_data, Dataset, Dataloder
 from .PlotLosses import PlotLosses
 from .kutils import get_contours
@@ -152,7 +151,7 @@ def read_sample(img_path, himg_path, mask_path):
     return img, mask
 
 
-def run(cfg):
+def run(cfg, solver):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -174,7 +173,8 @@ def run(cfg):
         # Lets look at augmented data we have
         dataset = Dataset(data_reader, data_dir, ids_train, cfg,
                           min_mask_ratio=0.01,
-                          augmentation=get_training_augmentation(cfg)
+                          augmentation=get_training_augmentation(cfg),
+                          prep_getter=solver.get_prep_getter()
                           )
 
         for i in range(150):
@@ -199,16 +199,18 @@ def run(cfg):
     # ****************************************************************************************************************
     # Create model
     # ****************************************************************************************************************
-    model, weights_path, _ = create_model(conf=cfg, compile_model=True)
+    model, weights_path, _, prep_getter = solver.build(conf=cfg, compile_model=True)
 
     # Dataset for train images
     train_dataset = Dataset(data_reader, data_dir, ids_train, cfg,
                             min_mask_ratio=cfg.min_mask_ratio,
-                            augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug))
+                            augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug),
+                            prep_getter=prep_getter)
     # Dataset for validation images
     valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
                             min_mask_ratio=cfg.min_mask_ratio,
-                            augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug))
+                            augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug),
+                            prep_getter=prep_getter)
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)

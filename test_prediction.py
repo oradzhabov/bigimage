@@ -2,13 +2,12 @@ import os
 import numpy as np
 import cv2
 from kutils import PrepareData
-from kmodel import validate
 from kmodel import data
 from config import cfg
 from kmodel.train import read_sample, denormalize, visualize
 from kmodel.kutils import get_contours
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
-
+from solvers import SegmSolver
 
 if __name__ == "__main__":
 
@@ -25,8 +24,7 @@ if __name__ == "__main__":
     if not is_success:
         exit(-1)
 
-    test_production = False
-    model, _, _, prep_getter = validate.prepare_model(cfg, test_production)
+    model, _, _, prep_getter = SegmSolver().build(cfg, compile_model=False)
     if model is None:
         exit(-1)
 
