@@ -56,8 +56,4 @@ def create_model_production(conf, compile_model=True):
         # compile model with defined optimizer, loss and metrics
         model.compile(optimizer, total_loss, metrics)
 
-    # Synonym of './mp_cntr_ff2_p1a_3_weights-ep495-loss0.00879-val_loss0.00905-val_acc0.99146-val_mean_iou0.95021.h5'
-    weights_path = './mp_cntr_production_ff2.h5'
-    model.load_weights(weights_path)
-
-    return model, weights_path, metrics
+    return model, metrics

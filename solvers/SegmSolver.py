@@ -54,6 +54,9 @@ class SegmSolver(ISolver):
             self.model.summary()
 
         if compile_model:
+            # todo: actually compilation could be moved out to parent class.
+            #  But there are some limitations - IOUScore/FScore threshold
+
             # define optimizer
             optimizer = keras.optimizers.Adam(conf.lr)
 
