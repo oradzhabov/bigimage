@@ -81,9 +81,12 @@ def run(cfg):
 
             img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
             for class_index, class_ctrs in enumerate(gt_cntrs):
-                cv2.drawContours(img_temp, class_ctrs, -1, test_dataset.get_color(class_index), 6)
-            for class_index, class_ctrs in enumerate(pr_cntrs):
                 cv2.drawContours(img_temp, class_ctrs, -1, test_dataset.get_color(class_index), 2)
+            for class_index, class_ctrs in enumerate(pr_cntrs):
+                color = test_dataset.get_color(class_index)
+                cv2.drawContours(img_temp, class_ctrs, -1, color, 6)
+                color = [c // 2 for c in color]
+                cv2.drawContours(img_temp, class_ctrs, -1, color, 2)
 
             visualize(
                 title='{}, F1:{:.4f}, IoU:{:.4f}'.format(img_fname,
