@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import cv2
+import json
 from .data import get_data, Dataset, Dataloder
 from .train import read_sample, get_validation_augmentation, visualize, denormalize
 from .kutils import get_contours
@@ -17,7 +18,7 @@ def run(cfg, solver):
 
     data_reader = read_sample
 
-    model, _, metrics, prep_getter = solver.build(cfg, compile_model=True)
+    model, weights_path, metrics, prep_getter = solver.build(cfg, compile_model=True)
 
     test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
                            min_mask_ratio=0.01,
@@ -75,7 +76,14 @@ def run(cfg, solver):
     print('Evaluate model...')
     scores = model.evaluate_generator(test_dataloader, verbose=1)
 
+    result_dict = dict({'cfg': dict(cfg)})
     print("Loss: {:.5}".format(scores[0]))
+    result_dict['loss'] = scores[0]
     for metric, value in zip(metrics, scores[1:]):
         metric_name = metric if isinstance(metric, str) else metric.__name__
         print("mean {}: {:.5}".format(metric_name, value))
+        result_dict[metric_name] = value
+
+    dir_to_save = os.path.dirname(weights_path)
+    with open(os.path.join(dir_to_save, 'evaluation.json'), 'w', newline=os.linesep) as f:
+        json.dump(result_dict, f)
