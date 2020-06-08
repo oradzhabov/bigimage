@@ -12,7 +12,9 @@ from solvers import SegmSolver, ProdSolver
 if __name__ == "__main__":
 
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
-    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training
+    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12363'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
 
@@ -24,7 +26,7 @@ if __name__ == "__main__":
     if not is_success:
         exit(-1)
 
-    model, _, _, prep_getter = SegmSolver().build(cfg, compile_model=False)
+    model, weights_path, _, prep_getter = SegmSolver().build(cfg, compile_model=False)
     if model is None:
         exit(-1)
 
@@ -46,7 +48,8 @@ if __name__ == "__main__":
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
         cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 5)
 
-    cv2.imwrite(os.path.join(src_proj_dir, 'debug_mpiles_result.png'), img_temp[..., ::-1])
+    result_png = 'mplies_result_' + os.path.splitext(os.path.basename(weights_path))[0] + '.png'
+    cv2.imwrite(os.path.join(src_proj_dir, result_png), img_temp[..., ::-1])
 
     visualize(
         title='{}'.format(src_proj_dir),

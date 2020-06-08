@@ -11,10 +11,8 @@ class ProdSolver(ISolver):
         self.weights_path = './mp_cntr_production_ff2.h5'
 
     def _create(self, conf, compile_model=True):
-        if not conf.use_heightmap:
-            raise Exception('Production utilizes height map. Enable it before in config before running')
-        if conf.mppx != 0.25:
-            raise Exception('Production utilizes 0.25 mppx. Setup it before in config before running')
+        if not conf.use_heightmap or conf.mppx != 0.25:
+            raise Exception('Production utilizes height map and 0.25 mppx. Check it in config before running')
 
         self.model, self.metrics = create_model_production(conf, compile_model)
         self.model.load_weights(self.weights_path)
