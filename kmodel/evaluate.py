@@ -7,7 +7,7 @@ from .train import read_sample, get_validation_augmentation, visualize, denormal
 from .kutils import get_contours
 
 
-def run(cfg, solver):
+def run(cfg, solver, show_random_items_nb=0):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -21,14 +21,13 @@ def run(cfg, solver):
     model, weights_path, metrics, prep_getter = solver.build(cfg, compile_model=True)
 
     test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
-                           min_mask_ratio=0.01,
+                           min_mask_ratio=cfg.min_mask_ratio,
                            augmentation=get_validation_augmentation(cfg),
                            prep_getter=prep_getter)
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
-    test_random_items_n = 5
-    if test_random_items_n > 0:
-        ids = np.random.choice(np.arange(len(test_dataset)), size=test_random_items_n)
+    if show_random_items_nb > 0:
+        ids = np.random.choice(np.arange(len(test_dataset)), size=show_random_items_nb)
         result_list = list()
         for i in ids:
             image, gt_mask = test_dataset[i]
