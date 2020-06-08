@@ -34,3 +34,9 @@ cfg.batch_size = 4
 cfg.minimize_train_aug = False
 cfg.lr = 0.0001
 cfg.epochs = 4000
+cfg.solution_dir = './solutions/{}/mppx{:.2f}/wh{}/rgb{}/{}cls/{}'.format(cfg.backbone,
+                                                                          cfg.mppx,
+                                                                          cfg.img_wh,
+                                                                          'a' if cfg.use_heightmap else '',
+                                                                          cfg.cls_nb,
+                                                                          cfg.data_subset)

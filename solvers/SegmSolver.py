@@ -9,12 +9,17 @@ class SegmSolver(ISolver):
         super(SegmSolver, self).__init__()
 
     def _create(self, conf, compile_model=True):
-        self.weights_path = './unet_{}_mppx{:.2f}_wh{}_rgb{}_{}cls_{}.h5'.format(conf.backbone,
-                                                                                 conf.mppx,
-                                                                                 conf.img_wh,
-                                                                                 'a' if conf.use_heightmap else '',
-                                                                                 conf.cls_nb,
-                                                                                 conf.data_subset)
+        self.weights_path = 'unet_{}_mppx{:.2f}_wh{}_rgb{}_{}cls_{}.h5'.format(conf.backbone,
+                                                                               conf.mppx,
+                                                                               conf.img_wh,
+                                                                               'a' if conf.use_heightmap else '',
+                                                                               conf.cls_nb,
+                                                                               conf.data_subset)
+        solution_path = os.path.normpath(os.path.abspath(conf.solution_dir))
+        if not os.path.isdir(solution_path):
+            os.makedirs(solution_path)
+        self.weights_path = os.path.join(solution_path, self.weights_path)
+
         activation = 'sigmoid' if conf.cls_nb == 1 else 'softmax'
 
         weights_init_path = self.weights_path if os.path.isfile(self.weights_path) else None
