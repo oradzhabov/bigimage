@@ -20,10 +20,9 @@ def preserve_shape(func):
 
 
 @preserve_shape
-def gamma_transform(img, gamma, eps=1e-7):
+def gamma_transform(img, gamma):
     if img.dtype == np.uint8:
-        inv_gamma = 1.0 / (gamma + eps)
-        table = (np.arange(0, 256.0 / 255, 1.0 / 255) ** inv_gamma) * 255
+        table = (np.arange(0, 256.0 / 255, 1.0 / 255) ** gamma) * 255
         img = cv2.LUT(img, table.astype(np.uint8))
     else:
         img = np.power(img, gamma)
@@ -38,6 +37,6 @@ class RandomGamma2(alb.RandomGamma):
     def apply(self, image, gamma=1, **params):
         if image.shape[2] < 3:
             return image
-        return np.concatenate((gamma_transform(image[..., :3], gamma=gamma, eps=self.eps),
+        return np.concatenate((gamma_transform(image[..., :3], gamma=gamma),
                                image[..., 3:]),
                               axis=-1)
