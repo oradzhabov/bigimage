@@ -1,0 +1,4 @@
+List of corrupted hightmaps:
+"buckley_4184" - Height-map not proper
+"unknwn_3370.png" - Height-map has inversed values(upside down)
+Annotations "via_muckpiles_multiclass_3-filtered.json" has removed these files

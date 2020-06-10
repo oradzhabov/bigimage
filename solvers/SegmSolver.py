@@ -69,10 +69,13 @@ class SegmSolver(ISolver):
             # dice_loss = sm.losses.DiceLoss()
             focal_loss = sm.losses.BinaryFocalLoss() if conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
             # total_loss = dice_loss + (3 * focal_loss)
-            total_loss = focal_loss
+            # total_loss = focal_loss
             # total_loss = 'binary_crossentropy'
+            total_loss = sm.losses.categorical_focal_dice_loss
 
-            self.metrics = [sm.metrics.IOUScore(threshold=0.5), sm.metrics.FScore(threshold=0.5)]
+            threshold_denum = 2 if conf.cls_nb == 1 else conf.cls_nb
+            threshold = 1.0 / threshold_denum
+            self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold), sm.metrics.f2_score]
 
             # compile model with defined optimizer, loss and metrics
             self.model.compile(optimizer, total_loss, self.metrics)

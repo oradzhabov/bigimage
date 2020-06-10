@@ -11,9 +11,9 @@ from solvers import SegmSolver, ProdSolver
 
 if __name__ == "__main__":
 
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training
-    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
+    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12363'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
@@ -42,6 +42,7 @@ if __name__ == "__main__":
             lambda img_batch_subdiv: model.predict(img_batch_subdiv)
         )
     )
+    pr_mask = pr_mask.round() if cfg.cls_nb == 1 else np.where(pr_mask > 1.0 / cfg.cls_nb, 1.0, 0.0)
 
     img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
     pr_cntrs_list = get_contours((pr_mask * 255).astype(np.uint8))

@@ -32,11 +32,13 @@ def run(cfg, solver, show_random_items_nb=0):
         for i in ids:
             image, gt_mask = test_dataset[i]
             image = np.expand_dims(image, axis=0)
-            pr_mask = model.predict(image, verbose=0).round()  # todo: round() ?
+            # pr_mask = model.predict(image, verbose=0).round()  # todo: round() ?
+            pr_mask = model.predict(image, verbose=0)[0]
+            pr_mask = pr_mask.round() if cfg.cls_nb == 1 else np.where(pr_mask > 1.0 / cfg.cls_nb, 1.0, 0.0)
             scores = model.evaluate(image, np.expand_dims(gt_mask, axis=0), batch_size=1, verbose=0)
 
             gt_cntrs = get_contours((gt_mask * 255).astype(np.uint8))
-            pr_cntrs = get_contours((pr_mask[0] * 255).astype(np.uint8))
+            pr_cntrs = get_contours((pr_mask * 255).astype(np.uint8))
             img_metrics = dict()
             for metric, value in zip(metrics, scores[1:]):
                 metric_name = metric if isinstance(metric, str) else metric.__name__
