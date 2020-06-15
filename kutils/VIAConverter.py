@@ -14,7 +14,7 @@ def convert(json_filename, json_mppx, region_attr_mapper, preview=False):
         filecontent = f.read()
         content = json.loads(filecontent)
         for parameters in content.values():
-            img_filename = os.path.join(os.path.dirname(json_filename), parameters['filename'])
+            img_filename = os.path.join(os.path.dirname(json_filename), parameters['filename'].rstrip())
             img_filename = os.path.normpath(img_filename)
 
             if not os.path.exists(img_filename):
