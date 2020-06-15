@@ -66,12 +66,11 @@ class SegmSolver(ISolver):
             optimizer = keras.optimizers.Adam(conf.lr)
 
             # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
-            # dice_loss = sm.losses.DiceLoss()
+            dice_loss = sm.losses.DiceLoss()
             focal_loss = sm.losses.BinaryFocalLoss() if conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
-            # total_loss = dice_loss + (3 * focal_loss)
+            total_loss = dice_loss + focal_loss
             # total_loss = focal_loss
             # total_loss = 'binary_crossentropy'
-            total_loss = sm.losses.categorical_focal_dice_loss
 
             threshold_denum = 2 if conf.cls_nb == 1 else conf.cls_nb
             threshold = 1.0 / threshold_denum

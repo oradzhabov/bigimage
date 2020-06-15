@@ -11,12 +11,18 @@ from solvers import SegmSolver, ProdSolver
 
 if __name__ == "__main__":
 
-    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12363'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT
+    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
+    #src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT
+    #src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT
+    #src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
 
     dest_img_fname = os.path.join(src_proj_dir,
                                   'tmp_mppx{:.2f}.png'.format(cfg.mppx))
@@ -42,6 +48,8 @@ if __name__ == "__main__":
             lambda img_batch_subdiv: model.predict(img_batch_subdiv)
         )
     )
+    predict_png = 'probability_' + os.path.splitext(os.path.basename(weights_path))[0] + '.png'
+    cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
     pr_mask = pr_mask.round() if cfg.cls_nb == 1 else np.where(pr_mask > 1.0 / cfg.cls_nb, 1.0, 0.0)
 
     img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
@@ -49,7 +57,7 @@ if __name__ == "__main__":
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
         cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 5)
 
-    result_png = 'mplies_result_' + os.path.splitext(os.path.basename(weights_path))[0] + '.png'
+    result_png = 'classes_' + os.path.splitext(os.path.basename(weights_path))[0] + '.png'
     cv2.imwrite(os.path.join(src_proj_dir, result_png), img_temp[..., ::-1])
 
     visualize(
