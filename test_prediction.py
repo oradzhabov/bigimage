@@ -15,14 +15,15 @@ if __name__ == "__main__":
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12363'  # unseen during training
+    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12266'
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT
-    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
-    #src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT
-    #src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT. SMALL
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT. SMALL
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT
-    #src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
 
     dest_img_fname = os.path.join(src_proj_dir,
                                   'tmp_mppx{:.2f}.png'.format(cfg.mppx))
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     )
     predict_png = 'probability_' + os.path.splitext(os.path.basename(weights_path))[0] + '.png'
     cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
-    pr_mask = pr_mask.round() if cfg.cls_nb == 1 else np.where(pr_mask > 1.0 / cfg.cls_nb, 1.0, 0.0)
+    pr_mask = np.where(pr_mask > 0.5, 1.0, 0.0)
 
     img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
     pr_cntrs_list = get_contours((pr_mask * 255).astype(np.uint8))

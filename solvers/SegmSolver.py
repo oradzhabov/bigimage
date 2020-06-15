@@ -72,8 +72,8 @@ class SegmSolver(ISolver):
             # total_loss = focal_loss
             # total_loss = 'binary_crossentropy'
 
-            threshold_denum = 2 if conf.cls_nb == 1 else conf.cls_nb
-            threshold = 1.0 / threshold_denum
+            # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
+            threshold = None
             self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold), sm.metrics.f2_score]
 
             # compile model with defined optimizer, loss and metrics
