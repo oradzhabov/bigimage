@@ -206,7 +206,7 @@ def run(cfg, solver, review_augmented_sample=False):
     # ****************************************************************************************************************
     # Create model
     # ****************************************************************************************************************
-    model, weights_path, metrics, prep_getter = solver.build(conf=cfg, compile_model=True)
+    model, weights_path, metrics, prep_getter = solver.build(compile_model=True)
 
     # Dataset for train images
     train_dataset = Dataset(data_reader, data_dir, ids_train, cfg,

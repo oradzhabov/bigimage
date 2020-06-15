@@ -5,37 +5,38 @@ from . import ISolver
 
 
 class SegmSolver(ISolver):
-    def __init__(self):
-        super(SegmSolver, self).__init__()
+    def __init__(self, conf):
+        super(SegmSolver, self).__init__(conf)
 
-    def _create(self, conf, compile_model=True):
-        self.weights_path = 'unet_{}_mppx{:.2f}_wh{}_rgb{}_{}cls_{}.h5'.format(conf.backbone,
-                                                                               conf.mppx,
-                                                                               conf.img_wh,
-                                                                               'a' if conf.use_heightmap else '',
-                                                                               conf.cls_nb,
-                                                                               conf.data_subset)
-        solution_path = os.path.normpath(os.path.abspath(conf.solution_dir))
+        self.weights_path = 'unet_{}_mppx{:.2f}_wh{}_rgb{}_{}cls_{}.h5'.format(self.conf.backbone,
+                                                                               self.conf.mppx,
+                                                                               self.conf.img_wh,
+                                                                               'a' if self.conf.use_heightmap else '',
+                                                                               self.conf.cls_nb,
+                                                                               self.conf.data_subset)
+
+    def _create(self, compile_model=True):
+        solution_path = os.path.normpath(os.path.abspath(self.conf.solution_dir))
         if not os.path.isdir(solution_path):
             os.makedirs(solution_path)
         self.weights_path = os.path.join(solution_path, self.weights_path)
 
-        activation = 'sigmoid' if conf.cls_nb == 1 else 'softmax'
+        activation = 'sigmoid' if self.conf.cls_nb == 1 else 'softmax'
 
         weights_init_path = self.weights_path if os.path.isfile(self.weights_path) else None
 
-        base_model = sm.Unet(conf.backbone,
+        base_model = sm.Unet(self.conf.backbone,
                              input_shape=(None, None, 3),
-                             classes=conf.cls_nb,
+                             classes=self.conf.cls_nb,
                              activation=activation,
-                             encoder_weights=conf.encoder_weights if weights_init_path is None else None,
-                             encoder_freeze=conf.encoder_freeze,
+                             encoder_weights=self.conf.encoder_weights if weights_init_path is None else None,
+                             encoder_freeze=self.conf.encoder_freeze,
                              # pyramid_block_filters=conf.pyramid_block_filters,  # default 256
                              weights=None,
                              # pyramid_dropout=0.25
                              )
 
-        if conf.use_heightmap:
+        if self.conf.use_heightmap:
             # Add extra input layer to map custom-channel number to 3-channels
             # input model which can use pre-trained weights
             inp = keras.layers.Input(shape=(None, None, 4))
@@ -63,11 +64,11 @@ class SegmSolver(ISolver):
             #  But there are some limitations - IOUScore/FScore threshold
 
             # define optimizer
-            optimizer = keras.optimizers.Adam(conf.lr)
+            optimizer = keras.optimizers.Adam(self.conf.lr)
 
             # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
             dice_loss = sm.losses.DiceLoss()
-            focal_loss = sm.losses.BinaryFocalLoss() if conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
+            focal_loss = sm.losses.BinaryFocalLoss() if self.conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
             total_loss = dice_loss + focal_loss
             # total_loss = focal_loss
             # total_loss = 'binary_crossentropy'

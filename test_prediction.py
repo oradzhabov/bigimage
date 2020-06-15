@@ -33,7 +33,7 @@ if __name__ == "__main__":
     if not is_success:
         exit(-1)
 
-    model, weights_path, _, prep_getter = SegmSolver().build(cfg, compile_model=False)
+    model, weights_path, _, prep_getter = SegmSolver(cfg).build(compile_model=False)
     if model is None:
         exit(-1)
 
