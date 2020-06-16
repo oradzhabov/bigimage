@@ -24,6 +24,7 @@ def run(cfg, solver, show_random_items_nb=0):
                            min_mask_ratio=cfg.min_mask_ratio,
                            augmentation=get_validation_augmentation(cfg),
                            prep_getter=prep_getter)
+    print('Dataset length: {}'.format(len(test_dataset)))
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
     if show_random_items_nb > 0:
@@ -34,7 +35,7 @@ def run(cfg, solver, show_random_items_nb=0):
             image = np.expand_dims(image, axis=0)
             # pr_mask = model.predict(image, verbose=0).round()  # todo: round() ?
             pr_mask = model.predict(image, verbose=0)[0]
-            pr_mask = pr_mask.round() if cfg.cls_nb == 1 else np.where(pr_mask > 1.0 / cfg.cls_nb, 1.0, 0.0)
+            pr_mask = np.where(pr_mask > 0.5, 1.0, 0.0)
             scores = model.evaluate(image, np.expand_dims(gt_mask, axis=0), batch_size=1, verbose=0)
 
             gt_cntrs = get_contours((gt_mask * 255).astype(np.uint8))

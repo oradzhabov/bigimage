@@ -7,7 +7,7 @@ from config import cfg
 from kmodel.train import read_sample, denormalize, visualize
 from kmodel.kutils import get_contours
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
-from solvers import SegmSolver, ProdSolver_MP
+from solvers import SegmSolver, ProdSolver_MP, ProdSolverRocks
 from kutils.VIAConverter import *
 
 if __name__ == "__main__":
@@ -16,7 +16,8 @@ if __name__ == "__main__":
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12363'  # unseen during training
-    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12266'
+    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12266'  # unseen during training
+    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/10762'  # unseen during training
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
     # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT. SMALL
@@ -35,7 +36,7 @@ if __name__ == "__main__":
         exit(-1)
 
     model = None
-    solver = ProdSolver_MP(cfg)
+    solver = SegmSolver(cfg)
     model, weights_path, _, prep_getter = solver.build(compile_model=False)
     if model is None:
         exit(-1)
@@ -56,9 +57,11 @@ if __name__ == "__main__":
         )
         cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
     else:
-        pr_mask = cv2.imread(os.path.join(src_proj_dir, predict_png)).astype(np.float32) / 255.0
+        pr_mask = cv2.imread(os.path.join(src_proj_dir, predict_png), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
 
-    pr_mask = np.where(pr_mask > 0.5, 1.0, 0.0)
+    postproc_getter = solver.get_post_getter()
+    post_processor = postproc_getter()
+    pr_mask = post_processor(pr_mask)
 
     img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
     pr_cntrs_list = get_contours((pr_mask * 255).astype(np.uint8))

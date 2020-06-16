@@ -8,7 +8,7 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs'
 cfg.mppx = 0.1
 cfg.data_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs.Result.4/2020-05-24a/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'muckpiles_multiclass_3'  # 'all_piles'  # 'muckpiles_multiclass'
+cfg.data_subset = 'muckpiles_multiclass_3'  # 'all_piles'  # 'rocks_1stPart_clean'
 # ==================================================================================================================== #
 #                                                Sample Space Block
 # ==================================================================================================================== #

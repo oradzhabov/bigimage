@@ -1,3 +1,4 @@
+import numpy as np
 import math
 import cv2
 
@@ -36,6 +37,9 @@ def get_tiled_bbox(img_shape, tile_size, offset):
 
 
 def get_contours(mask_u8cn):
+    if len(mask_u8cn.shape) < 3:
+        mask_u8cn = mask_u8cn[..., np.newaxis]
+
     class_nb = mask_u8cn.shape[2] - 1 if mask_u8cn.shape[2] > 1 else 1
     contours_list = list()
 
