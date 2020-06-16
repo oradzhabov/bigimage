@@ -8,6 +8,7 @@ from kmodel.train import read_sample, denormalize, visualize
 from kmodel.kutils import get_contours
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 from solvers import SegmSolver, ProdSolver
+from kutils.VIAConverter import *
 
 if __name__ == "__main__":
 
@@ -33,24 +34,30 @@ if __name__ == "__main__":
     if not is_success:
         exit(-1)
 
-    model, weights_path, _, prep_getter = SegmSolver(cfg).build(compile_model=False)
+    model = None
+    solver = SegmSolver(cfg)
+    model, weights_path, _, prep_getter = solver.build(compile_model=False)
     if model is None:
         exit(-1)
 
-    dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, cfg, prep_getter=prep_getter)
+    dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, cfg, prep_getter=solver.get_prep_getter())
     image, _ = dataset[0]
-
-    pr_mask = predict_img_with_smooth_windowing(
-        image,
-        window_size=512,  # todo: 512 enough for 4GB GPU. But it will be better if use 1024
-        subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
-        nb_classes=cfg.cls_nb,
-        pred_func=(
-            lambda img_batch_subdiv: model.predict(img_batch_subdiv)
+    image_fname = dataset.get_fname(0)
+    predict_png = 'probability_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
+    if model is not None:
+        pr_mask = predict_img_with_smooth_windowing(
+            image,
+            window_size=512,  # todo: 512 enough for 4GB GPU. But it will be better if use 1024
+            subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
+            nb_classes=cfg.cls_nb,
+            pred_func=(
+                lambda img_batch_subdiv: model.predict(img_batch_subdiv)
+            )
         )
-    )
-    predict_png = 'probability_' + os.path.splitext(os.path.basename(weights_path))[0] + '.png'
-    cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
+        cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
+    else:
+        pr_mask = cv2.imread(os.path.join(src_proj_dir, predict_png)).astype(np.float32) / 255.0
+
     pr_mask = np.where(pr_mask > 0.5, 1.0, 0.0)
 
     img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
@@ -58,10 +65,15 @@ if __name__ == "__main__":
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
         cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 5)
 
-    result_png = 'classes_' + os.path.splitext(os.path.basename(weights_path))[0] + '.png'
+    result_png = 'classes_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
     cv2.imwrite(os.path.join(src_proj_dir, result_png), img_temp[..., ::-1])
 
     visualize(
         title='{}'.format(src_proj_dir),
         result=img_temp
     )
+
+    via_item = create_json_item(image_fname, pr_cntrs_list, cfg.classes)
+    output_filename = 'via_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.json'
+    with open(os.path.join(src_proj_dir, output_filename), 'w', newline=os.linesep) as f:
+        json.dump(via_item, f)

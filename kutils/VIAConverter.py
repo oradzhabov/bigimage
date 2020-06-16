@@ -9,7 +9,43 @@ def contains(list1, list2):
     return set(list2).issubset(list1)
 
 
-def convert(json_filename, json_mppx, region_attr_mapper, preview=False):
+def create_json_item(img_fname, cntrs_list, region_attr_mapper):
+    item_key = '{}-1'.format(img_fname)
+    item_value = dict()
+    item_value['filename'] = img_fname
+    item_value['size'] = int(-1)
+
+    regions = list()
+    for class_ind, class_ctrs in enumerate(cntrs_list):
+        for contour in class_ctrs:
+            # contour = np.multiply(contour, scale_factor).astype(int)
+
+            epsilon = 3
+            contour = cv2.approxPolyDP(contour, epsilon, True)
+
+            contour = contour.reshape((contour.shape[0], contour.shape[2]))
+            if len(contour) > 2:
+                region = dict()
+                shape_attributes = dict()
+                region_attributes = dict()
+                #
+                shape_attributes['name'] = 'polygon'
+                shape_attributes['all_points_x'] = [int(pnt[0]) for pnt in contour]
+                shape_attributes['all_points_y'] = [int(pnt[1]) for pnt in contour]
+
+                if region_attr_mapper is not None:
+                    for k in region_attr_mapper.keys():
+                        region_attributes[k] = region_attr_mapper[k][class_ind]
+
+                region['shape_attributes'] = shape_attributes
+                region['region_attributes'] = region_attributes
+                regions.append(region)
+    item_value['regions'] = regions
+
+    return {item_key: item_value}
+
+
+def convert_to_images(json_filename, json_mppx, region_attr_mapper, preview=False):
     with open(json_filename, 'r') as f:
         filecontent = f.read()
         content = json.loads(filecontent)

@@ -13,4 +13,4 @@ if __name__ == "__main__":
         if os.path.splitext(file)[1].lower() == '.json':
             via_annotation_file = os.path.join(maskdir, file)
             break
-    VIAConverter.convert(via_annotation_file, 0.05, cfg.classes)
+    VIAConverter.convert_to_images(via_annotation_file, 0.05, cfg.classes)
