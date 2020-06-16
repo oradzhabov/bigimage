@@ -7,7 +7,7 @@ from config import cfg
 from kmodel.train import read_sample, denormalize, visualize
 from kmodel.kutils import get_contours
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
-from solvers import SegmSolver, ProdSolver
+from solvers import SegmSolver, ProdSolver_MP
 from kutils.VIAConverter import *
 
 if __name__ == "__main__":
@@ -35,7 +35,7 @@ if __name__ == "__main__":
         exit(-1)
 
     model = None
-    solver = SegmSolver(cfg)
+    solver = ProdSolver_MP(cfg)
     model, weights_path, _, prep_getter = solver.build(compile_model=False)
     if model is None:
         exit(-1)
