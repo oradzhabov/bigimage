@@ -49,12 +49,13 @@ if __name__ == "__main__":
     if model is not None:
         pr_mask = predict_img_with_smooth_windowing(
             image,
-            window_size=512,  # todo: 512 enough for 4GB GPU. But it will be better if use 1024
+            window_size=1024,  # todo: 512 enough for 4GB GPU. But it will be better if use 1024
             subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
             nb_classes=cfg.cls_nb,
             pred_func=(
                 lambda img_batch_subdiv: model.predict(img_batch_subdiv)
-            )
+            ),
+            use_batch_1=True
         )
         cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
     else:

@@ -146,7 +146,7 @@ def _rotate_mirror_undo(im_mirrs):
     return np.mean(origs, axis=0)
 
 
-def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_func):
+def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_func, use_batch_1):
     """
     Create tiled overlapping patches.
     Returns:
@@ -182,7 +182,19 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     subdivs = subdivs.reshape(a * b, c, d, e)
     gc.collect()
 
-    subdivs = pred_func(subdivs)
+    if use_batch_1:
+        # Allow to process huge-size images by per-sample batch processing
+        subdivs_r = None
+        for i in range(len(subdivs)):
+            pred_1 = pred_func(subdivs[i, ...][np.newaxis, ...])
+            if subdivs_r is None:
+                subdivs_r = np.array(pred_1)
+            else:
+                subdivs_r = np.append(subdivs_r, pred_1, axis=0)
+        subdivs = subdivs_r
+    else:
+        subdivs = pred_func(subdivs)
+
     gc.collect()
     subdivs = np.array([patch * WINDOW_SPLINE_2D for patch in subdivs])
     gc.collect()
@@ -215,7 +227,7 @@ def _recreate_from_subdivs(subdivs, window_size, subdivisions, padded_out_shape)
     return y / (subdivisions ** 2)
 
 
-def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func):
+def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func, use_batch_1=False):
     """
     Apply the `pred_func` function to square patches of the image, and overlap
     the predictions to merge them smoothly.
@@ -247,7 +259,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     res = []
     for pad in tqdm(pads):
         # For every rotation:
-        sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func)
+        sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, use_batch_1)
         one_padded_result = _recreate_from_subdivs(
             sd, window_size, subdivisions,
             padded_out_shape=list(pad.shape[:-1])+[nb_classes])
