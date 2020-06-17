@@ -7,27 +7,11 @@ from config import cfg
 from kmodel.train import read_sample, denormalize, visualize
 from kmodel.kutils import get_contours
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
-from solvers import SegmSolver, ProdSolver_MP, ProdSolverRocks
+from solvers import *
 from kutils.VIAConverter import *
 
-if __name__ == "__main__":
 
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12363'  # unseen during training
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12266'  # unseen during training
-    src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/10762'  # unseen during training
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12945'  # unseen during training(quite big)
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT. SMALL
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT. SMALL
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT
-    # src_proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
-
+def test_prediction(src_proj_dir):
     dest_img_fname = os.path.join(src_proj_dir,
                                   'tmp_mppx{:.2f}.png'.format(cfg.mppx))
     dest_himg_fname = os.path.join(src_proj_dir,
@@ -78,7 +62,29 @@ if __name__ == "__main__":
         result=img_temp
     )
 
+    print('Creating VIA-json...')
     via_item = create_json_item(image_fname, pr_cntrs_list, cfg.classes)
     output_filename = 'via_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.json'
     with open(os.path.join(src_proj_dir, output_filename), 'w', newline=os.linesep) as f:
         json.dump(via_item, f)
+
+
+if __name__ == "__main__":
+
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12363'  # unseen during training
+    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12266'  # unseen during training
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/10762'  # unseen during training
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12945'  # unseen during training(quite big)
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT. SMALL
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT. SMALL
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
+
+    test_prediction(proj_dir)
