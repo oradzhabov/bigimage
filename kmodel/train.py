@@ -161,7 +161,7 @@ def run(cfg, solver, review_augmented_sample=False):
     data_dir, ids_train, ids_test = get_data(cfg, test_size=cfg.test_aspect)
 
     # Manage caching data access
-    cache_folder = os.path.join(cfg.data_dir, '.cache')
+    cache_folder = './cache'
     memory = Memory(cache_folder, verbose=0)
     memory.clear(warn=False)
     data_reader = memory.cache(read_sample) if memory is not None else read_sample

@@ -109,12 +109,38 @@ def get_cropped_ids(conf):
     return output_folder, ids
 
 
-def get_data(conf, test_size, shuffle=False):
+def get_data(conf, test_size):
+    def asd(y_list):
+        class_frequencies = dict()
+        stratify = list()
+        for fname_ind, fname in enumerate(y_list):
+            mask_fname = os.path.join(data_dir, 'masks.{}'.format(conf.data_subset), fname)
+            y = cv2.imread(mask_fname, cv2.IMREAD_GRAYSCALE)
+
+            classes, y_indices = np.unique(y, return_inverse=True)
+            n_classes = classes.shape[0]
+            class_counts = np.bincount(y_indices)
+            strat_item = np.zeros(shape=(conf.cls_nb), dtype=np.int32)
+            for cl_ind, cl in enumerate(classes):
+                if cl not in class_frequencies:
+                    class_frequencies[cl] = 0
+                class_frequencies[cl] = class_frequencies[cl] + class_counts[cl_ind]
+                strat_item[cl_ind] = class_counts[cl_ind]
+
+            # strat_item_sum = sum(strat_item)
+            # strat_item = [si / strat_item_sum for si in strat_item]
+            stratify.append(strat_item)
+
+        return class_frequencies, np.array(stratify)
+
     # Crop source data(if necessary)
     data_dir, ids = get_cropped_ids(conf)
 
+    # stat, stratify = asd(ids)
+    # print(stat)
+
     # Split Train/Test data
-    ids_train, ids_test, _, _ = train_test_split(ids, ids, test_size=test_size, random_state=42, shuffle=shuffle)
+    ids_train, ids_test, _, _ = train_test_split(ids, ids, test_size=test_size, random_state=conf.seed, shuffle=True)
 
     return data_dir, ids_train, ids_test
 

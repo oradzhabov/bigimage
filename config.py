@@ -22,13 +22,14 @@ cfg.img_wh_crop = 1024
 # ==================================================================================================================== #
 #                                                   Network Block
 # ==================================================================================================================== #
-cfg.backbone = 'efficientnetb3'  # 'resnet34'  # 'mobilenet'  # 'efficientnetb3'
+cfg.backbone = 'efficientnetb5'  # 'resnet34'  # 'mobilenet'  # 'efficientnetb3'
 cfg.encoder_weights = 'imagenet'
 cfg.encoder_freeze = False
 cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 # ==================================================================================================================== #
 #                                               Training Params Block
 # ==================================================================================================================== #
+cfg.seed = 42
 cfg.test_aspect = 0.33
 cfg.batch_size = 2
 cfg.minimize_train_aug = False

@@ -1,4 +1,5 @@
 import numpy as np
+import random
 from abc import ABCMeta, abstractmethod
 
 
@@ -9,6 +10,9 @@ class ISolver(metaclass=ABCMeta):
         self.weights_path = ''
         self.metrics = None
         self.conf = conf
+        #
+        random.seed(self.conf.seed)
+        np.random.seed(self.conf.seed)
 
     @staticmethod
     def round(pr_mask):
