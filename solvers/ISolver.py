@@ -33,6 +33,10 @@ class ISolver(metaclass=ABCMeta):
     def get_post_getter(self):
         return ISolver.round_getter
 
+    @abstractmethod
+    def monitoring_metric(self):
+        raise NotImplementedError
+
     def build(self, compile_model=True):
         self._create(compile_model=compile_model)
         return self.model, self.weights_path, self.metrics, self.get_prep_getter()

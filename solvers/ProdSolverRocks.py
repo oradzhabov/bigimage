@@ -23,3 +23,6 @@ class ProdSolverRocks(ISolver):
 
     def get_post_getter(self):
         return get_postprocessing_prod_rock
+
+    def monitoring_metric(self):
+        return 'val_f1-score'

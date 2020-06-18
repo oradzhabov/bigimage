@@ -20,3 +20,6 @@ class ProdSolver_MP(ISolver):
 
     def get_prep_getter(self):
         return get_preprocessing_production
+
+    def monitoring_metric(self):
+        return 'val_f1-score'

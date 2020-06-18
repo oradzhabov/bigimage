@@ -84,3 +84,6 @@ class SegmSolver(ISolver):
 
     def get_prep_getter(self):
         return sm.get_preprocessing
+
+    def monitoring_metric(self):
+        return 'val_f1-score'

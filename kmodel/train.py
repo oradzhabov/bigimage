@@ -175,6 +175,7 @@ def run(cfg, solver, review_augmented_sample=False):
                           augmentation=get_training_augmentation(cfg),
                           prep_getter=solver.get_prep_getter()
                           )
+        print('Dataset length: ', len(dataset))
 
         for i in range(150):
             image, mask = dataset[i]
@@ -186,7 +187,7 @@ def run(cfg, solver, review_augmented_sample=False):
             image_rgb = (denormalize(image[..., :3]) * 255).astype(np.uint8)
             gt_cntrs_list = get_contours((mask * 255).astype(np.uint8))
             for class_index, class_ctrs in enumerate(gt_cntrs_list):
-                cv2.drawContours(image_rgb, class_ctrs, -1, dataset.get_color(class_index), 3)
+                cv2.drawContours(image_rgb, class_ctrs, -1, dataset.get_color(class_index), int(3 * cfg.img_wh / 512))
             if cfg.classes is not None:
                 class_names = cfg.classes['class']
                 for class_index, class_name in enumerate(class_names):
@@ -233,7 +234,7 @@ def run(cfg, solver, review_augmented_sample=False):
     callbacks = [
         # Save best result
         keras.callbacks.ModelCheckpoint(weights_path,
-                                        monitor='val_f1-score',
+                                        monitor=solver.monitoring_metric(),
                                         save_weights_only=True,
                                         save_best_only=True,
                                         mode='max',
@@ -241,7 +242,7 @@ def run(cfg, solver, review_augmented_sample=False):
         # Save the latest result
         keras.callbacks.ModelCheckpoint('{}_last.h5'.format(os.path.join(os.path.dirname(weights_path),
                                                             os.path.splitext(os.path.basename(weights_path))[0])),
-                                        monitor='val_f1-score',
+                                        monitor=solver.monitoring_metric(),
                                         save_weights_only=True,
                                         save_best_only=False,
                                         mode='auto',
