@@ -54,8 +54,13 @@ def convert_to_images(json_filename, json_mppx, region_attr_mapper, preview=Fals
             img_filename = os.path.normpath(img_filename)
 
             if not os.path.exists(img_filename):
-                print('ERROR: {} not found'.format(img_filename))
-                continue
+                print('WARNING: Image {} not found. Try to find it in sibling of parent'.format(img_filename))
+
+                img_filename = os.path.join(os.path.dirname(img_filename), '../imgs', os.path.basename(img_filename))
+                img_filename = os.path.abspath(img_filename)
+                if not os.path.exists(img_filename):
+                    print('ERROR: Image {} not found'.format(img_filename))
+                    continue
 
             out_filename = os.path.splitext(os.path.basename(img_filename))[0] + '.png'
             out_filename = os.path.join(os.path.dirname(json_filename), out_filename)
