@@ -1,3 +1,4 @@
+import gc
 import numpy as np
 import cv2
 import segmentation_models as sm
@@ -21,28 +22,58 @@ def instance_segmentation(prob_field, debug=False):
 
     # Detect zero-crossing
     # https://stackoverflow.com/a/48440931/5630599
-    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
-    # kernel = np.ones((3,3))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+    kernel = np.ones((3, 3))
     LoG = cv2.Laplacian(image, cv2.CV_16S)
     minLoG = cv2.morphologyEx(LoG, cv2.MORPH_ERODE, kernel)
     maxLoG = cv2.morphologyEx(LoG, cv2.MORPH_DILATE, kernel)
     zeroCross = np.logical_or(np.logical_and(minLoG < 0,  LoG > 0), np.logical_and(maxLoG > 0, LoG < 0))
-    # Create mask where zeros are crossed EXCEPT top rocks regions
-    # Since we use multiscale predictor to predict big-rocks, we may increase threshold to 0.95. It will allow
-    # detect rocks boundary precisely
-    mask = np.logical_and(zeroCross, prob_field < 255*0.75)  # <0.5
-    # Filter zero-crossed areas except top of rocks
+    # zeroCross = np.logical_and(minLoG < 0, LoG > 0)  # left only one condition
+    if debug:
+        cv2.imwrite('zeroCross.png', zeroCross.astype(np.uint8)*255)
+    del LoG
+    del minLoG
+    del maxLoG
+    gc.collect()
+
+    # Find first derive
+    scale = 1
+    delta = 0
+    ddepth = cv2.CV_16S
+    # Here said(see Notes) that cv2.Scharr better than cv2.Sobel
+    # https://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/sobel_derivatives/sobel_derivatives.html#formulation
+    grad_x = cv2.Scharr(image, ddepth, 1, 0, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+    abs_grad_x = cv2.convertScaleAbs(grad_x)
+    del grad_x
+    grad_y = cv2.Scharr(image, ddepth, 0, 1, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+    abs_grad_y = cv2.convertScaleAbs(grad_y)
+    del grad_y
+    grad_magn = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
+    del abs_grad_x
+    del abs_grad_y
+    gc.collect()
+
+    # Create mask where zeros are crossed EXCEPT flat area (top rocks regions)
+    mask = np.logical_and(zeroCross, grad_magn > 127)  # 32 or 127
+    del grad_magn
+    del zeroCross
+    gc.collect()
+
+    # Filter zero-crossed areas except flat area (top rocks regions)
     image[mask] = 0
+    del mask
 
     # Filter low-probability
-    (t, prob_field_th) = cv2.threshold(prob_field, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    (_, prob_field_th) = cv2.threshold(prob_field, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     image[prob_field_th == 0] = 0
+    del prob_field_th
 
     # Filter tiny/noise points
-    image = cv2.morphologyEx(image, cv2.MORPH_ERODE, np.ones((3, 3)))
-    image = cv2.morphologyEx(image, cv2.MORPH_DILATE, np.ones((3, 3)))
+    # image = cv2.morphologyEx(image, cv2.MORPH_ERODE, np.ones((3,3)))
+    # image = cv2.morphologyEx(image, cv2.MORPH_DILATE, np.ones((3,3)))
     # Binarize image
     image[image > 0] = 255
+    image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
     # image = filter_pix_noise(image)
     # image = cv2.bitwise_not(filter_pix_noise(cv2.bitwise_not(image)))
     if debug:
@@ -55,17 +86,22 @@ def instance_segmentation(prob_field, debug=False):
 
     # To quickly mark contours by negative instance index, find zero-cross by binarized image
     LoG = cv2.Laplacian(image, cv2.CV_16S)
-    minLoG = cv2.morphologyEx(LoG, cv2.MORPH_ERODE, np.ones((3,3)))
-    maxLoG = cv2.morphologyEx(LoG, cv2.MORPH_DILATE, np.ones((3,3)))
-    zeroCross = np.logical_or(np.logical_and(minLoG < 0,  LoG > 0), np.logical_and(maxLoG > 0, LoG < 0))
+    minLoG = cv2.morphologyEx(LoG, cv2.MORPH_ERODE, np.ones((3, 3)))
+    zeroCross = np.logical_and(minLoG < 0,  LoG > 0)
     markers[zeroCross] = 0
+    del LoG
+    del minLoG
+    del zeroCross
+    gc.collect()
 
     t = np.asarray(np.dstack((prob_field, prob_field, prob_field)), dtype=np.uint8)  # img
     instances = cv2.watershed(t, markers)
-
     if debug:
         t[instances == -1] = [255, 0, 0]
         cv2.imwrite('t.png', t)
+    del markers
+    del t
+    gc.collect()
 
     (t, prob_field_th) = cv2.threshold(prob_field, 255*0.3, 255, cv2.THRESH_BINARY)
     if debug:
@@ -84,6 +120,8 @@ def collect_statistics(instances, img=None, debug=False, orthophoto_filename='')
     instances_f32 = instances.astype(np.float32)
     # Threshold allow f32 input
     ret, mask = cv2.threshold(instances_f32, 1, 255, 0)
+    del instances_f32
+    gc.collect()
     # Threshold return type as input type. Simplify it
     mask = mask.astype(np.uint8)
     # Magic trick to speed up contour detection - make rocks are black
@@ -97,6 +135,7 @@ def collect_statistics(instances, img=None, debug=False, orthophoto_filename='')
         im, contours, hierarchy = cv2.findContours(mask, findMode, findAlg)
     else:
         contours, hierarchy = cv2.findContours(mask, findMode, findAlg)
+    del mask
     """
     #
     # To describe relation in hierarhy with type cv2.RETR_TREE
