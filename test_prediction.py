@@ -86,5 +86,6 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
-
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12189'
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7969'
     test_prediction(proj_dir)
