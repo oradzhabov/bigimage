@@ -227,6 +227,29 @@ def _recreate_from_subdivs(subdivs, window_size, subdivisions, padded_out_shape)
     return y / (subdivisions ** 2)
 
 
+def pads_generator(im):
+    yield np.array(im)
+    yield np.rot90(np.array(im), axes=(0, 1), k=1)
+    yield np.rot90(np.array(im), axes=(0, 1), k=2)
+    yield np.rot90(np.array(im), axes=(0, 1), k=3)
+
+    yield np.array(np.array(im)[:, ::-1])
+    yield np.rot90(np.array(np.array(np.array(im)[:, ::-1])), axes=(0, 1), k=1)
+    yield np.rot90(np.array(np.array(np.array(im)[:, ::-1])), axes=(0, 1), k=2)
+    yield np.rot90(np.array(np.array(np.array(im)[:, ::-1])), axes=(0, 1), k=3)
+
+
+def pads_generator_undo():
+    x = yield; yield np.array(x)
+    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=3)
+    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=2)
+    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=1)
+    x = yield; yield np.array(x)[:, ::-1]
+    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=3)[:, ::-1]
+    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=2)[:, ::-1]
+    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=1)[:, ::-1]
+
+
 def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func, use_batch_1=False):
     """
     Apply the `pred_func` function to square patches of the image, and overlap
@@ -234,8 +257,10 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     See 6th, 7th and 8th idea here:
     http://blog.kaggle.com/2017/05/09/dstl-satellite-imagery-competition-3rd-place-winners-interview-vladimir-sergey/
     """
+    input_img_shape = input_img.shape
     pad = _pad_img(input_img, window_size, subdivisions)
-    pads = _rotate_mirror_do(pad)
+    del input_img
+    gc.collect()
 
     # Note that the implementation could be more memory-efficient by merging
     # the behavior of `_windowed_subdivs` and `_recreate_from_subdivs` into
@@ -256,22 +281,30 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     # non-zero dommain. This may require to augment the `subdivisions` argument
     # to 4 rather than 2.
 
-    res = []
-    for pad in tqdm(pads):
+    undo_gen = pads_generator_undo()
+    padded_results = None
+    for pad in tqdm(pads_generator(pad), total=8):
         # For every rotation:
         sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, use_batch_1)
         one_padded_result = _recreate_from_subdivs(
             sd, window_size, subdivisions,
             padded_out_shape=list(pad.shape[:-1])+[nb_classes])
 
-        res.append(one_padded_result)
+        next(undo_gen)
+        one_padded_result_reconstructed = undo_gen.send(one_padded_result)
+        if padded_results is None:
+            padded_results = one_padded_result_reconstructed
+        else:
+            padded_results += one_padded_result_reconstructed
+
+        gc.collect()
 
     # Merge after rotations:
-    padded_results = _rotate_mirror_undo(res)
+    padded_results = padded_results / 8.0
 
     prd = _unpad_img(padded_results, window_size, subdivisions)
 
-    prd = prd[:input_img.shape[0], :input_img.shape[1], :]
+    prd = prd[:input_img_shape[0], :input_img_shape[1], :]
 
     if PLOT_PROGRESS:
         plt.imshow(prd)
