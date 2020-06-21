@@ -22,7 +22,7 @@ def test_prediction(src_proj_dir):
 
     model = None
     solver = SegmSolver(cfg)
-    model, weights_path, _, prep_getter = solver.build(compile_model=False)
+    model, weights_path, _ = solver.build(compile_model=False)
     if model is None:
         exit(-1)
 

@@ -18,12 +18,13 @@ def run(cfg, solver, show_random_items_nb=0):
 
     data_reader = read_sample
 
-    model, weights_path, metrics, prep_getter = solver.build(compile_model=True)
-
     test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
                            min_mask_ratio=cfg.min_mask_ratio,
                            augmentation=get_validation_augmentation(cfg),
-                           prep_getter=prep_getter)
+                           prep_getter=solver.get_prep_getter())
+
+    model, weights_path, metrics = solver.build(compile_model=True)
+
     print('Dataset length: {}'.format(len(test_dataset)))
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 

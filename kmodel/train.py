@@ -207,18 +207,18 @@ def run(cfg, solver, review_augmented_sample=False):
     # ****************************************************************************************************************
     # Create model
     # ****************************************************************************************************************
-    model, weights_path, metrics, prep_getter = solver.build(compile_model=True)
-
     # Dataset for train images
     train_dataset = Dataset(data_reader, data_dir, ids_train, cfg,
                             min_mask_ratio=cfg.min_mask_ratio,
                             augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug),
-                            prep_getter=prep_getter)
+                            prep_getter=solver.get_prep_getter())
     # Dataset for validation images
     valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
                             min_mask_ratio=cfg.min_mask_ratio,
                             augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug),
-                            prep_getter=prep_getter)
+                            prep_getter=solver.get_prep_getter())
+
+    model, weights_path, metrics = solver.build(compile_model=True)
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)

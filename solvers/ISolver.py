@@ -39,4 +39,4 @@ class ISolver(metaclass=ABCMeta):
 
     def build(self, compile_model=True, **kwargs):
         self._create(compile_model, **kwargs)
-        return self.model, self.weights_path, self.metrics, self.get_prep_getter()
+        return self.model, self.weights_path, self.metrics
