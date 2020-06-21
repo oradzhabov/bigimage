@@ -23,7 +23,7 @@ class ISolver(metaclass=ABCMeta):
         return ISolver.round
 
     @abstractmethod
-    def _create(self, compile_model=True):
+    def _create(self, compile_model=True, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
@@ -37,6 +37,6 @@ class ISolver(metaclass=ABCMeta):
     def monitoring_metric(self):
         raise NotImplementedError
 
-    def build(self, compile_model=True):
-        self._create(compile_model=compile_model)
+    def build(self, compile_model=True, **kwargs):
+        self._create(compile_model, **kwargs)
         return self.model, self.weights_path, self.metrics, self.get_prep_getter()

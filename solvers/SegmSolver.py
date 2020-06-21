@@ -15,7 +15,7 @@ class SegmSolver(ISolver):
                                                                                self.conf.cls_nb,
                                                                                self.conf.data_subset)
 
-    def _create(self, compile_model=True):
+    def _create(self, compile_model=True, **kwargs):
         solution_path = os.path.normpath(os.path.abspath(self.conf.solution_dir))
         if not os.path.isdir(solution_path):
             os.makedirs(solution_path)
