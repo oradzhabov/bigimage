@@ -112,19 +112,20 @@ class SemanticSegmentationDataProvider(IDataProvider):
         if len(self.conf.backbone) > 0:
             # To support thread-safe and process-safe code we should obtain preprocessor on the fly
             # and do not prepare it before
-            preprocessor = self.prep_getter(self.conf.backbone)
-            if preprocessor:
-                if isinstance(preprocessor, alb.Compose):
-                    sample = preprocessor(image=image)
-                    # image, mask = sample['image'], sample['mask']
-                    image = sample['image']
-                else:
-                    image = preprocessor(image)
-                    # Operate possible case when custom preprocessor modified data size
-                    if mask is not None:
-                        if image.shape[:2] != mask.shape[:2]:
-                            print('WARNING: Mask has not matched image resolution. To match shape it was scaled.')
-                            mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
+            if self.prep_getter is not None:
+                preprocessor = self.prep_getter(self.conf.backbone)
+                if preprocessor:
+                    if isinstance(preprocessor, alb.Compose):
+                        sample = preprocessor(image=image)
+                        # image, mask = sample['image'], sample['mask']
+                        image = sample['image']
+                    else:
+                        image = preprocessor(image)
+                        # Operate possible case when custom preprocessor modified data size
+        if mask is not None:
+            if image.shape[:2] != mask.shape[:2]:
+                print('WARNING: Mask has not matched image resolution. To match shape it was scaled.')
+                mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
 
         return image, mask
 

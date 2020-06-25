@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import albumentations as alb
-from .albumentations2 import HueSaturationValue2, RandomGamma2, RandomBrightnessContrast2
+from .albumentations2 import *
 from joblib import Memory
 from .data import get_data, Dataloder
 from .PlotLosses import PlotLosses
@@ -72,7 +72,9 @@ def get_training_augmentation(conf, is_stub=False):
         # Pad side of the image / max if side is less than desired number.
         alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh, always_apply=True, border_mode=0),
 
-        RandomBrightnessContrast2(brightness_limit=(-0.5, 0.2), contrast_limit=0.2, p=1),
+        # apply shadow augmentation before any color augmentation
+        RandomShadow2(shadow_roi=(0, 0, 1, 1), shadow_dimension=3, always_apply=True),
+        RandomBrightnessContrast2(brightness_limit=(-0.2, 0.2), contrast_limit=0.2, p=1),
         RandomGamma2(p=1),
 
         # alb.IAAAdditiveGaussianNoise(p=0.2),
@@ -174,7 +176,7 @@ def run(cfg, solver, dataprovider, review_augmented_sample=False):
         dataset = dataprovider(data_reader, data_dir, ids_train, cfg,
                                min_mask_ratio=cfg.min_mask_ratio,
                                augmentation=get_training_augmentation(cfg),
-                               prep_getter=solver.get_prep_getter()
+                               prep_getter=None  # don't use preparation to see actually augmentation the data
                                )
         print('Dataset length: ', len(dataset))
 
@@ -185,7 +187,8 @@ def run(cfg, solver, dataprovider, review_augmented_sample=False):
             print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask),
                   np.count_nonzero(mask)/mask.size)
 
-            image_rgb = (denormalize(image[..., :3]) * 255).astype(np.uint8)
+            #image_rgb = (denormalize(image[..., :3]) * 255).astype(np.uint8)
+            image_rgb = image[..., :3].copy()
             gt_cntrs_list = get_contours((mask * 255).astype(np.uint8))
             for class_index, class_ctrs in enumerate(gt_cntrs_list):
                 cv2.drawContours(image_rgb, class_ctrs, -1, dataset.get_color(class_index), int(3 * cfg.img_wh / 512))
