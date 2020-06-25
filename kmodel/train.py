@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import albumentations as alb
 from .albumentations2 import HueSaturationValue2, RandomGamma2, RandomBrightnessContrast2
 from joblib import Memory
-from .data import get_data, Dataset, Dataloder
+from .data import get_data, Dataloder
 from .PlotLosses import PlotLosses
 from .kutils import get_contours, write_text
 
@@ -128,7 +128,8 @@ def get_validation_augmentation(conf, is_stub=False):
     return alb.Compose(test_transform)
 
 
-def read_sample(img_path, himg_path, mask_path):
+def read_sample(data_paths, mask_path):
+    img_path, himg_path = data_paths
     # read data
     img = cv2.imread(img_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -151,7 +152,7 @@ def read_sample(img_path, himg_path, mask_path):
     return img, mask
 
 
-def run(cfg, solver, review_augmented_sample=False):
+def run(cfg, solver, dataprovider, review_augmented_sample=False):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -170,16 +171,16 @@ def run(cfg, solver, review_augmented_sample=False):
         matplotlib.use('TkAgg')  # Enable interactive mode
 
         # Lets look at augmented data we have
-        dataset = Dataset(data_reader, data_dir, ids_train, cfg,
-                          min_mask_ratio=cfg.min_mask_ratio,
-                          augmentation=get_training_augmentation(cfg),
-                          prep_getter=solver.get_prep_getter()
-                          )
+        dataset = dataprovider(data_reader, data_dir, ids_train, cfg,
+                               min_mask_ratio=cfg.min_mask_ratio,
+                               augmentation=get_training_augmentation(cfg),
+                               prep_getter=solver.get_prep_getter()
+                               )
         print('Dataset length: ', len(dataset))
 
         for i in range(150):
             image, mask = dataset[i]
-            print('name: ', os.path.basename(dataset.images_fps[i % len(dataset.images_fps)]))
+            print('name: ', os.path.basename(dataset.get_fname(i)))
             print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
             print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask),
                   np.count_nonzero(mask)/mask.size)
@@ -208,15 +209,15 @@ def run(cfg, solver, review_augmented_sample=False):
     # Create model
     # ****************************************************************************************************************
     # Dataset for train images
-    train_dataset = Dataset(data_reader, data_dir, ids_train, cfg,
-                            min_mask_ratio=cfg.min_mask_ratio,
-                            augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug),
-                            prep_getter=solver.get_prep_getter())
+    train_dataset = dataprovider(data_reader, data_dir, ids_train, cfg,
+                                 min_mask_ratio=cfg.min_mask_ratio,
+                                 augmentation=get_training_augmentation(cfg, cfg.minimize_train_aug),
+                                 prep_getter=solver.get_prep_getter())
     # Dataset for validation images
-    valid_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
-                            min_mask_ratio=cfg.min_mask_ratio,
-                            augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug),
-                            prep_getter=solver.get_prep_getter())
+    valid_dataset = dataprovider(data_reader, data_dir, ids_test, cfg,
+                                 min_mask_ratio=cfg.min_mask_ratio,
+                                 augmentation=get_validation_augmentation(cfg, cfg.minimize_train_aug),
+                                 prep_getter=solver.get_prep_getter())
 
     model, weights_path, metrics = solver.build(compile_model=True)
 

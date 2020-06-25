@@ -9,6 +9,13 @@ from kmodel.kutils import get_contours
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 from solvers import *
 from kutils.VIAConverter import *
+from data_provider import *
+
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx]
 
 
 def test_prediction(src_proj_dir):
@@ -26,14 +33,23 @@ def test_prediction(src_proj_dir):
     if model is None:
         exit(-1)
 
-    dataset = data.DataSingle(read_sample, dest_img_fname, dest_himg_fname, cfg, prep_getter=solver.get_prep_getter())
+    dataset = SemanticSegmentationSingleDataProvider(read_sample,
+                                                     dest_img_fname,
+                                                     dest_himg_fname,
+                                                     cfg,
+                                                     prep_getter=solver.get_prep_getter())
     image, _ = dataset[0]
     image_fname = dataset.get_fname(0)
     predict_png = 'probability_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
+    # IMPORTANT:
+    # * Do not use size bigger than actual image size because blending(with generated border) will suppress actual
+    # prediction result.
+    window_size = int(find_nearest([64, 128, 256, 512, 1024], min(image.shape[0], image.shape[1])))
+    print('Window size in smoothing predicting: {}'.format(window_size))
     if model is not None:
         pr_mask = predict_img_with_smooth_windowing(
             image,
-            window_size=1024,  # todo: 512 enough for 4GB GPU. But it will be better if use 1024
+            window_size=window_size,
             subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
             nb_classes=cfg.cls_nb,
             pred_func=(
@@ -72,10 +88,10 @@ def test_prediction(src_proj_dir):
 if __name__ == "__main__":
 
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
-    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
+    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12363'  # unseen during training
-    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12266'  # unseen during training
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12266'  # unseen during training
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/10762'  # unseen during training
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12945'  # unseen during training(quite big)
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size

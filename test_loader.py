@@ -1,5 +1,5 @@
 import os
-from kmodel.data import get_data, Dataset, Dataloder
+from kmodel.data import get_data, Dataloder
 from config import cfg
 from kmodel.train import read_sample, get_training_augmentation
 import time

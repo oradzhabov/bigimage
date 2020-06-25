@@ -2,12 +2,12 @@ import os
 import numpy as np
 import cv2
 import json
-from .data import get_data, Dataset, Dataloder
+from .data import get_data, Dataloder
 from .train import read_sample, get_validation_augmentation, visualize, denormalize
 from .kutils import get_contours
 
 
-def run(cfg, solver, show_random_items_nb=0):
+def run(cfg, solver, dataprovider, show_random_items_nb=0):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -18,15 +18,15 @@ def run(cfg, solver, show_random_items_nb=0):
 
     data_reader = read_sample
 
-    test_dataset = Dataset(data_reader, data_dir, ids_test, cfg,
-                           min_mask_ratio=cfg.min_mask_ratio,
-                           augmentation=get_validation_augmentation(cfg),
-                           prep_getter=solver.get_prep_getter())
+    test_dataset = dataprovider(data_reader, data_dir, ids_test, cfg,
+                                min_mask_ratio=cfg.min_mask_ratio,
+                                augmentation=get_validation_augmentation(cfg),
+                                prep_getter=solver.get_prep_getter())
+    print('Dataset length: {}'.format(len(test_dataset)))
+
+    test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
     model, weights_path, metrics = solver.build(compile_model=True)
-
-    print('Dataset length: {}'.format(len(test_dataset)))
-    test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
     if show_random_items_nb > 0:
         ids = np.random.choice(np.arange(len(test_dataset)), size=show_random_items_nb)
