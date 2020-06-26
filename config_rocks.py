@@ -16,7 +16,8 @@ cfg.use_heightmap = False
 # dict with key/value: 'class'/['cls_1','cls_2'], or None
 cfg.classes = None  # {'class': ['muckpile', 'highwall']}  # {'class': ['muckpile', 'pile', 'car']}
 cfg.cls_nb = (len(cfg.classes['class']) + 1 if len(cfg.classes['class']) > 1 else 1) if cfg.classes is not None else 1
-cfg.min_mask_ratio = 0.01  # cannot set 0 for rocks, because there are lot of unlabeled areas(all rocks cannot be tagged)
+# cannot set 0 for rocks, because there are lot of unlabeled areas with real rocks(all rocks cannot be tagged)
+cfg.min_mask_ratio = 0.01
 cfg.img_wh = 256
 cfg.img_wh_crop = 256
 # ==================================================================================================================== #
@@ -29,6 +30,7 @@ cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 # ==================================================================================================================== #
 #                                               Training Params Block
 # ==================================================================================================================== #
+cfg.seed = 42
 cfg.test_aspect = 0.33
 cfg.batch_size = 16
 cfg.minimize_train_aug = False

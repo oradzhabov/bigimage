@@ -131,7 +131,9 @@ def get_validation_augmentation(conf, is_stub=False):
 
 
 def read_sample(data_paths, mask_path):
+    data_paths = data_paths + [None] * (2 - len(data_paths))
     img_path, himg_path = data_paths
+
     # read data
     img = cv2.imread(img_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
