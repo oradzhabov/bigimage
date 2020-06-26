@@ -1,8 +1,11 @@
+import sys
+sys.path.append(sys.path[0] + "/..")
 import os
 import cv2
 import numpy as np
 from tqdm import tqdm
 from . import IDataProvider
+from kutils import utilites
 import random
 import albumentations as alb
 
@@ -83,6 +86,19 @@ class SemanticSegmentationDataProvider(IDataProvider):
         keys = list(self.src_data)
         self._length = len(self.src_data[keys[0]]) if len(keys) > 0 else 0
 
+    def _preprocess_mask(self, mask):
+        class_values = np.arange(len(self.conf.classes['class']) if self.conf.classes is not None else 1,
+                                 dtype=np.uint8)
+        # extract certain classes from mask (e.g. cars)
+        masks = [(mask == 255 - v) for v in class_values]
+        mask = np.stack(masks, axis=-1).astype('float32')
+
+        # add background if mask is not binary
+        if mask.shape[-1] != 1:
+            background = 1 - mask.sum(axis=-1, keepdims=True)
+            mask = np.concatenate((mask, background), axis=-1)
+        return mask
+
     def __getitem__(self, i):
         i = i % len(self)
 
@@ -92,16 +108,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         image, mask = self.data_reader(data_paths, mask_path)
 
         if mask is not None:
-            class_values = np.arange(len(self.conf.classes['class']) if self.conf.classes is not None else 1,
-                                     dtype=np.uint8)
-            # extract certain classes from mask (e.g. cars)
-            masks = [(mask == 255 - v) for v in class_values]
-            mask = np.stack(masks, axis=-1).astype('float32')
-
-            # add background if mask is not binary
-            if mask.shape[-1] != 1:
-                background = 1 - mask.sum(axis=-1, keepdims=True)
-                mask = np.concatenate((mask, background), axis=-1)
+            mask = self._preprocess_mask(mask)
 
         # apply augmentations
         if self.augmentation:
@@ -142,6 +149,80 @@ class SemanticSegmentationDataProvider(IDataProvider):
 
     def get_color(self, class_ind):
         return self.class_colors[class_ind]
+
+    def show(self, i):
+        image, mask = self.__getitem__(i)
+        print('name: ', os.path.basename(self.get_fname(i)))
+        print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
+        print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask),
+              np.count_nonzero(mask) / mask.size)
+
+        # image_rgb = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
+        image_rgb = image[..., :3].copy()
+        gt_cntrs_list = utilites.get_contours(((mask * 255).astype(np.uint8)))
+        for class_index, class_ctrs in enumerate(gt_cntrs_list):
+            cv2.drawContours(image_rgb, class_ctrs, -1, self.get_color(class_index), int(3 * self.conf.img_wh / 512))
+        if self.conf.classes is not None:
+            class_names = self.conf.classes['class']
+            for class_index, class_name in enumerate(class_names):
+                fsc = self.conf.img_wh / 512
+                x = int(6 * fsc)
+                y = int(30 * (1 + class_index) * fsc)
+                utilites.write_text(image_rgb, class_name, (x, y), self.get_color(class_index), fsc)
+
+        utilites.visualize(
+            title=self.get_fname(i),
+            Image=image_rgb,
+            Height=image[..., 3] if image.shape[-1] > 3 else None,
+        )
+
+    def show_predicted(self, solver, show_random_items_nb):
+        ids = np.random.choice(np.arange(len(self)), size=show_random_items_nb)
+        result_list = list()
+        for i in ids:
+            image, gt_mask = self.__getitem__(i)
+            image = np.expand_dims(image, axis=0)
+            # pr_mask = model.predict(image, verbose=0).round()  # todo: round() ?
+            pr_mask = solver.model.predict(image, verbose=0)[0]
+            pr_mask = np.where(pr_mask > 0.5, 1.0, 0.0)
+            scores = solver.model.evaluate(image, np.expand_dims(gt_mask, axis=0), batch_size=1, verbose=0)
+
+            gt_cntrs = utilites.get_contours((gt_mask * 255).astype(np.uint8))
+            pr_cntrs = utilites.get_contours((pr_mask * 255).astype(np.uint8))
+            img_metrics = dict()
+            for metric, value in zip(solver.metrics, scores[1:]):
+                metric_name = metric if isinstance(metric, str) else metric.__name__
+                img_metrics[metric_name] = value
+
+            item = dict({'index': i, 'gt_cntrs': gt_cntrs, 'pr_cntrs': pr_cntrs, 'metrics': img_metrics})
+            item['image'] = image.squeeze()
+            result_list.append(item)
+        # sort list to start from the worst result
+        result_list = sorted(result_list, key=lambda it: it['metrics']['f1-score'])
+
+        for item in result_list:
+            image = item['image']
+            img_fname = self.get_fname(item['index'])
+
+            gt_cntrs = item['gt_cntrs']
+            pr_cntrs = item['pr_cntrs']
+
+            img_temp = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
+            for class_index, class_ctrs in enumerate(gt_cntrs):
+                cv2.drawContours(img_temp, class_ctrs, -1, self.get_color(class_index), 2)
+            for class_index, class_ctrs in enumerate(pr_cntrs):
+                color = self.get_color(class_index)
+                cv2.drawContours(img_temp, class_ctrs, -1, color, 6)
+                color = [c // 2 for c in color]
+                cv2.drawContours(img_temp, class_ctrs, -1, color, 2)
+
+            utilites.visualize(
+                title='{}, F1:{:.4f}, IoU:{:.4f}'.format(img_fname,
+                                                         item['metrics']['f1-score'],
+                                                         item['metrics']['iou_score']),
+                Result=img_temp,
+                Height=image[..., 3] if image.shape[-1] > 3 else None,
+            )
 
 
 class SemanticSegmentationSingleDataProvider(SemanticSegmentationDataProvider):

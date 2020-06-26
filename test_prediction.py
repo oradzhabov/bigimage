@@ -1,11 +1,10 @@
 import os
 import numpy as np
 import cv2
-from kutils import PrepareData
+from .kutils import utilites, PrepareData
 from kmodel import data
 from config import cfg
-from kmodel.train import read_sample, denormalize, visualize
-from kmodel.kutils import get_contours
+from kmodel.train import read_sample
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 from solvers import *
 from kutils.VIAConverter import *
@@ -65,15 +64,15 @@ def test_prediction(src_proj_dir):
     post_processor = postproc_getter()
     pr_mask = post_processor(pr_mask)
 
-    img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
-    pr_cntrs_list = get_contours((pr_mask * 255).astype(np.uint8))
+    img_temp = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
+    pr_cntrs_list = utilites.get_contours((pr_mask * 255).astype(np.uint8))
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
         cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 5)
 
     result_png = 'classes_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
     cv2.imwrite(os.path.join(src_proj_dir, result_png), img_temp[..., ::-1])
 
-    visualize(
+    utilites.visualize(
         title='{}'.format(src_proj_dir),
         result=img_temp
     )

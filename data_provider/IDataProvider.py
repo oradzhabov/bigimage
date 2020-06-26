@@ -20,3 +20,11 @@ class IDataProvider(metaclass=ABCMeta):
     @abstractmethod
     def get_color(self, class_ind):
         raise NotImplementedError
+
+    @abstractmethod
+    def show(self, i):
+        raise NotImplementedError
+
+    @abstractmethod
+    def show_predicted(self, show_random_items_nb):
+        raise NotImplementedError

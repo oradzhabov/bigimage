@@ -10,6 +10,8 @@ class ISolver(metaclass=ABCMeta):
         self.weights_path = ''
         self.metrics = None
         self.conf = conf
+        self.activation = None
+        self.total_loss = None
         #
         random.seed(self.conf.seed)
         np.random.seed(self.conf.seed)

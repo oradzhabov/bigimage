@@ -1,17 +1,19 @@
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
 import cv2
 import keras
 import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
 import albumentations as alb
 from .albumentations2 import *
 from joblib import Memory
 from .data import get_data, Dataloder
 from .PlotLosses import PlotLosses
-from .kutils import get_contours, write_text
+import sys
+sys.path.append(sys.path[0] + "/..")
+from solvers import ISolver
+from data_provider import IDataProvider
+
 
 TRIM_GPU = False
 if TRIM_GPU:
@@ -20,33 +22,6 @@ if TRIM_GPU:
     config.gpu_options.per_process_gpu_memory_fraction = 0.4
     config.gpu_options.allow_growth = False
     session = tf.Session(config=config)
-
-
-def visualize(title, **images):
-    """PLot images in one row."""
-    img_filtered = {key: value for (key, value) in images.items() if value is not None}
-    n = len(img_filtered)
-    fig = plt.figure(figsize=(16, 16))
-    for i, (name, img) in enumerate(img_filtered.items()):
-        plt.subplot(1, n, i + 1)
-        plt.xticks([])
-        plt.yticks([])
-        plt.title(' '.join(name.split('_')).title())
-        plt.imshow(img)
-    if title is not None:
-        fig.suptitle(title, fontsize=16)
-    plt.show()
-
-
-# helper function for data visualization
-def denormalize(x):
-    """Scale image to range 0..1 for correct plot"""
-    x_max = np.percentile(x, 98)
-    x_min = np.percentile(x, 2)
-    x = (x - x_min) / (x_max - x_min)
-    x = x.clip(0, 1)
-    return x
-
 
 # def round_clip_0_1(x, **kwargs):
 #     return x.round().clip(0, 1)
@@ -156,7 +131,7 @@ def read_sample(data_paths, mask_path):
     return img, mask
 
 
-def run(cfg, solver, dataprovider, review_augmented_sample=False):
+def run(cfg, solver: ISolver, dataprovider: IDataProvider, review_augmented_sample=False):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -183,30 +158,7 @@ def run(cfg, solver, dataprovider, review_augmented_sample=False):
         print('Dataset length: ', len(dataset))
 
         for i in range(150):
-            image, mask = dataset[i]
-            print('name: ', os.path.basename(dataset.get_fname(i)))
-            print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
-            print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask),
-                  np.count_nonzero(mask)/mask.size)
-
-            #image_rgb = (denormalize(image[..., :3]) * 255).astype(np.uint8)
-            image_rgb = image[..., :3].copy()
-            gt_cntrs_list = get_contours((mask * 255).astype(np.uint8))
-            for class_index, class_ctrs in enumerate(gt_cntrs_list):
-                cv2.drawContours(image_rgb, class_ctrs, -1, dataset.get_color(class_index), int(3 * cfg.img_wh / 512))
-            if cfg.classes is not None:
-                class_names = cfg.classes['class']
-                for class_index, class_name in enumerate(class_names):
-                    fsc = cfg.img_wh / 512
-                    x = int(6 * fsc)
-                    y = int(30 * (1 + class_index) * fsc)
-                    write_text(image_rgb, class_name, (x, y), dataset.get_color(class_index), fsc)
-
-            visualize(
-                title=dataset.get_fname(i),
-                Image=image_rgb,
-                Height=image[..., 3] if image.shape[-1] > 3 else None,
-            )
+            dataset.show(i)
 
         return
 
@@ -236,19 +188,22 @@ def run(cfg, solver, dataprovider, review_augmented_sample=False):
     print('Train Samples Nb: ', len(train_dataset))
     print('Validate Samples Nb: ', len(valid_dataset))
 
-    # define callbacks for learning rate scheduling and best checkpoints saving
+    # Get monitoring metric
+    monitoring_metric_name, monitoring_metric_mode = solver.monitoring_metric()
+
+    # Define callbacks for learning rate scheduling and best checkpoints saving
     callbacks = [
         # Save best result
         keras.callbacks.ModelCheckpoint(weights_path,
-                                        monitor=solver.monitoring_metric(),
+                                        monitor=monitoring_metric_name,
                                         save_weights_only=True,
                                         save_best_only=True,
-                                        mode='max',
+                                        mode=monitoring_metric_mode,
                                         verbose=1),
         # Save the latest result
         keras.callbacks.ModelCheckpoint('{}_last.h5'.format(os.path.join(os.path.dirname(weights_path),
                                                             os.path.splitext(os.path.basename(weights_path))[0])),
-                                        monitor=solver.monitoring_metric(),
+                                        monitor=monitoring_metric_name,
                                         save_weights_only=True,
                                         save_best_only=False,
                                         mode='auto',

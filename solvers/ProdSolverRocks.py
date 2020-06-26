@@ -25,4 +25,4 @@ class ProdSolverRocks(ISolver):
         return get_postprocessing_prod_rock
 
     def monitoring_metric(self):
-        return 'val_f1-score'
+        return 'val_f1-score', 'max'

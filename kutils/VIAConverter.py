@@ -45,7 +45,7 @@ def create_json_item(img_fname, cntrs_list, region_attr_mapper):
     return {item_key: item_value}
 
 
-def convert_to_images(json_filename, json_mppx, region_attr_mapper, preview=False):
+def convert_to_images(json_filename, json_mppx, region_attr_mapper, mask_postprocess=None, preview=False):
     with open(json_filename, 'r') as f:
         filecontent = f.read()
         content = json.loads(filecontent)
@@ -98,6 +98,10 @@ def convert_to_images(json_filename, json_mppx, region_attr_mapper, preview=Fals
                 color = 255 - k
                 cv2.fillPoly(img, pts=v, color=color)
                 cntrs_nb = cntrs_nb + len(v)
+            #
+            if mask_postprocess is not None:
+                img = mask_postprocess(img)
+
             cv2.imwrite(out_filename, img)
             print("Image \"{}\" created successfully. {} classes, {} contours".format(out_filename,
                                                                                       len(contours_map.keys()),

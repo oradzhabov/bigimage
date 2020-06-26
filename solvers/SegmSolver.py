@@ -14,6 +14,19 @@ class SegmSolver(ISolver):
                                                                                'a' if self.conf.use_heightmap else '',
                                                                                self.conf.cls_nb,
                                                                                self.conf.data_subset)
+        self.activation = 'sigmoid' if self.conf.cls_nb == 1 else 'softmax'
+
+        # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
+        dice_loss = sm.losses.DiceLoss()
+        focal_loss = sm.losses.BinaryFocalLoss() if self.conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
+        self.total_loss = dice_loss + focal_loss
+        # total_loss = focal_loss
+        # total_loss = 'binary_crossentropy'
+
+        # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
+        threshold = 0.5
+        self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold),
+                        sm.metrics.f2_score]
 
     def _create(self, compile_model=True, **kwargs):
         solution_path = os.path.normpath(os.path.abspath(self.conf.solution_dir))
@@ -21,14 +34,12 @@ class SegmSolver(ISolver):
             os.makedirs(solution_path)
         self.weights_path = os.path.join(solution_path, self.weights_path)
 
-        activation = 'sigmoid' if self.conf.cls_nb == 1 else 'softmax'
-
         weights_init_path = self.weights_path if os.path.isfile(self.weights_path) else None
 
         base_model = sm.Unet(self.conf.backbone,
                              input_shape=(None, None, 3),
                              classes=self.conf.cls_nb,
-                             activation=activation,
+                             activation=self.activation,
                              encoder_weights=self.conf.encoder_weights if weights_init_path is None else None,
                              encoder_freeze=self.conf.encoder_freeze,
                              # pyramid_block_filters=conf.pyramid_block_filters,  # default 256
@@ -66,24 +77,11 @@ class SegmSolver(ISolver):
             # define optimizer
             optimizer = keras.optimizers.Adam(self.conf.lr)
 
-            # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
-            dice_loss = sm.losses.DiceLoss()
-            focal_loss = sm.losses.BinaryFocalLoss() if self.conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
-            total_loss = dice_loss + focal_loss
-            # total_loss = focal_loss
-            # total_loss = 'binary_crossentropy'
-
-            # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
-            threshold = 0.5
-            self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold), sm.metrics.f2_score]
-
             # compile model with defined optimizer, loss and metrics
-            self.model.compile(optimizer, total_loss, self.metrics)
-
-        # base_model.load_weights('./unet_mobilenet_wh512_rgb_f1083.h5')
+            self.model.compile(optimizer, self.total_loss, self.metrics)
 
     def get_prep_getter(self):
         return sm.get_preprocessing
 
     def monitoring_metric(self):
-        return 'val_f1-score'
+        return 'val_f1-score', 'max'

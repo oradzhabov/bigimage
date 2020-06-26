@@ -1,2 +1,3 @@
 from .IDataProvider import IDataProvider
 from .SemanticSegmentationDataProvider import SemanticSegmentationDataProvider, SemanticSegmentationSingleDataProvider
+from .RegressionSegmentationDataProvider import RegressionSegmentationDataProvider

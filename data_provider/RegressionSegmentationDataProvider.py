@@ -1,0 +1,72 @@
+import numpy as np
+from . import SemanticSegmentationDataProvider
+import sys
+sys.path.append(sys.path[0] + "/..")
+from kutils import utilites
+
+
+class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
+    def _preprocess_mask(self, mask):
+        mask = mask.astype(np.float32) / 255.0
+        if len(mask.shape) == 2:
+            mask = mask[..., np.newaxis]
+        return mask
+
+    def show(self, i):
+        image, mask = self.__getitem__(i)
+
+        # image_rgb = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
+        image_rgb = image[..., :3].copy()
+        mask = (mask*255).astype(np.uint8)
+
+        utilites.visualize(
+            title=self.get_fname(i),
+            Image=image_rgb,
+            Masked_Image=((image_rgb.astype(np.float32) + np.dstack((mask, mask*0, mask*0)).astype(np.float32))//2).astype(np.uint8),
+        )
+
+    def show_predicted(self, solver, show_random_items_nb):
+        ids = np.random.choice(np.arange(len(self)), size=show_random_items_nb)
+        result_list = list()
+        for i in ids:
+            image, gt_mask = self.__getitem__(i)
+            image = np.expand_dims(image, axis=0)
+            # pr_mask = model.predict(image, verbose=0).round()  # todo: round() ?
+            pr_mask = solver.model.predict(image, verbose=0)[0]
+            pr_mask[pr_mask < 0] = 0
+            pr_mask[pr_mask > 1] = 0
+            # pr_mask = np.where(pr_mask > 0.5, 1.0, 0.0)
+            scores = solver.model.evaluate(image, np.expand_dims(gt_mask, axis=0), batch_size=1, verbose=0)
+
+            # gt_cntrs = utilites.get_contours((gt_mask * 255).astype(np.uint8))
+            # pr_cntrs = utilites.get_contours((pr_mask * 255).astype(np.uint8))
+            img_metrics = dict()
+            for metric, value in zip(solver.metrics, scores[1:]):
+                metric_name = metric if isinstance(metric, str) else metric.__name__
+                img_metrics[metric_name] = value
+
+            item = dict({'index': i, 'metrics': img_metrics})
+            item['gt_mask'] = gt_mask.squeeze()
+            item['pr_mask'] = pr_mask.squeeze()
+            item['image'] = image.squeeze()
+            result_list.append(item)
+        # sort list to start from the worst result
+        result_list = sorted(result_list, key=lambda it: it['metrics']['mae'])[::-1]
+
+        for item in result_list:
+            image = item['image']
+            img_fname = self.get_fname(item['index'])
+
+            gt_mask = item['gt_mask']
+            pr_mask = item['pr_mask']
+
+            img_temp = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
+
+            pr_mask = (pr_mask * 255).astype(np.uint8)
+
+            utilites.visualize(
+                title='{}, MAE:{:.4f}'.format(img_fname, item['metrics']['mae']),
+                Image=img_temp,
+                Masked_Image=((img_temp.astype(np.float32) + np.dstack((pr_mask, pr_mask*0, pr_mask*0)).astype(np.float32))//2).astype(np.uint8),
+                Mask=pr_mask
+            )

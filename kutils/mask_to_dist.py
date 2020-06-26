@@ -21,4 +21,6 @@ def mask_to_dist(img_u8c1):
         c = np.where(mask_all == i + 1)
         dist_all[c] /= np.max(dist_all[c])
 
+    dist_all = (dist_all * 255).astype(np.uint8)
+
     return dist_all

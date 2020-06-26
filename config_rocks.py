@@ -8,7 +8,7 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs'
 cfg.mppx = 0.02
 cfg.data_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs.Result.4/2020-05-24a/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'rocks_1stPart_clean'  # 'all_piles'  # 'muckpiles_multiclass'
+cfg.data_subset = 'rocks_1stPart_clean-dev-site_3611'  # ''rocks_1stPart_clean'
 # ==================================================================================================================== #
 #                                                Sample Space Block
 # ==================================================================================================================== #
@@ -31,8 +31,8 @@ cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 #                                               Training Params Block
 # ==================================================================================================================== #
 cfg.seed = 42
-cfg.test_aspect = 0.33
-cfg.batch_size = 16
+cfg.test_aspect = 0.25
+cfg.batch_size = 8
 cfg.minimize_train_aug = False
 cfg.lr = 0.001
 cfg.epochs = 4000
