@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import cv2
-from .kutils import utilites, PrepareData
+from kutils import utilites, PrepareData
 from kmodel import data
 from config import cfg
 from kmodel.train import read_sample
@@ -18,6 +18,14 @@ def find_nearest(array, value):
 
 
 def test_prediction(src_proj_dir):
+    use_regression = False
+    if use_regression:
+        solver = RegrSolver(cfg)
+        provider = RegressionSegmentationSingleDataProvider
+    else:
+        solver = SegmSolver(cfg)
+        provider = SemanticSegmentationSingleDataProvider
+
     dest_img_fname = os.path.join(src_proj_dir,
                                   'tmp_mppx{:.2f}.png'.format(cfg.mppx))
     dest_himg_fname = os.path.join(src_proj_dir,
@@ -26,17 +34,17 @@ def test_prediction(src_proj_dir):
     if not is_success:
         exit(-1)
 
+    dataset = provider(read_sample,
+                       dest_img_fname,
+                       dest_himg_fname,
+                       cfg,
+                       prep_getter=solver.get_prep_getter())
+
     model = None
-    solver = SegmSolver(cfg)
     model, weights_path, _ = solver.build(compile_model=False)
     if model is None:
         exit(-1)
 
-    dataset = SemanticSegmentationSingleDataProvider(read_sample,
-                                                     dest_img_fname,
-                                                     dest_himg_fname,
-                                                     cfg,
-                                                     prep_getter=solver.get_prep_getter())
     image, _ = dataset[0]
     image_fname = dataset.get_fname(0)
     predict_png = 'probability_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'

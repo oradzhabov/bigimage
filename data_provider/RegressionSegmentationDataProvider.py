@@ -70,3 +70,39 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
                 Masked_Image=((img_temp.astype(np.float32) + np.dstack((pr_mask, pr_mask*0, pr_mask*0)).astype(np.float32))//2).astype(np.uint8),
                 Mask=pr_mask
             )
+
+
+    @staticmethod
+    def trim_by_01(pr_mask):
+        pr_mask[pr_mask < 0] = 0
+        pr_mask[pr_mask > 1] = 0
+        return pr_mask
+
+    @staticmethod
+    def trim_by_01_getter():
+        return RegressionSegmentationDataProvider.trim_by_01
+
+    def get_post_getter(self):
+        return RegressionSegmentationDataProvider.trim_by_01_getter
+
+
+class RegressionSegmentationSingleDataProvider(RegressionSegmentationDataProvider):
+    # todo: seems copy of other class SemanticSegmentationSingleDataProvider
+    def __init__(self, data_reader, img_fname, himg_fname, configure, prep_getter):
+        super().__init__(data_reader=data_reader,
+                         data_dir='',
+                         ids=list(),
+                         conf=configure,
+                         min_mask_ratio=0.0,
+                         augmentation=None,
+                         prep_getter=prep_getter)
+
+        self.src_folders = ['1', '2']  # In this case folder names are no mater. The order is matter as always.
+        self.src_data = dict({k: list() for k in self.src_folders})
+
+        self.src_data[self.src_folders[0]].append(img_fname)
+        self.src_data[self.src_folders[1]].append(himg_fname)
+
+        # Find the actual length of dataset
+        keys = list(self.src_data)
+        self._length = len(self.src_data[keys[0]]) if len(keys) > 0 else 0

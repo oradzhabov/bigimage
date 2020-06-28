@@ -140,7 +140,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         return self._length
 
     def get_fname(self, i):
-        keys = list(self.src_data)
+        keys = self.src_folders
         if len(keys) == 0:
             return 0
 
@@ -226,6 +226,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
 
 
 class SemanticSegmentationSingleDataProvider(SemanticSegmentationDataProvider):
+    # todo: seems copy of other class RegressionSegmentationSingleDataProvider
     def __init__(self, data_reader, img_fname, himg_fname, configure, prep_getter):
         super().__init__(data_reader=data_reader,
                          data_dir='',
