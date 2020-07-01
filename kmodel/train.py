@@ -42,15 +42,15 @@ def get_training_augmentation(conf, is_stub=False):
         # a single float value, the range will be (-shift_limit, shift_limit). Absolute values for lower and upper
         # bounds should lie in range [0, 1]. Default: (-0.0625, 0.0625).
         # alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=45, shift_limit=0.5, p=1, border_mode=0),
-        alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=90, p=1, border_mode=0, interpolation=cv2.INTER_LANCZOS4),
+        alb.ShiftScaleRotate(scale_limit=(-0.8, 0.1), rotate_limit=90, p=1, border_mode=cv2.BORDER_REFLECT_101, interpolation=cv2.INTER_LANCZOS4),
 
         # Pad side of the image / max if side is less than desired number.
         alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh, always_apply=True, border_mode=0),
 
         # apply shadow augmentation before any color augmentation
         RandomShadow2(shadow_roi=(0, 0, 1, 1), shadow_dimension=3, always_apply=True),
-        RandomBrightnessContrast2(brightness_limit=(-0.2, 0.2), contrast_limit=0.2, p=1),
-        RandomGamma2(p=1),
+        RandomBrightnessContrast2(brightness_limit=(-0.2, 0.4), contrast_limit=0.2, p=1),
+        RandomGamma2(gamma_limit=(50, 150), p=1),
 
         # alb.IAAAdditiveGaussianNoise(p=0.2),
 
@@ -71,7 +71,7 @@ def get_training_augmentation(conf, is_stub=False):
         #    ],
         #    p=0.9,
         # ),
-        HueSaturationValue2(hue_shift_limit=15, sat_shift_limit=(-20, 10), val_shift_limit=0, p=1.0),
+        HueSaturationValue2(hue_shift_limit=90, sat_shift_limit=(-20, 10), val_shift_limit=0, p=1.0),
         # alb.OneOf(
         #    [
         #        alb.RandomContrast(p=1),

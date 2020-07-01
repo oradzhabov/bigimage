@@ -1,12 +1,12 @@
 from kmodel import evaluate
-from config import cfg
+from config_rocks import cfg
 from solvers import *
 from data_provider import *
 
 if __name__ == "__main__":
     show_random_items_nb = 20
 
-    use_regression = False
+    use_regression = True
     if use_regression:
         solver = RegrSolver(cfg)
         provider = RegressionSegmentationDataProvider

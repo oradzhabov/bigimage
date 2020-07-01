@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 from kutils import utilites, PrepareData
 from kmodel import data
-from config import cfg
+from config_rocks import cfg
 from kmodel.train import read_sample
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 from solvers import *
@@ -18,7 +18,7 @@ def find_nearest(array, value):
 
 
 def test_prediction(src_proj_dir):
-    use_regression = False
+    use_regression = True
     if use_regression:
         solver = RegrSolver(cfg)
         provider = RegressionSegmentationSingleDataProvider
@@ -64,6 +64,9 @@ def test_prediction(src_proj_dir):
             ),
             use_batch_1=True
         )
+        pr_mask[pr_mask < 0] = 0
+        pr_mask[pr_mask > 1] = 0
+
         cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
     else:
         pr_mask = cv2.imread(os.path.join(src_proj_dir, predict_png), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
@@ -105,7 +108,7 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT. SMALL
-    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT. SMALL
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT

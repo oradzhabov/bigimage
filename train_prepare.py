@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     mask_postprocess = None
     # Uncomment following line if mask needs to be mapped from binary to normalized distance
-    # mask_postprocess = mask_to_dist
+    mask_postprocess = mask_to_dist
     #
     VIAConverter.convert_to_images(via_annotation_file, 0.05, cfg.classes,
                                    mask_postprocess=mask_postprocess)
