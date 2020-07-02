@@ -51,31 +51,10 @@ def instance_segmentation(prob_field, debug=False):
     return markers, img
 
 
-def collect_statistics(instances, debug=False):
-    print('Collect statistics...')
+def collect_statistics(contours):
     geometry_px = []
 
-    # Since instance range is [-1 ... +RocksNb] we need to convert it to type which can represent negative values
-    # cv2.threshold() supports f32 input
-    instances_f32 = instances.astype(np.float32)
-    ret, mask = cv2.threshold(instances_f32, 1, 255, 0)
-    del instances_f32
-    gc.collect()
-    # Threshold return type as input type. Simplify it
-    mask = mask.astype(np.uint8)
-
-    if debug:
-        cv2.imwrite('instance_mask.png', mask)
-
-    rocks = utilites.get_contours(mask, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR_TREE, inverse_mask=True)
-    rocks = rocks[0]  # we operate with single class
-
-    if debug:
-        img = np.dstack((mask, mask, mask))
-        cv2.drawContours(img, rocks, -1, (0, 255, 0), 1)
-        cv2.imwrite('mask_rocks.png', img)
-
-    for cnt in rocks:
+    for cnt in contours:
         #
         # Collect geometry
         #
@@ -89,17 +68,7 @@ def collect_statistics(instances, debug=False):
         item = [rect[0][0], rect[0][1], min_diameter, max_diameter, cnt.tolist()]
         geometry_px.append(item)
 
-        """
-        if img is not None:
-            box = cv2.boxPoints(rect)
-            box = np.int0(box)
-            cv2.drawContours(img, [box], 0, (0, 0, 255), 1)
-        """
-
-    if debug:
-        print('Number of rocks: {}'.format(len(rocks)))
-
-    return geometry_px, mask
+    return geometry_px
 
 
 def postprocess(prob_field):
@@ -107,9 +76,19 @@ def postprocess(prob_field):
 
     prob_field = prob_field.squeeze()
 
-    inst, _ = instance_segmentation(prob_field, debug=debug)
+    instances, _ = instance_segmentation(prob_field, debug=debug)
 
-    geometry_px, mask = collect_statistics(inst, debug=debug)
+    # Since instance range is [-1 ... +RocksNb] we need to convert it to type which can represent negative values
+    # cv2.threshold() supports f32 input
+    instances_f32 = instances.astype(np.float32)
+    ret, mask = cv2.threshold(instances_f32, 1, 255, 0)
+    del instances_f32
+    gc.collect()
+    # Threshold return type as input type. Simplify it
+    mask = mask.astype(np.uint8)
+
+    if debug:
+        cv2.imwrite('instance_mask.png', mask)
 
     # since later it will be used as prediction result, scale [0..255] to [0..1]
     mask[mask > 0] = 1

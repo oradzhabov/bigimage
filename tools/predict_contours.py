@@ -20,7 +20,8 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, use_batch_1=True)
     :param src_proj_dir:
     :param skip_prediction: If True following flag it will avoid long prediction and will try to read already
     created result. Useful for debugging.
-    :param use_batch_1: If True, it will use less GPU
+    :param use_batch_1: If True, stitching will process patch by patch and guaranty that GPU RAM will be enough for
+    process any number of patches(any size of image). From other side it increases the processing time.
     :return:
     """
     solver = cfg.solver(cfg)
