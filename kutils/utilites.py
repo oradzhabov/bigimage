@@ -3,6 +3,24 @@ import cv2
 import matplotlib.pyplot as plt
 
 
+def nms(image, k=13, remove_plateaus_delta=-1.0):
+    # https://stackoverflow.com/a/21023493/5630599
+    #
+    kernel = np.ones((k, k))
+    mask = cv2.morphologyEx(image, cv2.MORPH_DILATE, kernel)
+    mask = cv2.compare(image, mask, cv2.CMP_GE)
+    if remove_plateaus_delta >= 0.0:
+        kernel = np.ones((k, k))
+        non_plateau_mask = cv2.morphologyEx(image, cv2.MORPH_ERODE, kernel)
+
+        # non_plateau_mask = cv2.compare(image, non_plateau_mask, cv2.CMP_GT)
+        cond = (image - non_plateau_mask) > remove_plateaus_delta
+        non_plateau_mask = cond.astype(np.uint8) * 255
+        mask = cv2.bitwise_and(mask, non_plateau_mask)
+
+    return mask
+
+
 # helper function for data visualization
 def denormalize(x):
     """Scale image to range 0..1 for correct plot"""
@@ -29,9 +47,11 @@ def visualize(title, **images):
     plt.show()
 
 
-def get_contours(mask_u8cn):
+def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR_EXTERNAL, inverse_mask=False):
     if len(mask_u8cn.shape) < 3:
         mask_u8cn = mask_u8cn[..., np.newaxis]
+    if inverse_mask:
+        mask_u8cn = 255 - mask_u8cn
 
     class_nb = mask_u8cn.shape[2] - 1 if mask_u8cn.shape[2] > 1 else 1
     contours_list = list()
@@ -41,9 +61,39 @@ def get_contours(mask_u8cn):
         ret, thresh = cv2.threshold(mask_u8cn[..., i], 127, 255, cv2.THRESH_BINARY)
 
         if cv2.__version__.startswith("3"):
-            im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+            im, contours, hierarchy = cv2.findContours(thresh, find_mode, find_alg)
         else:
-            contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+            contours, hierarchy = cv2.findContours(thresh, find_mode, find_alg)
+
+        if find_mode == cv2.RETR_TREE:
+            #
+            # To describe relation in hierarchy with type cv2.RETR_TREE
+            # hierarchy[0][i] = [next sibling, prev sibling, child, parent]
+            #
+            """
+            grand = [contours[i] for i in range(len(contours)) if
+                     hierarchy[0][i][2] >= 0 and hierarchy[0][i][3] < 0] # NO parents HAVE children
+            print('len(grand): ', len(grand))
+            holes = [contours[i] for i in range(len(contours)) if
+                     hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0] # HAVE parents NO children
+            print('len(holes): ', len(holes))
+            ones = [contours[i] for i in range(len(contours)) if
+                    hierarchy[0][i][2] < 0 and hierarchy[0][i][3] < 0] # NO parents NO children
+            print('len(ones): ', len(ones))
+            siblings = [contours[i] for i in range(len(contours)) if
+                        hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0 and
+                        (hierarchy[0][i][0] >= 0 or hierarchy[0][i][1] >= 0) ] # HAVE parents NO childs HAVE SIBLINGS
+            print('len(siblings): ', len(siblings))
+            """
+            # Pay attention - if objects are black which put on white background -
+            # each objects will be a child, and main parent - image rectangle
+            c1 = [contours[i] for i in range(len(contours)) if
+                  hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0]  # HAVE parents NO children
+            # Collect objects which are not main parent(image rect) i.e. HAVE parents and HAVE children -
+            # it could be big objects, on which the objects are smaller
+            c2 = [contours[i] for i in range(len(contours)) if
+                  hierarchy[0][i][2] >= 0 and hierarchy[0][i][3] >= 0]  # HAVE parents HAVE children
+            contours = c1 + c2
 
         contours_list.append(contours)
 

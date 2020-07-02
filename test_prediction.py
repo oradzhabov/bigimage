@@ -20,7 +20,7 @@ def find_nearest(array, value):
 def test_prediction(src_proj_dir):
     use_regression = True
     if use_regression:
-        solver = RegrSolver(cfg)
+        solver = RegrRocksSolver(cfg)
         provider = RegressionSegmentationSingleDataProvider
     else:
         solver = SegmSolver(cfg)
@@ -65,20 +65,23 @@ def test_prediction(src_proj_dir):
             use_batch_1=True
         )
         pr_mask[pr_mask < 0] = 0
-        pr_mask[pr_mask > 1] = 0
+        pr_mask[pr_mask > 1] = 1
 
         cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
     else:
         pr_mask = cv2.imread(os.path.join(src_proj_dir, predict_png), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
+        # Just to simulate shape of real generated data
+        if len(pr_mask.shape) == 2:
+            pr_mask = pr_mask[..., np.newaxis]
 
     postproc_getter = solver.get_post_getter()
     post_processor = postproc_getter()
     pr_mask = post_processor(pr_mask)
 
     img_temp = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
-    pr_cntrs_list = utilites.get_contours((pr_mask * 255).astype(np.uint8))
+    pr_cntrs_list = utilites.get_contours((pr_mask * 255).astype(np.uint8), find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR_TREE, inverse_mask=True)
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
-        cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 5)
+        cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 0)
 
     result_png = 'classes_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
     cv2.imwrite(os.path.join(src_proj_dir, result_png), img_temp[..., ::-1])
