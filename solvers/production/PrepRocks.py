@@ -192,7 +192,7 @@ def collect_statistics(instances, img=None, debug=False, orthophoto_filename='')
     return geometry_px
 
 
-def postprocess(prob_field):
+def postprocessing_prod_rock(prob_field):
     inst, _ = instance_segmentation(prob_field, debug=False)
     # ptob = ptob.astype(np.float32) / 255.0
     geometry_px = collect_statistics(inst)
@@ -231,10 +231,6 @@ def preprocess(ximg):
 
 def get_preprocessing_production_rock(_):
     return preprocess
-
-
-def get_postprocessing_prod_rock():
-    return postprocess
 
 
 def create_model_production_rock(conf, compile_model=True):

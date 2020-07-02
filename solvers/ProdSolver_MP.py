@@ -1,5 +1,9 @@
+import sys
+import numpy as np
 from . import ISolver
 from .production import create_model_production, get_preprocessing_production
+sys.path.append(sys.path[0] + "/..")
+from kutils import utilites
 
 
 class ProdSolver_MP(ISolver):
@@ -20,6 +24,9 @@ class ProdSolver_MP(ISolver):
 
     def get_prep_getter(self):
         return get_preprocessing_production
+
+    def get_contours(self, pr_mask):
+        return utilites.get_contours((pr_mask * 255).astype(np.uint8))
 
     def monitoring_metric(self):
         return 'val_f1-score', 'max'

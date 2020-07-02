@@ -1,14 +1,15 @@
 import os
 import json
 from .data import get_data, Dataloder
-from .train import read_sample, get_validation_augmentation
+from .train import read_sample
 import sys
 sys.path.append(sys.path[0] + "/..")
 from solvers import ISolver
 from data_provider import IDataProvider
+from augmentation import IAug
 
 
-def run(cfg, solver: ISolver, dataprovider: IDataProvider, show_random_items_nb=0):
+def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_random_items_nb=0):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         print('There are no such data folder {}'.format(cfg.data_dir))
@@ -21,7 +22,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, show_random_items_nb=
 
     test_dataset = dataprovider(data_reader, data_dir, ids_test, cfg,
                                 min_mask_ratio=cfg.min_mask_ratio,
-                                augmentation=get_validation_augmentation(cfg),
+                                augmentation=aug.get_validation_augmentation(cfg),
                                 prep_getter=solver.get_prep_getter())
     print('Dataset length: {}'.format(len(test_dataset)))
 
@@ -43,6 +44,11 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, show_random_items_nb=
         print("mean {}: {:.5}".format(metric_name, value))
         result_dict[metric_name] = value
 
+    #
+    # todo: till config contains complex objects/classes it cannot be stored into json.
+    #
+    """
     dir_to_save = os.path.dirname(weights_path)
     with open(os.path.join(dir_to_save, 'evaluation.json'), 'w', newline=os.linesep) as f:
         json.dump(result_dict, f)
+    """

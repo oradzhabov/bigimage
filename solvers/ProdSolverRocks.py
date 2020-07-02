@@ -1,5 +1,10 @@
+import sys
+import cv2
+import numpy as np
 from . import ISolver
-from .production import create_model_production_rock, get_preprocessing_production_rock, get_postprocessing_prod_rock
+from .production import create_model_production_rock, get_preprocessing_production_rock, postprocessing_prod_rock
+sys.path.append(sys.path[0] + "/..")
+from kutils import utilites
 
 
 class ProdSolverRocks(ISolver):
@@ -21,8 +26,11 @@ class ProdSolverRocks(ISolver):
     def get_prep_getter(self):
         return get_preprocessing_production_rock
 
-    def get_post_getter(self):
-        return get_postprocessing_prod_rock
+    def get_contours(self, pr_mask):
+        pr_mask = postprocessing_prod_rock(pr_mask)
+
+        return utilites.get_contours((pr_mask * 255).astype(np.uint8), find_alg=cv2.CHAIN_APPROX_SIMPLE,
+                                     find_mode=cv2.RETR_TREE, inverse_mask=True)
 
     def monitoring_metric(self):
         return 'val_f1-score', 'max'

@@ -31,11 +31,8 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
         for i in ids:
             image, gt_mask = self.__getitem__(i)
             image = np.expand_dims(image, axis=0)
-            # pr_mask = model.predict(image, verbose=0).round()  # todo: round() ?
             pr_mask = solver.model.predict(image, verbose=0)[0]
-            pr_mask[pr_mask < 0] = 0
-            pr_mask[pr_mask > 1] = 0
-            # pr_mask = np.where(pr_mask > 0.5, 1.0, 0.0)
+            pr_mask = solver.post_predict(pr_mask)
             scores = solver.model.evaluate(image, np.expand_dims(gt_mask, axis=0), batch_size=1, verbose=0)
 
             # gt_cntrs = utilites.get_contours((gt_mask * 255).astype(np.uint8))
@@ -70,20 +67,6 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
                 Masked_Image=((img_temp.astype(np.float32) + np.dstack((pr_mask, pr_mask*0, pr_mask*0)).astype(np.float32))//2).astype(np.uint8),
                 Mask=pr_mask
             )
-
-
-    @staticmethod
-    def trim_by_01(pr_mask):
-        pr_mask[pr_mask < 0] = 0
-        pr_mask[pr_mask > 1] = 0
-        return pr_mask
-
-    @staticmethod
-    def trim_by_01_getter():
-        return RegressionSegmentationDataProvider.trim_by_01
-
-    def get_post_getter(self):
-        return RegressionSegmentationDataProvider.trim_by_01_getter
 
 
 class RegressionSegmentationSingleDataProvider(RegressionSegmentationDataProvider):

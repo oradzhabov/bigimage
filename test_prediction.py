@@ -6,9 +6,7 @@ from kmodel import data
 from config import cfg
 from kmodel.train import read_sample
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
-from solvers import *
 from kutils.VIAConverter import *
-from data_provider import *
 
 
 def find_nearest(array, value):
@@ -18,13 +16,8 @@ def find_nearest(array, value):
 
 
 def test_prediction(src_proj_dir):
-    use_regression = False
-    if use_regression:
-        solver = RegrSolver(cfg)
-        provider = RegressionSegmentationSingleDataProvider
-    else:
-        solver = SegmSolver(cfg)
-        provider = SemanticSegmentationSingleDataProvider
+    solver = cfg.solver(cfg)
+    provider = cfg.provider_single
 
     dest_img_fname = os.path.join(src_proj_dir,
                                   'tmp_mppx{:.2f}.png'.format(cfg.mppx))
@@ -41,9 +34,13 @@ def test_prediction(src_proj_dir):
                        prep_getter=solver.get_prep_getter())
 
     model = None
-    model, weights_path, _ = solver.build(compile_model=False)
-    if model is None:
-        exit(-1)
+    # If enable following flag it will avoid long prediction and will try to read already created result.
+    # Useful for debugging
+    skip_prediction = False
+    if not skip_prediction:
+        model, weights_path, _ = solver.build(compile_model=False)
+        if model is None:
+            exit(-1)
 
     image, _ = dataset[0]
     image_fname = dataset.get_fname(0)
@@ -64,18 +61,20 @@ def test_prediction(src_proj_dir):
             ),
             use_batch_1=True
         )
+        pr_mask = solver.post_predict(pr_mask)
+
         cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
     else:
         pr_mask = cv2.imread(os.path.join(src_proj_dir, predict_png), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
+        # Just to simulate shape of real generated data
+        if len(pr_mask.shape) == 2:
+            pr_mask = pr_mask[..., np.newaxis]
 
-    postproc_getter = solver.get_post_getter()
-    post_processor = postproc_getter()
-    pr_mask = post_processor(pr_mask)
+    pr_cntrs_list = solver.get_contours(pr_mask)
 
     img_temp = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
-    pr_cntrs_list = utilites.get_contours((pr_mask * 255).astype(np.uint8))
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
-        cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 5)
+        cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 0)
 
     result_png = 'classes_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
     cv2.imwrite(os.path.join(src_proj_dir, result_png), img_temp[..., ::-1])
@@ -105,7 +104,7 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT. SMALL
-    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT. SMALL
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT

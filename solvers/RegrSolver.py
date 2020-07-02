@@ -16,5 +16,11 @@ class RegrSolver(SegmSolver):
         self.total_loss = 'mse'
         self.metrics = ['mae']
 
+    def post_predict(self, pr_result):
+        return pr_result
+
+    def get_contours(self, pr_mask):
+        raise NotImplemented
+
     def monitoring_metric(self):
         return 'val_mean_absolute_error', 'min'

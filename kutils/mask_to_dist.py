@@ -5,6 +5,8 @@ from tqdm import tqdm
 
 def mask_to_dist(img_u8c1):
 
+    # todo: maybe its will be better to use general get_contours() ?
+
     find_mode = cv2.RETR_CCOMP  # Contour retrieval mode
     find_alg = cv2.CHAIN_APPROX_SIMPLE  # Contour approximation method
     if cv2.__version__.startswith("3"):

@@ -1,7 +1,11 @@
 import os
+import sys
+import numpy as np
 import segmentation_models as sm
 import keras
 from . import ISolver
+sys.path.append(sys.path[0] + "/..")
+from kutils import utilites
 
 
 class SegmSolver(ISolver):
@@ -82,6 +86,12 @@ class SegmSolver(ISolver):
 
     def get_prep_getter(self):
         return sm.get_preprocessing
+
+    def post_predict(self, pr_result):
+        return np.where(pr_result > 0.5, 1.0, 0.0)
+
+    def get_contours(self, pr_mask):
+        return utilites.get_contours((pr_mask * 255).astype(np.uint8))
 
     def monitoring_metric(self):
         return 'val_f1-score', 'max'

@@ -182,9 +182,8 @@ class SemanticSegmentationDataProvider(IDataProvider):
         for i in ids:
             image, gt_mask = self.__getitem__(i)
             image = np.expand_dims(image, axis=0)
-            # pr_mask = model.predict(image, verbose=0).round()  # todo: round() ?
             pr_mask = solver.model.predict(image, verbose=0)[0]
-            pr_mask = np.where(pr_mask > 0.5, 1.0, 0.0)
+            pr_mask = solver.post_predict(pr_mask)
             scores = solver.model.evaluate(image, np.expand_dims(gt_mask, axis=0), batch_size=1, verbose=0)
 
             gt_cntrs = utilites.get_contours((gt_mask * 255).astype(np.uint8))

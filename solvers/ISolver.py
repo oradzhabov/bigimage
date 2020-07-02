@@ -16,24 +16,20 @@ class ISolver(metaclass=ABCMeta):
         random.seed(self.conf.seed)
         np.random.seed(self.conf.seed)
 
-    @staticmethod
-    def round(pr_mask):
-        return np.where(pr_mask > 0.5, 1.0, 0.0)
-
-    @staticmethod
-    def round_getter():
-        return ISolver.round
-
     @abstractmethod
     def _create(self, compile_model=True, **kwargs):
         raise NotImplementedError
+
+    def post_predict(self, pr_result):
+        raise pr_result
 
     @abstractmethod
     def get_prep_getter(self):
         raise NotImplementedError
 
-    def get_post_getter(self):
-        return ISolver.round_getter
+    @abstractmethod
+    def get_contours(self, pr_mask):
+        raise NotImplementedError
 
     @abstractmethod
     def monitoring_metric(self):
