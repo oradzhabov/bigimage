@@ -2,6 +2,8 @@ import os
 import sys
 import numpy as np
 import cv2
+from keras import backend as K
+import gc
 sys.path.append(sys.path[0] + "/..")
 from kutils import PrepareData
 from kmodel.train import read_sample
@@ -68,6 +70,9 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, use_batch_1=True)
             ),
             use_batch_1=use_batch_1
         )
+        K.clear_session()
+        gc.collect()
+
         pr_mask = solver.post_predict(pr_mask)
 
         cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
