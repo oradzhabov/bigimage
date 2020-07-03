@@ -1,7 +1,8 @@
 import os
 from kmodel.data import get_data, Dataloder
 from config import cfg
-from kmodel.train import read_sample, get_training_augmentation
+from kmodel.train import get_training_augmentation
+from kutils.read_sample import read_sample
 import time
 
 

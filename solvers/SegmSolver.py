@@ -88,7 +88,16 @@ class SegmSolver(ISolver):
         return sm.get_preprocessing
 
     def post_predict(self, pr_result):
-        return np.where(pr_result > 0.5, 1.0, 0.0)
+        # return np.where(pr_result > 0.5, 1.0, 0.0)
+        #
+        # Left maximum component
+        mg = np.meshgrid(np.arange(pr_result.shape[1]), np.arange(pr_result.shape[0]))
+        vx = mg[0].reshape(-1)
+        vy = mg[1].reshape(-1)
+        vz = np.argmax(pr_result, axis=2).reshape(-1)
+        pr_result *= 0
+        pr_result[vy, vx, vz] = 1
+        return pr_result.astype(np.bool)
 
     def get_contours(self, pr_mask):
         return utilites.get_contours((pr_mask * 255).astype(np.uint8))

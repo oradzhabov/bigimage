@@ -6,7 +6,7 @@ from keras import backend as K
 import gc
 sys.path.append(sys.path[0] + "/..")
 from kutils import PrepareData
-from kmodel.train import read_sample
+from kutils.read_sample import read_sample
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
 
 

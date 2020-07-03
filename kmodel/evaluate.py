@@ -1,12 +1,12 @@
 import os
 import json
 from .data import get_data, Dataloder
-from .train import read_sample
 import sys
 sys.path.append(sys.path[0] + "/..")
 from solvers import ISolver
 from data_provider import IDataProvider
 from augmentation import IAug
+from kutils.read_sample import read_sample
 
 
 def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_random_items_nb=0):

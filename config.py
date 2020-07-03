@@ -1,4 +1,4 @@
-from . import definitions
+from definitions import BIM_ROOT_DIR
 from kutils.EasyDict import EasyDict
 from solvers import *
 from data_provider import *
@@ -44,7 +44,7 @@ cfg.batch_size = 2
 cfg.minimize_train_aug = False
 cfg.lr = 0.0001
 cfg.epochs = 4000
-cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(definitions.BIM_ROOT_DIR,
+cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,
                                                                            cfg.img_wh,
