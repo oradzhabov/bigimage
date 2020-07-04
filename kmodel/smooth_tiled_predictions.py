@@ -11,6 +11,7 @@
 # ros: input shape fixed
 
 
+import os
 import numpy as np
 import scipy.signal
 from tqdm import tqdm
@@ -146,8 +147,9 @@ def _rotate_mirror_undo(im_mirrs):
     return np.mean(origs, axis=0)
 
 
-def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_func, use_batch_1):
+def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size):
     """
+    @param memmap_batch_size: Note unet(efficientb3) could process 6 x 1024_wh by 4GB GPU
     Create tiled overlapping patches.
     Returns:
         5D numpy array of shape = (
@@ -165,44 +167,50 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     step = int(window_size/subdivisions)
     pady_len = padded_img.shape[0]
     padx_len = padded_img.shape[1]
-    subdivs = []
 
-    for i in range(0, pady_len-window_size+1, step):
-        subdivs.append([])
-        for j in range(0, padx_len-window_size+1, step):
-            patch = padded_img[i:i+window_size, j:j+window_size, :]
-            subdivs[-1].append(patch)
+    # Crop subdivs into file
+    subdivs_fname = 'subdivs.temp'
+    if os.path.isfile(subdivs_fname):
+        os.remove(subdivs_fname)
+    dtype = padded_img.dtype
+    y_range = np.arange(0, pady_len-window_size+1, step)
+    x_range = np.arange(0, padx_len-window_size+1, step)
+    shape = (len(y_range), len(x_range), window_size, window_size, padded_img.shape[2])
+    subdivs0 = np.memmap(subdivs_fname, dtype=dtype, mode='w+', shape=shape)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            subdivs0[i][j] = padded_img[y_range[i]:y_range[i]+window_size, x_range[j]:x_range[j]+window_size, :]
+    del subdivs0  # close file
+    a, b, c, d, e = shape
+    subdivs = np.memmap(subdivs_fname, dtype=dtype, mode='r', shape=(a * b, c, d, e))
 
-    # Here, `gc.collect()` clears RAM between operations.
-    # It should run faster if they are removed, if enough memory is available.
-    gc.collect()
-    subdivs = np.array(subdivs)
-    gc.collect()
-    a, b, c, d, e = subdivs.shape
-    subdivs = subdivs.reshape(a * b, c, d, e)
-    gc.collect()
+    if memmap_batch_size > 0:
+        subdivs_r_fname = 'subdivs_r.temp'
+        if os.path.isfile(subdivs_r_fname):
+            os.remove(subdivs_r_fname)
 
-    if use_batch_1:
-        # Allow to process huge-size images by per-sample batch processing
         subdivs_r = None
-        for i in range(len(subdivs)):
-            pred_1 = pred_func(subdivs[i, ...][np.newaxis, ...])
+        for i in range(0, len(subdivs), memmap_batch_size):
+            pred_1 = pred_func(subdivs[i:i+memmap_batch_size])
             if subdivs_r is None:
-                subdivs_r = np.array(pred_1)
-            else:
-                subdivs_r = np.append(subdivs_r, pred_1, axis=0)
+                subdivs_r = np.memmap(subdivs_r_fname, dtype=pred_1.dtype, mode='w+', shape=(len(subdivs), *pred_1.shape[1:]))
+            subdivs_r[i:i+memmap_batch_size] = pred_1[0:memmap_batch_size]
+        del subdivs  # close file
         subdivs = subdivs_r
     else:
-        subdivs = pred_func(subdivs)
+        prediction = pred_func(subdivs)
+        del subdivs  # close file
+        subdivs = prediction
 
-    gc.collect()
-    subdivs = np.array([patch * WINDOW_SPLINE_2D for patch in subdivs])
-    gc.collect()
+    WINDOW_SPLINE_2D = WINDOW_SPLINE_2D.astype(subdivs.dtype)
+    # Update results on the disk. Thats why here is loop instead of direct operation(which lost ref to memmap)
+    for i in range(len(subdivs)):
+        subdivs[i] = subdivs[i] * WINDOW_SPLINE_2D
 
     # Such 5D array:
     subdivs = subdivs.reshape(a, b, c, d, nb_classes)
-    gc.collect()
 
+    # Since it could be object of class np.memmap, do not forget to delete it after utilizing
     return subdivs
 
 
@@ -214,7 +222,7 @@ def _recreate_from_subdivs(subdivs, window_size, subdivisions, padded_out_shape)
     pady_len = padded_out_shape[0]
     padx_len = padded_out_shape[1]
 
-    y = np.zeros(padded_out_shape)
+    y = np.zeros(padded_out_shape, dtype=subdivs.dtype)
 
     a = 0
     for i in range(0, pady_len-window_size+1, step):
@@ -250,7 +258,7 @@ def pads_generator_undo():
     x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=1)[:, ::-1]
 
 
-def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func, use_batch_1=False):
+def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size=0):
     """
     Apply the `pred_func` function to square patches of the image, and overlap
     the predictions to merge them smoothly.
@@ -285,10 +293,13 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     padded_results = None
     for pad in tqdm(pads_generator(pad), total=8):
         # For every rotation:
-        sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, use_batch_1)
+        sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size)
         one_padded_result = _recreate_from_subdivs(
             sd, window_size, subdivisions,
             padded_out_shape=list(pad.shape[:-1])+[nb_classes])
+
+        # Since this object could be np.memmap, close file by deleting them
+        del sd
 
         next(undo_gen)
         one_padded_result_reconstructed = undo_gen.send(one_padded_result)
@@ -296,8 +307,6 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
             padded_results = one_padded_result_reconstructed
         else:
             padded_results += one_padded_result_reconstructed
-
-        gc.collect()
 
     # Merge after rotations:
     padded_results = padded_results / 8.0

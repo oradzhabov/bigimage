@@ -10,10 +10,10 @@ from tools.predict_contours import predict_contours
 def test_prediction(src_proj_dir):
     # If enable following flag it will avoid long prediction and will try to read already created result.
     # Useful for debugging
-    skip_prediction = True
-    use_batch_1 = True
+    skip_prediction = False
+    memmap_batch_size = 6
 
-    err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, use_batch_1)
+    err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size)
     if err_code != 0:
         return -1
 

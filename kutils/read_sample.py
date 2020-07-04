@@ -1,5 +1,8 @@
 import numpy as np
 import cv2
+import sys
+sys.path.append(sys.path[0] + "/..")
+from kmodel.data import read_image
 
 
 def read_sample(data_paths, mask_path):
@@ -7,13 +10,15 @@ def read_sample(data_paths, mask_path):
     img_path, himg_path = data_paths
 
     # read data
-    img = cv2.imread(img_path)
+    img = read_image(img_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     if himg_path is not None:
-        himg = cv2.imread(himg_path)
+        himg = read_image(himg_path)
         if len(himg.shape) > 2:
             himg = himg[..., 0][..., np.newaxis]
+        if len(himg.shape) == 2:
+            himg = himg[..., np.newaxis]
 
         if himg.shape[:2] != img.shape[:2]:
             print('WARNING: Height map has not matched image resolution. To match shape it was scaled.')
@@ -23,6 +28,6 @@ def read_sample(data_paths, mask_path):
 
     mask = None
     if mask_path is not None:
-        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE).squeeze()
+        mask = read_image(mask_path).squeeze()
 
     return img, mask

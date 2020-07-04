@@ -16,14 +16,14 @@ def find_nearest(array, value):
     return array[idx]
 
 
-def predict_contours(cfg, src_proj_dir, skip_prediction=False, use_batch_1=True):
+def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size=0):
     """
     :param cfg:
     :param src_proj_dir:
     :param skip_prediction: If True following flag it will avoid long prediction and will try to read already
     created result. Useful for debugging.
-    :param use_batch_1: If True, stitching will process patch by patch and guaranty that GPU RAM will be enough for
-    process any number of patches(any size of image). From other side it increases the processing time.
+    :param memmap_batch_size: If > 0, stitching will process with np.memmap. Value 6 is good for 4 GB GPU as for
+    efficientb5(512_wh) as for efficcientb3(1024_wh). So if GPU will be 16 GB GPU, could be increased to 6**2 = 36
     :return:
     """
     solver = cfg.solver(cfg)
@@ -54,12 +54,13 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, use_batch_1=True)
 
     image, _ = dataset[0]
     predict_png = 'probability_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
-    # IMPORTANT:
-    # * Do not use size bigger than actual image size because blending(with generated border) will suppress actual
-    # prediction result.
-    window_size = int(find_nearest([64, 128, 256, 512, 1024], min(image.shape[0], image.shape[1])))
-    print('Window size in smoothing predicting: {}'.format(window_size))
     if model is not None:
+        # IMPORTANT:
+        # * Do not use size bigger than actual image size because blending(with generated border) will suppress actual
+        # prediction result.
+        window_size = int(find_nearest([64, 128, 256, 512, 1024], min(image.shape[0], image.shape[1])))
+        print('Window size in smoothing predicting: {}'.format(window_size))
+
         pr_mask = predict_img_with_smooth_windowing(
             image,
             window_size=window_size,
@@ -68,7 +69,7 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, use_batch_1=True)
             pred_func=(
                 lambda img_batch_subdiv: model.predict(img_batch_subdiv)
             ),
-            use_batch_1=use_batch_1
+            memmap_batch_size=memmap_batch_size
         )
         K.clear_session()
         gc.collect()
