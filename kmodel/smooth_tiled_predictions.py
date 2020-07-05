@@ -147,7 +147,7 @@ def _rotate_mirror_undo(im_mirrs):
     return np.mean(origs, axis=0)
 
 
-def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size):
+def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir):
     """
     @param memmap_batch_size: Note unet(efficientb3) could process 6 x 1024_wh by 4GB GPU
     Create tiled overlapping patches.
@@ -169,7 +169,7 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     padx_len = padded_img.shape[1]
 
     # Crop subdivs into file
-    subdivs_fname = 'subdivs.temp'
+    subdivs_fname = os.path.join(temp_dir, 'subdivs.tmp')
     if os.path.isfile(subdivs_fname):
         os.remove(subdivs_fname)
     dtype = padded_img.dtype
@@ -185,7 +185,7 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     subdivs = np.memmap(subdivs_fname, dtype=dtype, mode='r', shape=(a * b, c, d, e))
 
     if memmap_batch_size > 0:
-        subdivs_r_fname = 'subdivs_r.temp'
+        subdivs_r_fname = os.path.join(temp_dir, 'subdivs_r.tmp')
         if os.path.isfile(subdivs_r_fname):
             os.remove(subdivs_r_fname)
 
@@ -259,7 +259,8 @@ def pads_generator_undo():
     x = yield; yield np.rot90(x, axes=(0, 1), k=1)[:, ::-1]
 
 
-def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size=0):
+def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func,
+                                      memmap_batch_size=0, temp_dir='./'):
     """
     Apply the `pred_func` function to square patches of the image, and overlap
     the predictions to merge them smoothly.
@@ -294,7 +295,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     padded_results = None
     for pad in tqdm(pads_generator(pad), total=8):
         # For every rotation:
-        sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size)
+        sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir)
         one_padded_result = _recreate_from_subdivs(
             sd, window_size, subdivisions,
             padded_out_shape=list(pad.shape[:-1])+[nb_classes])

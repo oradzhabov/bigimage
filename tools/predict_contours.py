@@ -69,7 +69,8 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
             pred_func=(
                 lambda img_batch_subdiv: model.predict(img_batch_subdiv)
             ),
-            memmap_batch_size=memmap_batch_size
+            memmap_batch_size=memmap_batch_size,
+            temp_dir=src_proj_dir
         )
         K.clear_session()
         gc.collect()
