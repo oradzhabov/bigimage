@@ -232,30 +232,31 @@ def _recreate_from_subdivs(subdivs, window_size, subdivisions, padded_out_shape)
             y[i:i+window_size, j:j+window_size] = y[i:i+window_size, j:j+window_size] + windowed_patch
             b += 1
         a += 1
-    return y / (subdivisions ** 2)
+    y /= (subdivisions ** 2)
+    return y
 
 
 def pads_generator(im):
-    yield np.array(im)
-    yield np.rot90(np.array(im), axes=(0, 1), k=1)
-    yield np.rot90(np.array(im), axes=(0, 1), k=2)
-    yield np.rot90(np.array(im), axes=(0, 1), k=3)
+    yield im
+    yield np.rot90(im, axes=(0, 1), k=1)
+    yield np.rot90(im, axes=(0, 1), k=2)
+    yield np.rot90(im, axes=(0, 1), k=3)
 
-    yield np.array(np.array(im)[:, ::-1])
-    yield np.rot90(np.array(np.array(np.array(im)[:, ::-1])), axes=(0, 1), k=1)
-    yield np.rot90(np.array(np.array(np.array(im)[:, ::-1])), axes=(0, 1), k=2)
-    yield np.rot90(np.array(np.array(np.array(im)[:, ::-1])), axes=(0, 1), k=3)
+    yield im[:, ::-1]
+    yield np.rot90(im[:, ::-1], axes=(0, 1), k=1)
+    yield np.rot90(im[:, ::-1], axes=(0, 1), k=2)
+    yield np.rot90(im[:, ::-1], axes=(0, 1), k=3)
 
 
 def pads_generator_undo():
-    x = yield; yield np.array(x)
-    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=3)
-    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=2)
-    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=1)
-    x = yield; yield np.array(x)[:, ::-1]
-    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=3)[:, ::-1]
-    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=2)[:, ::-1]
-    x = yield; yield np.rot90(np.array(x), axes=(0, 1), k=1)[:, ::-1]
+    x = yield; yield x
+    x = yield; yield np.rot90(x, axes=(0, 1), k=3)
+    x = yield; yield np.rot90(x, axes=(0, 1), k=2)
+    x = yield; yield np.rot90(x, axes=(0, 1), k=1)
+    x = yield; yield x[:, ::-1]
+    x = yield; yield np.rot90(x, axes=(0, 1), k=3)[:, ::-1]
+    x = yield; yield np.rot90(x, axes=(0, 1), k=2)[:, ::-1]
+    x = yield; yield np.rot90(x, axes=(0, 1), k=1)[:, ::-1]
 
 
 def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size=0):
