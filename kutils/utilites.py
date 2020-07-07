@@ -7,6 +7,7 @@ def nms(image, k=13, remove_plateaus_delta=-1.0):
     # https://stackoverflow.com/a/21023493/5630599
     #
     kernel = np.ones((k, k))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (k, k))
     mask = cv2.morphologyEx(image, cv2.MORPH_DILATE, kernel)
     mask = cv2.compare(image, mask, cv2.CMP_GE)
     if remove_plateaus_delta >= 0.0:
@@ -19,6 +20,53 @@ def nms(image, k=13, remove_plateaus_delta=-1.0):
         mask = cv2.bitwise_and(mask, non_plateau_mask)
 
     return mask
+
+
+def zero_crossing(image):
+    # Detect zero-crossing
+    # https://stackoverflow.com/a/48440931/
+
+    # kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+    kernel = np.ones((3, 3))
+    l_o_g = cv2.Laplacian(image, cv2.CV_32F)
+    min_l_o_g = cv2.morphologyEx(l_o_g, cv2.MORPH_ERODE, kernel)
+    max_l_o_g = cv2.morphologyEx(l_o_g, cv2.MORPH_DILATE, kernel)
+    zero_cross = np.logical_or(np.logical_and(min_l_o_g < 0,  l_o_g > 0), np.logical_and(max_l_o_g > 0, l_o_g < 0))
+
+    return zero_cross
+
+
+def grad_magn(gray, fx=None, fy=None, ddepth=cv2.CV_32F):
+    scale = 1
+    delta = 0
+    if True:
+        # Here said(see Notes) that cv2.Scharr better than cv2.Sobel
+        # https://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/sobel_derivatives/sobel_derivatives.html#formulation
+        if fx is None:
+            grad_x = cv2.Scharr(gray, ddepth, 1, 0, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+        else:
+            grad_x = cv2.Scharr(fx, ddepth, 1, 0, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+        if fy is None:
+            grad_y = cv2.Scharr(gray, ddepth, 0, 1, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+        else:
+            grad_y = cv2.Scharr(fy, ddepth, 0, 1, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+
+        grad_x /= 32.0
+        grad_y /= 32.0
+        grad = np.sqrt(grad_x ** 2 + grad_y ** 2)
+        return grad, grad_x, grad_y
+
+    raise NotImplementedError
+
+    grad_x = cv2.Sobel(gray, ddepth, 1, 0, ksize=3, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+    grad_y = cv2.Sobel(gray, ddepth, 0, 1, ksize=3, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+
+    # Because Sobel uses kernel with sum of weights 2*4.
+    # So result should be divided by 8
+    grad_x /= 8.0
+    grad_y /= 8.0
+    grad = np.sqrt(grad_x**2 + grad_y**2)
+    return grad, grad_x, grad_y
 
 
 # helper function for data visualization

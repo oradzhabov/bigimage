@@ -8,6 +8,37 @@ from kutils import utilites
 
 
 def instance_segmentation(prob_field, debug=False):
+    # ANN do not trends to smooth result
+    # Blur probability to obtain smoothed field.
+    prob_field = cv2.blur(prob_field, (3, 3))
+    p = prob_field
+
+    # Find gradient vector field
+    g, dx, dy = utilites.grad_magn(prob_field)
+
+    # Find divergence of gradient vector field
+    diva, divx, divy = utilites.grad_magn(None, dx, dy, ddepth=cv2.CV_32F)
+    pdiv = cv2.addWeighted(divx, 0.5, divy, 0.5, 0)
+    bgr = np.dstack((p, p, p))
+
+    mask1 = pdiv <= -0.001  # good for little rocks but not enough to stitch big rocks
+    mask2 = np.logical_and(g < 0.1, p > 0.25)  # for big rocks. 0.1 and 0.25
+    mask3 = np.logical_and(mask1, p > 0.095)  # 0.095
+
+    if debug:
+        bgr[mask1] = [255, 0, 0]
+        bgr[mask2] = [0, 255, 0]
+        bgr[mask3] = [0, 0, 255]
+        cv2.imwrite('bgr.png', bgr)
+    #
+    img = np.zeros(shape=prob_field.shape, dtype=np.uint8)
+    img[mask2] = 255
+    img[mask3] = 255
+
+    return img, None
+
+
+def instance_segmentation_old(prob_field, debug=False):
     """
     prob_field: shape:[h,w], dtype: float32, range[0..1]
     """
