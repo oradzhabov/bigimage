@@ -80,7 +80,10 @@ def get_raster_info(img_fname):
     # Obtain length UNITS
     prj = gtif.GetProjection()
     srs = osr.SpatialReference(wkt=prj)
-    unit = srs.GetAttrValue('unit')
+    unit = srs.GetAttrValue('unit')  # todo: could return None. In that way behavior is not correct
+    if unit is None:
+        print('ERROR: Try to read raster info from file {} which does not contain these data'.format(img_fname))
+        raise NotImplementedError
     # print('GeoTIFF length units: {}'.format(unit))
     scale_to_meter = 1.0
     if unit != 'metre':
@@ -159,7 +162,7 @@ def build_from_project(dataset_path, dst_mppx, dest_img_fname, dest_himg_fname):
     return True
 
 
-def prepare_dataset(rootdir, destdir, dst_mppx, data_subset):
+def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
     print('Prepare dataset...')
 
     # Create destination folders
@@ -198,6 +201,11 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset):
             dataset_path = os.path.join(customer_folder, dataset)
             uniq_fname = customer + '_' + dataset  # ATTENTION: do not use DOTS '.' in filename
             uniq_fname = uniq_fname.replace('.', '_')
+
+            if img_fnames is not None:
+                if uniq_fname + '.png' not in img_fnames:
+                    continue
+
             print('Iterate dataset {0}'.format(dataset_path))
             #
             dest_img_fname = os.path.join(dest_img_folder, uniq_fname + '.png')

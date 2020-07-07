@@ -45,6 +45,17 @@ def create_json_item(img_fname, cntrs_list, region_attr_mapper):
     return {item_key: item_value}
 
 
+def get_imgs(json_filename):
+    result = list()
+    with open(json_filename, 'r') as f:
+        filecontent = f.read()
+        content = json.loads(filecontent)
+        for parameters in content.values():
+            img_filename = os.path.join(os.path.dirname(json_filename), parameters['filename'].rstrip())
+            result.append(os.path.basename(img_filename))
+    return result
+
+
 def convert_to_images(json_filename, json_mppx, region_attr_mapper, mask_postprocess=None, preview=False):
     with open(json_filename, 'r') as f:
         filecontent = f.read()
@@ -100,6 +111,7 @@ def convert_to_images(json_filename, json_mppx, region_attr_mapper, mask_postpro
                 cntrs_nb = cntrs_nb + len(v)
             #
             if mask_postprocess is not None:
+                print('Extra processing mask file {}'.format(out_filename))
                 img = mask_postprocess(img)
 
             cv2.imwrite(out_filename, img)
