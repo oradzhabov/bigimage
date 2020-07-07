@@ -303,6 +303,8 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
         # Since this object could be np.memmap, close file by deleting them
         del sd
 
+        gc.collect()
+
         next(undo_gen)
         one_padded_result_reconstructed = undo_gen.send(one_padded_result)
         if padded_results is None:

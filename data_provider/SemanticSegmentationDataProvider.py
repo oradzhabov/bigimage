@@ -53,6 +53,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         self.src_data = dict({k: list() for k in self.src_folders})
         self.src_mask = list()
 
+        print('Collect samples...')
         for fn in tqdm(ids):
             is_data_fully_exist = True
             subitem = dict({k: list() for k in self.src_folders})

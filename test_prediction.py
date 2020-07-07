@@ -55,12 +55,13 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3554'  # big size
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dev-site/3637'  # huge size(4GB-GPU impossible)
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT. SMALL
-    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT. SMALL
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12189'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7969'
+    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7128'  # big rocks
 
     exit(test_prediction(proj_dir))
