@@ -100,6 +100,9 @@ def convert_to_images(json_filename, json_mppx, region_attr_mapper, mask_postpro
                         contours_map[class_ind].append(np.array(np_arr))
 
             img_shape, img_mppx = get_raster_info(img_filename)
+            if img_shape is None:
+                print('ERROR: File {} does not have raster info'.format(img_filename))
+
             contours_map = {k: [np.multiply(c, json_mppx / img_mppx).astype(np.int32) for c in v]
                             for k, v in contours_map.items()}
 

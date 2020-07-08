@@ -83,7 +83,7 @@ def get_raster_info(img_fname):
     unit = srs.GetAttrValue('unit')  # todo: could return None. In that way behavior is not correct
     if unit is None:
         print('ERROR: Try to read raster info from file {} which does not contain these data'.format(img_fname))
-        raise NotImplementedError
+        return None, None
     # print('GeoTIFF length units: {}'.format(unit))
     scale_to_meter = 1.0
     if unit != 'metre':
@@ -103,6 +103,10 @@ def create_orthophoto(dataset_path, dst_mppx, dest_img_fname):
 
     if not os.path.isfile(dest_img_fname):
         src_img_shape, src_mppx = get_raster_info(src_img_fname)
+        if src_img_shape is None:
+            print('ERROR: Cannot create orthophoto because file {} does not have raster info'.format(src_img_fname))
+            return False, recreated
+
         rescale = src_mppx / dst_mppx
         gdal.Translate(dest_img_fname, src_img_fname,
                        options="-outsize {} {} -ot Byte -r bilinear".
@@ -155,6 +159,10 @@ def build_from_project(dataset_path, dst_mppx, dest_img_fname, dest_himg_fname):
     if dest_himg_fname is not None:
         if not os.path.isfile(dest_himg_fname) or bgr_recreated:
             dst_img_shape, _ = get_raster_info(dest_img_fname)
+            if dst_img_shape is None:
+                print('ERROR: Cannot create heightmap because file {} does not have raster info'.format(dest_img_fname))
+                return False
+
             is_success = create_heightmap(dataset_path, dst_img_shape, dest_himg_fname)
             if not is_success:
                 return False
@@ -238,6 +246,10 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
                     json_data = json.load(f)
                     json_contours = json_data['contours']
                     dst_img_shape, dst_f_mppx = get_raster_info(dest_img_fname)
+                    if dst_img_shape is None:
+                        print('ERROR: File {} does not have raster info'.format(dest_img_fname))
+                        continue
+
                     mask = np.zeros(shape=(dst_img_shape[0], dst_img_shape[1], 1), dtype=np.uint8)
 
                     for json_contour in json_contours:
