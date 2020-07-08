@@ -10,7 +10,8 @@ class RocksAug(IAug):
 
             alb.HorizontalFlip(p=0.5),
             alb.VerticalFlip(p=0.5),
-            alb.RandomRotate90(always_apply=False, p=0.5),
+            # Equal probability to obtain one from 4 possible position: always_apply=True
+            alb.RandomRotate90(always_apply=True),
 
             # apply shadow augmentation before any color augmentation
             RandomShadow2(shadow_roi=(0, 0, 1, 1), shadow_dimension=3, always_apply=True),

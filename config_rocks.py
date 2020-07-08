@@ -13,7 +13,7 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs'
 cfg.mppx = 0.01
 cfg.data_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs.Result.4/2020-05-24a/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'rocks_1stPart_clean-dev-site_3611_3638'  # 'rocks_1stPart_clean-dev-site_3611' 'rocks_1stPart_clean'
+cfg.data_subset = 'rocks_1stPart_clean-dev-site_3611_3638_dev-oktai_7128'  # 'rocks_1stPart_clean-dev-site_3611' 'rocks_1stPart_clean'
 cfg.mask_postprocess = mask_to_dist  # mask needs to be mapped from binary to normalized distance
 # ==================================================================================================================== #
 #                                                Sample Space Block
