@@ -25,7 +25,10 @@ cfg.cls_nb = (len(cfg.classes['class']) + 1 if len(cfg.classes['class']) > 1 els
 # cannot set 0 for rocks, because there are lot of unlabeled areas with real rocks(all rocks cannot be tagged)
 cfg.min_mask_ratio = 0.1
 cfg.img_wh = 256
-cfg.img_wh_crop = 512  # to minimize 'fake' area during scale down aug, crop it with bigger size than img_wh
+# To minimize 'fake' area during scale down aug, crop it with bigger size than img_wh
+# Note: if crop with 1024 and img_wh 512, it will degrade validation metrics because in fact not all rocks labeled and
+# lot of non-labeled rocks will disturb ANN (data conflict)
+cfg.img_wh_crop = 512
 cfg.solver = RegrRocksSolver
 cfg.provider = RegressionSegmentationDataProvider
 cfg.provider_single = RegressionSegmentationSingleDataProvider

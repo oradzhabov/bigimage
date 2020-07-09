@@ -1,5 +1,5 @@
 from kmodel import evaluate
-from config import cfg
+from config_rocks import cfg
 
 
 if __name__ == "__main__":
