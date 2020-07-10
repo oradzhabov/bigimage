@@ -38,13 +38,16 @@ def copy_projection(inp, output):
     return 0
 
 
-def create_tiles(input_file, output_folder):
-
-    args = ['gdal2tiles.py', '-p', 'mercator', '-k', '-w', 'all', input_file, output_folder, '-a' '0,0,0,0']
-
+def create_tiles(args):
     from .gdal2tiles import GDAL2Tiles
-    argv = gdal.GeneralCmdLineProcessor(args)
-    if argv:
-        gdal2tiles = GDAL2Tiles(argv[1:])
-        gdal2tiles.process()
 
+    err_code = 0
+    argv = gdal.GeneralCmdLineProcessor(args)
+    try:
+        if argv:
+            gdal2tiles = GDAL2Tiles(argv[1:])
+            gdal2tiles.process()
+    except Exception:
+        err_code = -1
+
+    return err_code
