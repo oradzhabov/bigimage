@@ -22,12 +22,15 @@ def copy_projection(inp, output):
         print('Unable to open', output, 'for writing')
         return -1
 
+    # todo: Do we really should skip copying if source transform is identity?
     if geotransform is not None and geotransform != (0, 1, 0, 0, 0, 1):
         dataset2.SetGeoTransform(geotransform)
 
+    # todo: Do we really should skip copying if source projection is empty?
     if projection is not None and projection != '':
         dataset2.SetProjection(projection)
 
+    # todo: mamybe we should remove GCPs from destination img if there are no GPCs in source image?
     gcp_count = dataset.GetGCPCount()
     if gcp_count != 0:
         dataset2.SetGCPs(dataset.GetGCPs(), dataset.GetGCPProjection())
@@ -39,6 +42,7 @@ def copy_projection(inp, output):
 
 
 def create_tiles(args):
+    # sample args: ['gdal2tiles.py', '-p', 'mercator', '-k', '-w', 'all', input_file, output_folder, '-a' '0,0,0,0']
     from .gdal2tiles import GDAL2Tiles
 
     err_code = 0
