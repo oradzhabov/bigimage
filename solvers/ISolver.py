@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import random
 from abc import ABCMeta, abstractmethod
@@ -15,6 +16,17 @@ class ISolver(metaclass=ABCMeta):
         #
         random.seed(self.conf.seed)
         np.random.seed(self.conf.seed)
+
+    def signature(self):
+        wpath_name = os.path.splitext(os.path.basename(self.weights_path))[0]
+        signature = '{}_{}_mppx{:.2f}_wh{}_rgb{}_{}cls_{}'.format(wpath_name,
+                                                                  self.conf.backbone,
+                                                                  self.conf.mppx,
+                                                                  self.conf.img_wh,
+                                                                  'a' if self.conf.use_heightmap else '',
+                                                                  self.conf.cls_nb,
+                                                                  self.conf.data_subset)
+        return signature
 
     @abstractmethod
     def _create(self, compile_model=True, **kwargs):

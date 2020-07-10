@@ -47,13 +47,13 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
 
     model = None
     if not skip_prediction:
-        model, weights_path, _ = solver.build(compile_model=False)
+        model, _, _ = solver.build(compile_model=False)
         if model is None:
             print('ERROR: Cannot create model')
             return -1, dict({})
 
     image, _ = dataset[0]
-    predict_png = 'probability_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
+    predict_png = 'probability_' + solver.signature() + '.png'
     if model is not None:
         # IMPORTANT:
         # * Do not use size bigger than actual image size because blending(with generated border) will suppress actual

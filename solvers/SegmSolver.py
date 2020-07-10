@@ -11,13 +11,7 @@ from kutils import utilites
 class SegmSolver(ISolver):
     def __init__(self, conf):
         super(SegmSolver, self).__init__(conf)
-
-        self.weights_path = 'unet_{}_mppx{:.2f}_wh{}_rgb{}_{}cls_{}.h5'.format(self.conf.backbone,
-                                                                               self.conf.mppx,
-                                                                               self.conf.img_wh,
-                                                                               'a' if self.conf.use_heightmap else '',
-                                                                               self.conf.cls_nb,
-                                                                               self.conf.data_subset)
+        self.weights_path = 'unet.h5'
         self.activation = 'sigmoid' if self.conf.cls_nb == 1 else 'softmax'
 
         # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
@@ -38,6 +32,7 @@ class SegmSolver(ISolver):
             os.makedirs(solution_path)
         self.weights_path = os.path.join(solution_path, self.weights_path)
 
+        print('Trying to find model\'s weight by path \"{}\"'.format(self.weights_path))
         weights_init_path = self.weights_path if os.path.isfile(self.weights_path) else None
 
         base_model = sm.Unet(self.conf.backbone,
@@ -69,10 +64,11 @@ class SegmSolver(ISolver):
             # loading model weights
             self.model.load_weights(weights_init_path)
 
-            print('Model has been initialized from file: {}'.format(weights_init_path))
+            print('Model has been initialized from file: \"{}\"'.format(weights_init_path))
         else:
             # Provide model info for first call of model
             self.model.summary()
+            print('Model\'s weights has not been found by path \"{}\"'.format(self.weights_path))
 
         if compile_model:
             # todo: actually compilation could be moved out to parent class.

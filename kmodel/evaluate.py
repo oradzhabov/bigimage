@@ -28,7 +28,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
 
     test_dataloader = Dataloder(test_dataset, batch_size=1, shuffle=False)
 
-    model, weights_path, metrics = solver.build(compile_model=True)
+    model, _, metrics = solver.build(compile_model=True)
 
     if show_random_items_nb > 0:
         test_dataset.show_predicted(solver, show_random_items_nb)

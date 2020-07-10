@@ -25,7 +25,7 @@ def test_prediction(src_proj_dir):
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
         cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 0)
 
-    result_png = 'classes_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.png'
+    result_png = 'classes_' + solver.signature() + '.png'
     cv2.imwrite(os.path.join(src_proj_dir, result_png), img_temp[..., ::-1])
 
     utilites.visualize(

@@ -5,12 +5,7 @@ class RegrSolver(SegmSolver):
     def __init__(self, conf):
         super(RegrSolver, self).__init__(conf)
 
-        self.weights_path = 'runet_{}_mppx{:.2f}_wh{}_rgb{}_{}cls_{}.h5'.format(self.conf.backbone,
-                                                                                self.conf.mppx,
-                                                                                self.conf.img_wh,
-                                                                                'a' if self.conf.use_heightmap else '',
-                                                                                self.conf.cls_nb,
-                                                                                self.conf.data_subset)
+        self.weights_path = 'runet.h5'
         self.activation = 'linear'
 
         self.total_loss = 'mse'
