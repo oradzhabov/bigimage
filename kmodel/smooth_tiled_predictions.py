@@ -236,6 +236,14 @@ def _recreate_from_subdivs(subdivs, window_size, subdivisions, padded_out_shape)
     return y
 
 
+def pads_generator_1(im):
+    yield im
+
+
+def pads_generator_undo_1():
+    x = yield; yield x
+
+
 def pads_generator(im):
     yield im
     yield np.rot90(im, axes=(0, 1), k=1)
@@ -260,7 +268,7 @@ def pads_generator_undo():
 
 
 def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_classes, pred_func,
-                                      memmap_batch_size=0, temp_dir='./'):
+                                      memmap_batch_size=0, temp_dir='./', use_group_d4=True):
     """
     Apply the `pred_func` function to square patches of the image, and overlap
     the predictions to merge them smoothly.
@@ -291,9 +299,11 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     # non-zero dommain. This may require to augment the `subdivisions` argument
     # to 4 rather than 2.
 
-    undo_gen = pads_generator_undo()
+    pads_num = 8 if use_group_d4 else 1
+    gen = pads_generator if use_group_d4 else pads_generator_1
+    undo_gen = pads_generator_undo() if use_group_d4 else pads_generator_undo_1()
     padded_results = None
-    for pad in tqdm(pads_generator(pad), total=8):
+    for pad in tqdm(gen(pad), total=pads_num):
         # For every rotation:
         sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir)
         one_padded_result = _recreate_from_subdivs(
@@ -313,7 +323,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
             padded_results += one_padded_result_reconstructed
 
     # Merge after rotations:
-    padded_results = padded_results / 8.0
+    padded_results = padded_results / pads_num
 
     prd = _unpad_img(padded_results, window_size, subdivisions)
 

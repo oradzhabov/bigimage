@@ -12,8 +12,10 @@ def test_prediction(src_proj_dir):
     # Useful for debugging
     skip_prediction = False
     memmap_batch_size = 6
+    predict_img_with_group_d4 = False
 
-    err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size)
+    err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
+                                             predict_img_with_group_d4)
     if err_code != 0:
         return -1
 
