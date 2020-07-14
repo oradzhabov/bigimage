@@ -1142,7 +1142,8 @@ gdal2tiles temp.vrt""" % self.input )
     def generate_base_tiles(self):
         """Generation of the base tiles (the lowest in the pyramid) directly from the input raster"""
 
-        print("Generating Base Tiles:")
+        if self.options.verbose:
+            print("Generating Base Tiles:")
 
         if self.options.verbose:
             #mx, my = self.out_gt[0], self.out_gt[3] # OriginX, OriginY
@@ -1191,7 +1192,8 @@ gdal2tiles temp.vrt""" % self.input )
                     if self.options.verbose:
                         print("Tile generation skiped because of --resume")
                     else:
-                        self.progressbar( ti / float(tcount) )
+                        if self.options.verbose:
+                            self.progressbar( ti / float(tcount) )
                     continue
 
                 # Create directories for the tile
@@ -1295,14 +1297,15 @@ gdal2tiles temp.vrt""" % self.input )
                         f.write( self.generate_kml( tx, ty, tz ))
                         f.close()
 
-                if not self.options.verbose:
+                if self.options.verbose:
                     self.progressbar( ti / float(tcount) )
 
     # -------------------------------------------------------------------------
     def generate_overview_tiles(self):
         """Generation of the overview tiles (higher in the pyramid) based on existing tiles"""
 
-        print("Generating Overview Tiles:")
+        if self.options.verbose:
+            print("Generating Overview Tiles:")
 
         tilebands = self.dataBandsCount + 1
 
@@ -1335,7 +1338,8 @@ gdal2tiles temp.vrt""" % self.input )
                         if self.options.verbose:
                             print("Tile generation skiped because of --resume")
                         else:
-                            self.progressbar( ti / float(tcount) )
+                            if self.options.verbose:
+                                self.progressbar( ti / float(tcount) )
                         continue
 
                     # Create directories for the tile
@@ -1389,7 +1393,7 @@ gdal2tiles temp.vrt""" % self.input )
                         f.write( self.generate_kml( tx, ty, tz, children ) )
                         f.close()
 
-                    if not self.options.verbose:
+                    if self.options.verbose:
                         self.progressbar( ti / float(tcount) )
 
 
