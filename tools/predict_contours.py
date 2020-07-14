@@ -16,7 +16,7 @@ def find_nearest(array, value):
     return array[idx]
 
 
-def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size=0):
+def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size=0, predict_img_with_group_d4=True):
     """
     :param cfg:
     :param src_proj_dir:
@@ -24,6 +24,8 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     created result. Useful for debugging.
     :param memmap_batch_size: If > 0, stitching will process with np.memmap. Value 6 is good for 4 GB GPU as for
     efficientb5(512_wh) as for efficcientb3(1024_wh). So if GPU will be 16 GB GPU, could be increased to 6**2 = 36
+    :param predict_img_with_group_d4: If False, it will take 8 times faster and 2-times less CPU RAM, but will not use
+    D4-group augmentation for prediction smoothing.
     :return:
     """
     solver = cfg.solver(cfg)
@@ -70,7 +72,8 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
                 lambda img_batch_subdiv: model.predict(img_batch_subdiv)
             ),
             memmap_batch_size=memmap_batch_size,
-            temp_dir=src_proj_dir
+            temp_dir=src_proj_dir,
+            use_group_d4=predict_img_with_group_d4
         )
         K.clear_session()
         gc.collect()
