@@ -1,3 +1,4 @@
+import gc
 import os
 import numpy as np
 import cv2
@@ -24,6 +25,8 @@ def test_prediction(src_proj_dir):
     image_fname = dataset.get_fname(0)
 
     img_temp = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
+    del image
+    gc.collect()
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
         cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 0)
 
@@ -34,6 +37,8 @@ def test_prediction(src_proj_dir):
         title='{}'.format(src_proj_dir),
         result=img_temp
     )
+    del img_temp
+    gc.collect()
 
     print('Creating VIA-json...')
     via_item = create_json_item(image_fname, pr_cntrs_list, cfg.classes)
@@ -46,7 +51,7 @@ def test_prediction(src_proj_dir):
 
 if __name__ == "__main__":
 
-    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1334'  # Especially good for rocks
+    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1334'  # Especially good for rocks
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
@@ -59,11 +64,13 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12976'  # BAD PRODUCTION RESULT. SMALL
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7966'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12977'  # BAD PRODUCTION RESULT. SMALL
-    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7965'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12989'  # BAD PRODUCTION RESULT
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12189'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7969'
-    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7128'  # big rocks
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7128'  # big rocks, small ortho
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dyno/2192'  # mppx 0.05 big rocks, big ortho ortho
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7145'  # the same as d2192 but 0.01 mppx
 
     exit(test_prediction(proj_dir))

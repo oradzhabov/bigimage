@@ -8,45 +8,75 @@ from kutils import utilites
 
 
 def instance_segmentation(prob_field, debug=False):
+    prob_th = 0.05  # 0.05
+    prob_field_shape = prob_field.shape
+
+    # Set proper type to guaranty that pipeline will be processed
+    prob_field = prob_field.astype(np.float32)
+
     # ANN do not trends to smooth result
     # Blur probability to obtain smoothed field.
     prob_field = cv2.blur(prob_field, (3, 3))
 
     # Find gradient vector field
     g, dx, dy = utilites.grad_magn(prob_field)
+    g_less_01 = g < 0.1
+    del g
+    gc.collect()
+    prob_field_greate_025 = prob_field > 0.25  # 0.25
+    prob_field_greate_005 = prob_field > 0.02  # 0.05
+    prob_field_greate_prob_th = prob_field > prob_th
+    prob_field_uint8 = (prob_field * 255).astype(np.uint8)
+    del prob_field
+    gc.collect()
 
     # Find divergence of gradient vector field
     diva, divx, divy = utilites.grad_magn(None, dx, dy, ddepth=cv2.CV_32F)
+    del diva
+    del dx
+    del dy
+    gc.collect()
     pdiv = cv2.addWeighted(divx, 0.5, divy, 0.5, 0)
+    del divx
+    del divy
+    gc.collect()
 
-    mask1 = pdiv <= -0.001  # good for little rocks but not enough to cover big rocks
-    mask2 = np.logical_and(g < 0.1, prob_field > 0.25)  # glue for big rocks
-    mask3 = np.logical_and(mask1, prob_field > 0.05)  # filter out noise
+    mask1 = pdiv <= -0.001  # good for little rocks(with noise as well) but not enough to cover big rocks
+    del pdiv
+    gc.collect()
+
+    mask2 = np.logical_and(g_less_01, prob_field_greate_025)  # glue for big rocks
+    mask3 = np.logical_and(mask1, prob_field_greate_005)  # filter out noise
 
     if debug:
-        bgr = np.dstack((prob_field, prob_field, prob_field))
+        bgr = np.dstack((prob_field_uint8, prob_field_uint8, prob_field_uint8))
         bgr[mask1] = [255, 0, 0]
+        # bgr[g_less_01] = [255, 255, 0]
         bgr[mask2] = [0, 255, 0]
         bgr[mask3] = [0, 0, 255]
         cv2.imwrite('bgr.png', bgr)
+        del bgr
     #
-    img = np.zeros(shape=prob_field.shape, dtype=np.uint8)
+    img = np.zeros(shape=prob_field_shape, dtype=np.uint8)
     img[mask3] = 255  # mark little rocks
     img[mask2] = 255  # glue little rocks together into big rocks
+    del mask1
+    del mask2
+    del mask3
+    gc.collect()
 
     #
     # Extend existing rock's boundaries in reasonable(by threshold) area
     #
-    prob_th = 0.05
     # Label each found rock's core
     ret, markers = cv2.connectedComponents(img)
     # Add one to all labels so that sure background is not 0, but 1
     markers = markers + 1
     # Now, mark the region of unknown with zero
-    markers[(img == 0) & (prob_field > prob_th)] = 0
+    markers[(img == 0) & prob_field_greate_prob_th] = 0
 
     # cv2.watershed() requires 3-channel data
-    img = (prob_field > prob_th).astype(np.uint8) * 255
+    img = prob_field_greate_prob_th.astype(np.uint8) * 255
 
     if debug:
         cv2.imwrite('prob_field_th.png', img)
@@ -125,6 +155,8 @@ def postprocess(prob_field):
     prob_field = prob_field.squeeze()
 
     instances, _ = instance_segmentation(prob_field, debug=debug)
+    del prob_field
+    gc.collect()
 
     # Since instance range is [-1 ... +RocksNb] we need to convert it to type which can represent negative values
     # cv2.threshold() supports f32 input

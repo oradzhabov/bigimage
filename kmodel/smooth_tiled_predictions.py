@@ -177,32 +177,67 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     x_range = np.arange(0, padx_len-window_size+1, step)
     shape = (len(y_range), len(x_range), window_size, window_size, padded_img.shape[2])
     subdivs0 = np.memmap(subdivs_fname, dtype=dtype, mode='w+', shape=shape)
+
+    # Store subdivisions to file
+    one_row_size_bytes = subdivs0.shape[1] * subdivs0.shape[2] * subdivs0.shape[3] * subdivs0.shape[4] * np.dtype(dtype).itemsize
+    flush_step = max(1, int(1.e+9 / one_row_size_bytes))
+    start_i = 0
     for i in range(shape[0]):
         for j in range(shape[1]):
-            subdivs0[i][j] = padded_img[y_range[i]:y_range[i]+window_size, x_range[j]:x_range[j]+window_size, :]
+            subdivs0[i - start_i][j] = padded_img[y_range[i]:y_range[i]+window_size, x_range[j]:x_range[j]+window_size, :]
+        if i > 0 and i % flush_step == 0:
+            del subdivs0  # close file
+            gc.collect()
+            start_i = i + 1
+            offset = start_i * one_row_size_bytes
+            shape_new = list(shape)
+            shape_new[0] -= start_i
+            subdivs0 = np.memmap(subdivs_fname, dtype=dtype, mode='r+', shape=tuple(shape_new), offset=offset)
     del subdivs0  # close file
+    gc.collect()
+
     a, b, c, d, e = shape
-    subdivs = np.memmap(subdivs_fname, dtype=dtype, mode='r', shape=(a * b, c, d, e))
+    print('Smoothing prediction samples: {}'.format(a * b))
 
     if memmap_batch_size > 0:
+        print('Smoothing prediction memmap_batch_size: {}'.format(memmap_batch_size))
         subdivs_r_fname = os.path.join(temp_dir, 'subdivs_r.tmp')
         if os.path.isfile(subdivs_r_fname):
             os.remove(subdivs_r_fname)
 
         subdivs_r = None
-        for i in range(0, len(subdivs), memmap_batch_size):
-            pred_1 = pred_func(subdivs[i:i+memmap_batch_size])
+        for i in range(0, a * b, memmap_batch_size):
+            # Open required part of subdivisions
+            memmap_batch_size_it = memmap_batch_size
+            if i + memmap_batch_size > a * b:
+                memmap_batch_size_it = a * b - i
+            offset = i * c * d * e * np.dtype(dtype).itemsize
+            subdivs = np.memmap(subdivs_fname, dtype=dtype, mode='r',
+                                shape=(memmap_batch_size_it, c, d, e), offset=offset)
+
+            # Predict results of opened subdivisions
+            pred_1 = pred_func(subdivs[0:memmap_batch_size_it])
+
+            # Result will have the same type as source data
+            pred_1 = pred_1.astype(dtype)
+
+            # Release memory
+            del subdivs  # close file
+            gc.collect()
+
+            # Store results
             if subdivs_r is None:
-                subdivs_r = np.memmap(subdivs_r_fname, dtype=pred_1.dtype, mode='w+', shape=(len(subdivs), *pred_1.shape[1:]))
-            subdivs_r[i:i+memmap_batch_size] = pred_1[0:memmap_batch_size]
-        del subdivs  # close file
+                subdivs_r = np.memmap(subdivs_r_fname, dtype=pred_1.dtype, mode='w+', shape=(a * b, *pred_1.shape[1:]))
+            subdivs_r[i:i+memmap_batch_size_it] = pred_1[0:memmap_batch_size_it]
+
         subdivs = subdivs_r
     else:
+        subdivs = np.memmap(subdivs_fname, dtype=dtype, mode='r', shape=(a * b, c, d, e))
         prediction = pred_func(subdivs)
         del subdivs  # close file
         subdivs = prediction
 
-    WINDOW_SPLINE_2D = WINDOW_SPLINE_2D.astype(subdivs.dtype)
+    WINDOW_SPLINE_2D = WINDOW_SPLINE_2D.astype(dtype)
     # Update results on the disk. Thats why here is loop instead of direct operation(which lost ref to memmap)
     for i in range(len(subdivs)):
         subdivs[i] = subdivs[i] * WINDOW_SPLINE_2D
@@ -214,7 +249,7 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     return subdivs
 
 
-def _recreate_from_subdivs(subdivs, window_size, subdivisions, padded_out_shape):
+def _recreate_from_subdivs(y, subdivs, window_size, subdivisions, padded_out_shape):
     """
     Merge tiled overlapping patches smoothly.
     """
@@ -222,7 +257,8 @@ def _recreate_from_subdivs(subdivs, window_size, subdivisions, padded_out_shape)
     pady_len = padded_out_shape[0]
     padx_len = padded_out_shape[1]
 
-    y = np.zeros(padded_out_shape, dtype=subdivs.dtype)
+    y = y.reshape(padded_out_shape)
+    y *= 0
 
     a = 0
     for i in range(0, pady_len-window_size+1, step):
@@ -303,11 +339,15 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     gen = pads_generator if use_group_d4 else pads_generator_1
     undo_gen = pads_generator_undo() if use_group_d4 else pads_generator_undo_1()
     padded_results = None
+    y_fname = os.path.join(temp_dir, 'y.tmp')
+    if os.path.isfile(y_fname):
+        os.remove(y_fname)
+    y = np.memmap(y_fname, dtype=pad.dtype, mode='w+', shape=tuple(list(pad.shape[:-1])+[nb_classes]))
     for pad in tqdm(gen(pad), total=pads_num):
         # For every rotation:
         sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir)
         one_padded_result = _recreate_from_subdivs(
-            sd, window_size, subdivisions,
+            y, sd, window_size, subdivisions,
             padded_out_shape=list(pad.shape[:-1])+[nb_classes])
 
         # Since this object could be np.memmap, close file by deleting them
@@ -318,16 +358,30 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
         next(undo_gen)
         one_padded_result_reconstructed = undo_gen.send(one_padded_result)
         if padded_results is None:
-            padded_results = one_padded_result_reconstructed
-        else:
-            padded_results += one_padded_result_reconstructed
+            padded_results_fname = os.path.join(temp_dir, 'padded_results.tmp')
+            if os.path.isfile(padded_results_fname):
+                os.remove(padded_results_fname)
+
+            padded_results = np.memmap(padded_results_fname,
+                                       dtype=one_padded_result_reconstructed.dtype,
+                                       mode='w+',
+                                       shape=one_padded_result_reconstructed.shape)
+            padded_results *= 0
+        padded_results += one_padded_result_reconstructed
+
+    del y  # close file
 
     # Merge after rotations:
-    padded_results = padded_results / pads_num
+    padded_results /= pads_num
 
     prd = _unpad_img(padded_results, window_size, subdivisions)
 
     prd = prd[:input_img_shape[0], :input_img_shape[1], :]
+
+    if isinstance(prd, np.memmap):
+        prd_ram = np.array(prd)
+        del prd  # close file
+        prd = prd_ram
 
     if PLOT_PROGRESS:
         plt.imshow(prd)

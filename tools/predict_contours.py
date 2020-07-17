@@ -55,8 +55,13 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
             return -1, dict({})
 
     image, _ = dataset[0]
+    # map input space to float16
+    image = image.astype(np.float16)
+    gc.collect()
+
     predict_png = 'probability_' + solver.signature() + '.png'
     if model is not None:
+
         # IMPORTANT:
         # * Do not use size bigger than actual image size because blending(with generated border) will suppress actual
         # prediction result.
@@ -84,10 +89,17 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     else:
         fpath = os.path.join(src_proj_dir, predict_png)
         print('Prediction skipped. Trying to read already predicted result from {}'.format(fpath))
-        pr_mask = cv2.imread(fpath, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
+
+        # Read and map result to the same type as source data. It completely simulate prediction results
+        pr_mask = cv2.imread(fpath, cv2.IMREAD_UNCHANGED).astype(image.dtype) / 255.0
+
         # Just to simulate shape of real generated data
         if len(pr_mask.shape) == 2:
             pr_mask = pr_mask[..., np.newaxis]
+
+    # Release memory
+    del image
+    gc.collect()
 
     pr_cntrs_list_px = solver.get_contours(pr_mask)
 

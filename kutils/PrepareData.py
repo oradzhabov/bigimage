@@ -95,6 +95,8 @@ def get_raster_info(img_fname):
 
 
 def create_orthophoto(dataset_path, dst_mppx, dest_img_fname):
+    print('Mapping orthographic image into {}'.format(dest_img_fname))
+
     recreated = False
     src_img_fname = os.path.join(dataset_path, 'orthophoto/orthophoto_export.tif')
     if not os.path.isfile(src_img_fname):
@@ -144,6 +146,8 @@ def create_heightmap_dsm(dataset_path, dst_img_shape, dest_himg_fname):
 
 
 def create_heightmap(dataset_path, dst_img_shape, dest_himg_fname):
+    print('Mapping heightmap image into {}'.format(dest_himg_fname))
+
     # Using DSM(even u8c1) provides better smoothed results rather using colored height-map
     if create_heightmap_dsm(dataset_path, dst_img_shape, dest_himg_fname):
         return True
