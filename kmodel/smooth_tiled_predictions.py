@@ -185,7 +185,7 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     for i in range(shape[0]):
         for j in range(shape[1]):
             subdivs0[i - start_i][j] = padded_img[y_range[i]:y_range[i]+window_size, x_range[j]:x_range[j]+window_size, :]
-        if i > 0 and i % flush_step == 0:
+        if (1 < i + 1 < shape[0]) and i % flush_step == 0:
             del subdivs0  # close file
             gc.collect()
             start_i = i + 1
