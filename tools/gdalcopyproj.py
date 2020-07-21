@@ -1,6 +1,62 @@
 from osgeo import gdal
 
 
+def get_projection(inp):
+    dataset = gdal.Open(inp)
+    if dataset is None:
+        print('Unable to open ', inp, ' for reading')
+        return None
+
+    projection = dataset.GetProjection()
+    geotransform = dataset.GetGeoTransform()
+
+    if projection is None and geotransform is None:
+        print('No projection or geotransform found on file ' + inp)
+        return None
+
+    gcp_count = dataset.GetGCPCount()
+    gcps = dataset.GetGCPs()
+    gcp_proj = dataset.GetGCPProjection()
+
+    del dataset
+
+    result = dict()
+    result['projection'] = projection
+    result['geotransform'] = geotransform
+    result['gcp_count'] = gcp_count
+    result['gcps'] = gcps
+    result['gcp_proj'] = gcp_proj
+
+    return result
+
+
+def apply_projection(inp_proj, output):
+    dataset2 = gdal.Open(output, gdal.GA_Update)
+
+    if dataset2 is None:
+        print('Unable to open ', output, ' for writing')
+        return -1
+
+    geotransform = inp_proj['geotransform']
+    projection = inp_proj['projection']
+    gcp_count = inp_proj['gcp_count']
+    gcps = inp_proj['gcps']
+    gcp_proj = inp_proj['gcp_proj']
+
+    if geotransform is not None and geotransform != (0, 1, 0, 0, 0, 1):
+        dataset2.SetGeoTransform(geotransform)
+
+    if projection is not None and projection != '':
+        dataset2.SetProjection(projection)
+
+    if gcp_count != 0:
+        dataset2.SetGCPs(gcps, gcp_proj)
+
+    del dataset2
+
+    return 0
+
+
 def copy_projection(inp, output):
     # Copy GDAL projection metadata from one file into other.
 
@@ -13,7 +69,7 @@ def copy_projection(inp, output):
     geotransform = dataset.GetGeoTransform()
 
     if projection is None and geotransform is None:
-        print('No projection or geotransform found on file' + input)
+        print('No projection or geotransform found on file ' + inp)
         return -1
 
     dataset2 = gdal.Open(output, gdal.GA_Update)
@@ -32,8 +88,8 @@ def copy_projection(inp, output):
     if gcp_count != 0:
         dataset2.SetGCPs(dataset.GetGCPs(), dataset.GetGCPProjection())
 
-    dataset = None
-    dataset2 = None
+    del dataset
+    del dataset2
 
     return 0
 
