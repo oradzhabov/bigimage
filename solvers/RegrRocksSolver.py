@@ -282,7 +282,7 @@ class RegrRocksSolver(RegrSolver):
         return np.clip(pr_result, 0, 1)
 
     def get_contours(self, pr_mask_list):
-        debug = True
+        debug = False
         pr_mask = postprocess_prob_list(pr_mask_list, debug)
         return utilites.get_contours((pr_mask * 255).astype(np.uint8), find_alg=cv2.CHAIN_APPROX_SIMPLE,
                                      find_mode=cv2.RETR_TREE, inverse_mask=True)
