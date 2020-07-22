@@ -8,6 +8,7 @@ sys.path.append(sys.path[0] + "/..")
 from kutils import PrepareData
 from kutils.read_sample import read_sample
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
+from kutils.utilites import denormalize
 
 
 def find_nearest(array, value):
@@ -59,48 +60,87 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     image = image.astype(np.float16)
     gc.collect()
 
-    predict_png = 'probability_' + solver.signature() + '.png'
+    pr_mask_list = list()
     if model is not None:
+        # Save original image params
+        src_image_shape = image.shape
+        src_image_dtype = image.dtype
 
-        # IMPORTANT:
-        # * Do not use size bigger than actual image size because blending(with generated border) will suppress actual
-        # prediction result.
-        window_size = int(find_nearest([64, 128, 256, 512, 1024], min(image.shape[0], image.shape[1])))
-        print('Window size in smoothing predicting: {}'.format(window_size))
+        for sc_factor in cfg.pred_scale_factors:
+            # Scale image if it necessary
+            if sc_factor != 1.0:
+                # For downscale the best interpolation INTER_AREA
+                image = cv2.resize(image.astype(np.float32), (0, 0),
+                                   fx=sc_factor, fy=sc_factor, interpolation=cv2.INTER_AREA).astype(src_image_dtype)
 
-        pr_mask = predict_img_with_smooth_windowing(
-            image,
-            window_size=window_size,
-            subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
-            nb_classes=cfg.cls_nb,
-            pred_func=(
-                lambda img_batch_subdiv: model.predict(img_batch_subdiv)
-            ),
-            memmap_batch_size=memmap_batch_size,
-            temp_dir=src_proj_dir,
-            use_group_d4=predict_img_with_group_d4
-        )
-        K.clear_session()
-        gc.collect()
+            # Store result with unique(scaled) name
+            # sc_png = 'image_scaled_' + solver.signature() + '_' + str(sc_factor) + '.png'
+            # img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
+            # cv2.imwrite(os.path.join(src_proj_dir, sc_png), img_temp.astype(np.uint8))
 
-        pr_mask = solver.post_predict(pr_mask)
+            # IMPORTANT:
+            # * Do not use size bigger than actual image size because blending(with generated border)
+            # will suppress actual prediction result.
+            window_size = int(find_nearest([64, 128, 256, 512, 1024], min(image.shape[0], image.shape[1])))
+            print('Window size in smoothing predicting: {}'.format(window_size))
 
-        cv2.imwrite(os.path.join(src_proj_dir, predict_png), (pr_mask * 255).astype(np.uint8))
+            pr_mask = predict_img_with_smooth_windowing(
+                image,
+                window_size=window_size,
+                subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
+                nb_classes=cfg.cls_nb,
+                pred_func=(
+                    lambda img_batch_subdiv: model.predict(img_batch_subdiv)
+                ),
+                memmap_batch_size=memmap_batch_size,
+                temp_dir=src_proj_dir,
+                use_group_d4=predict_img_with_group_d4
+            )
+            gc.collect()
+
+            # Upscale result if it necessary
+            if pr_mask.shape[0] != src_image_shape[0] or pr_mask.shape[1] != src_image_shape[1]:
+                pr_mask_dtype = pr_mask.dtype
+                pr_mask_shape = pr_mask.shape
+                # For upscale the best interpolation is CUBIC
+                pr_mask = cv2.resize(pr_mask.astype(np.float32),
+                                     (src_image_shape[1], src_image_shape[0]),
+                                     interpolation=cv2.INTER_CUBIC).astype(pr_mask_dtype)
+                # Adjust shape after resizing
+                if len(pr_mask.shape) > len(pr_mask_shape):
+                    pr_mask = pr_mask.squeeze()
+                if len(pr_mask.shape) < len(pr_mask_shape):
+                    pr_mask = pr_mask[..., np.newaxis]
+
+            pr_mask = solver.post_predict(pr_mask)
+
+            # Store result with unique(per scale) name
+            predict_sc_png = 'probability_' + solver.signature() + '_' + str(sc_factor) + '.png'
+            cv2.imwrite(os.path.join(src_proj_dir, predict_sc_png), (pr_mask * 255).astype(np.uint8))
+
+            pr_item = dict({'scale': sc_factor, 'img': pr_mask})
+            pr_mask_list.append(pr_item)
+        del model
     else:
-        fpath = os.path.join(src_proj_dir, predict_png)
-        print('Prediction skipped. Trying to read already predicted result from {}'.format(fpath))
+        for sc_factor in cfg.pred_scale_factors:
+            predict_sc_png = 'probability_' + solver.signature() + '_' + str(sc_factor) + '.png'
+            print('Prediction skipped. Trying to read already predicted result from {}'.format(predict_sc_png))
 
-        # Read and map result to the same type as source data. It completely simulate prediction results
-        pr_mask = cv2.imread(fpath, cv2.IMREAD_UNCHANGED).astype(image.dtype) / 255.0
+            # Read and map result to the same type as source data. It completely simulate prediction results
+            pr_mask = cv2.imread(os.path.join(src_proj_dir, predict_sc_png),
+                                 cv2.IMREAD_UNCHANGED).astype(image.dtype) / 255.0
 
-        # Just to simulate shape of real generated data
-        if len(pr_mask.shape) == 2:
-            pr_mask = pr_mask[..., np.newaxis]
+            # Just to simulate shape of real generated data
+            if len(pr_mask.shape) == 2:
+                pr_mask = pr_mask[..., np.newaxis]
 
+            pr_item = dict({'scale': sc_factor, 'img': pr_mask})
+            pr_mask_list.append(pr_item)
     # Release memory
+    K.clear_session()
     del image
     gc.collect()
 
-    pr_cntrs_list_px = solver.get_contours(pr_mask)
+    pr_cntrs_list_px = solver.get_contours(pr_mask_list)
 
     return 0, dict({'contours_px': pr_cntrs_list_px, 'dataset': dataset, 'solver': solver})

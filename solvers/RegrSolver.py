@@ -14,7 +14,7 @@ class RegrSolver(SegmSolver):
     def post_predict(self, pr_result):
         return pr_result
 
-    def get_contours(self, pr_mask):
+    def get_contours(self, pr_mask_list):
         raise NotImplemented
 
     def monitoring_metric(self):

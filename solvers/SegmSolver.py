@@ -95,7 +95,8 @@ class SegmSolver(ISolver):
         pr_result[vy, vx, vz] = 1
         return pr_result.astype(np.bool)
 
-    def get_contours(self, pr_mask):
+    def get_contours(self, pr_mask_list):
+        pr_mask = ISolver.get_avg_prob_field(pr_mask_list)
         return utilites.get_contours((pr_mask * 255).astype(np.uint8))
 
     def monitoring_metric(self):

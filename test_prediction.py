@@ -12,7 +12,7 @@ def test_prediction(src_proj_dir):
     # If enable following flag it will avoid long prediction and will try to read already created result.
     # Useful for debugging
     skip_prediction = False
-    memmap_batch_size = 6
+    memmap_batch_size = 4
     predict_img_with_group_d4 = False
 
     err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
@@ -71,6 +71,7 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7969'
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7128'  # big rocks, small ortho
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dyno/2192'  # mppx 0.05 big rocks, big ortho ortho
-    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7145'  # the same as d2192 but 0.01 mppx
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7145'  # orig:d2192 but 0.01 mppx. HUGE ROCKS
+    # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17042'  # ROCKS DETECTION/COLORING DEATH
 
     exit(test_prediction(proj_dir))

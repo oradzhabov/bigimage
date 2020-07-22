@@ -28,6 +28,7 @@ cfg.solver = SegmSolver
 cfg.provider = SemanticSegmentationDataProvider
 cfg.provider_single = SemanticSegmentationSingleDataProvider
 cfg.aug = BasicAug
+cfg.pred_scale_factors = [1.0]  # List of scale factors. Each item should be less(or eq) to zero, order - descent
 # ==================================================================================================================== #
 #                                                   Network Block
 # ==================================================================================================================== #

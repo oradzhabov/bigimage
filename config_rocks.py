@@ -33,6 +33,7 @@ cfg.solver = RegrRocksSolver
 cfg.provider = RegressionSegmentationDataProvider
 cfg.provider_single = RegressionSegmentationSingleDataProvider
 cfg.aug = RocksAug
+cfg.pred_scale_factors = [1.0, 0.25]  # List of scale factors. Each item should be less(or eq) to zero, order - descent
 # ==================================================================================================================== #
 #                                                   Network Block
 # ==================================================================================================================== #

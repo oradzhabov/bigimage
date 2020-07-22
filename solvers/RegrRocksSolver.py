@@ -7,7 +7,63 @@ sys.path.append(sys.path[0] + "/..")
 from kutils import utilites
 
 
+def find_rock_masks(prob_field, prob_glue_th=0.25, debug=False):
+    prob_field = prob_field.squeeze()
+
+    # Set proper type to guaranty that pipeline will be processed
+    prob_field = prob_field.astype(np.float32)
+
+    # ANN do not trends to smooth result
+    # Blur probability to obtain smoothed field.
+    prob_field = cv2.blur(prob_field, (3, 3))
+
+    # Find gradient vector field
+    g, dx, dy = utilites.grad_magn(prob_field)
+    g_less_01 = g < 0.1  # 0.015??  # 0.1
+    g_less_05 = g < 0.01
+    del g
+    gc.collect()
+    prob_field_greate_025 = prob_field > prob_glue_th  # 0.25
+    prob_field_greate_005 = prob_field > 0.02  # 0.05
+    prob_field_uint8 = (prob_field * 255).astype(np.uint8)
+    del prob_field
+    gc.collect()
+
+    # Find divergence of gradient vector field
+    diva, divx, divy = utilites.grad_magn(None, dx, dy, ddepth=cv2.CV_32F)
+    del diva
+    del dx
+    del dy
+    gc.collect()
+    pdiv = cv2.addWeighted(divx, 0.5, divy, 0.5, 0)
+    del divx
+    del divy
+    gc.collect()
+
+    mask1 = pdiv <= -0.001  # good for little rocks(with noise as well) but not enough to cover big rocks
+    del pdiv
+    gc.collect()
+
+    mask2 = np.logical_and(g_less_01, prob_field_greate_025)  # glue for big rocks
+    mask3 = np.logical_and(mask1, np.logical_and(prob_field_greate_005, g_less_05))  # filter out noise
+
+    if debug:
+        bgr = np.dstack((prob_field_uint8, prob_field_uint8, prob_field_uint8))
+        bgr[mask1] = [255, 0, 0]
+        bgr[prob_field_greate_025] = [255, 255, 0]
+        bgr[mask2] = [0, 255, 0]
+        bgr[mask3] = [0, 0, 255]
+        # bgr[g2_less_01] = [0, 255, 255]
+        cv2.imwrite('bgr.png', bgr)
+        del bgr
+    #
+    return mask3, mask2
+
+
+"""
 def instance_segmentation(prob_field, debug=False):
+    prob_field = prob_field.squeeze()
+
     prob_th = 0.05  # 0.05
     prob_field_shape = prob_field.shape
 
@@ -20,7 +76,8 @@ def instance_segmentation(prob_field, debug=False):
 
     # Find gradient vector field
     g, dx, dy = utilites.grad_magn(prob_field)
-    g_less_01 = g < 0.1
+    g_less_01 = g < 0.1  # 0.015??  # 0.1
+    g_less_05 = g < 0.01
     del g
     gc.collect()
     prob_field_greate_025 = prob_field > 0.25  # 0.25
@@ -46,14 +103,15 @@ def instance_segmentation(prob_field, debug=False):
     gc.collect()
 
     mask2 = np.logical_and(g_less_01, prob_field_greate_025)  # glue for big rocks
-    mask3 = np.logical_and(mask1, prob_field_greate_005)  # filter out noise
+    mask3 = np.logical_and(mask1, np.logical_and(prob_field_greate_005, g_less_05))  # filter out noise
 
     if debug:
         bgr = np.dstack((prob_field_uint8, prob_field_uint8, prob_field_uint8))
         bgr[mask1] = [255, 0, 0]
-        # bgr[g_less_01] = [255, 255, 0]
+        bgr[prob_field_greate_025] = [255, 255, 0]
         bgr[mask2] = [0, 255, 0]
         bgr[mask3] = [0, 0, 255]
+        # bgr[g2_less_01] = [0, 255, 255]
         cv2.imwrite('bgr.png', bgr)
         del bgr
     #
@@ -83,6 +141,7 @@ def instance_segmentation(prob_field, debug=False):
     img = cv2.watershed(np.dstack((img, img, img)), markers)
 
     return img, None
+"""
 
 
 def instance_segmentation_old(prob_field, debug=False):
@@ -149,13 +208,52 @@ def collect_statistics(contours):
     return geometry_px
 
 
-def postprocess(prob_field):
-    debug = False
+def postprocess_prob_list(prob_list, debug=False):
+    pr_field_sc1 = list(filter(lambda x: x['scale'] == 1.0, prob_list))[0]['img'].squeeze()
+    pr_field_sc025 = list(filter(lambda x: x['scale'] != 1.0, prob_list))[0]['img'].squeeze()
 
-    prob_field = prob_field.squeeze()
+    prob_th = 0.05  # 0.05
+    prob_field_shape = pr_field_sc1.shape
 
-    instances, _ = instance_segmentation(prob_field, debug=debug)
-    del prob_field
+    prob_field_greate_prob_th = np.bitwise_or(pr_field_sc1 > prob_th, pr_field_sc025 > prob_th)
+
+    little_rocks_mask, big_rocks_mask_sc1 = find_rock_masks(pr_field_sc1, prob_glue_th=0.25, debug=debug)
+    # Suppress little rocks on the bound of big rocks
+    little_rocks_mask[pr_field_sc025 > 0.02] = 0
+    del pr_field_sc1
+    gc.collect()
+    _, big_rocks_mask_sc025 = find_rock_masks(pr_field_sc025, prob_glue_th=0.25, debug=debug)
+    del pr_field_sc025
+    del prob_list
+    gc.collect()
+
+    big_rocks_mask_sc1 = np.bitwise_or(big_rocks_mask_sc1, big_rocks_mask_sc025)
+    del big_rocks_mask_sc025
+    gc.collect()
+
+    img = np.zeros(shape=prob_field_shape[:2], dtype=np.uint8)
+    img[little_rocks_mask] = 255  # mark little rocks
+    img[big_rocks_mask_sc1] = 255  # glue little rocks together into big rocks
+    del little_rocks_mask
+    del big_rocks_mask_sc1
+    gc.collect()
+    #
+    # Extend existing rock's boundaries in reasonable(by threshold) area
+    #
+    # Label each found rock's core
+    ret, markers = cv2.connectedComponents(img)
+    # Add one to all labels so that sure background is not 0, but 1
+    markers = markers + 1
+    # Now, mark the region of unknown with zero
+    markers[(img == 0) & prob_field_greate_prob_th] = 0
+
+    # cv2.watershed() requires 3-channel data
+    img = prob_field_greate_prob_th.astype(np.uint8) * 255
+
+    if debug:
+        cv2.imwrite('prob_field_th.png', img)
+    instances = cv2.watershed(np.dstack((img, img, img)), markers)
+    del img
     gc.collect()
 
     # Since instance range is [-1 ... +RocksNb] we need to convert it to type which can represent negative values
@@ -183,7 +281,8 @@ class RegrRocksSolver(RegrSolver):
     def post_predict(self, pr_result):
         return np.clip(pr_result, 0, 1)
 
-    def get_contours(self, pr_mask):
-        pr_mask = postprocess(pr_mask)
+    def get_contours(self, pr_mask_list):
+        debug = True
+        pr_mask = postprocess_prob_list(pr_mask_list, debug)
         return utilites.get_contours((pr_mask * 255).astype(np.uint8), find_alg=cv2.CHAIN_APPROX_SIMPLE,
                                      find_mode=cv2.RETR_TREE, inverse_mask=True)
