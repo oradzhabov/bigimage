@@ -1,3 +1,4 @@
+import gc
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -51,9 +52,11 @@ def grad_magn(gray, fx=None, fy=None, ddepth=cv2.CV_32F):
         else:
             grad_y = cv2.Scharr(fy, ddepth, 0, 1, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
 
-        grad_x /= 32.0
-        grad_y /= 32.0
-        grad = np.sqrt(grad_x ** 2 + grad_y ** 2)
+        dtype = grad_x.dtype
+        grad_x = np.floor_divide(grad_x, 32, grad_x)  # (grad_x / 32).astype(dtype)
+        grad_y = np.floor_divide(grad_y, 32, grad_y)  # (grad_y / 32).astype(dtype)
+        grad = np.sqrt(grad_x ** 2 + grad_y ** 2).astype(dtype) if gray is not None else None
+        gc.collect()
         return grad, grad_x, grad_y
 
     raise NotImplementedError

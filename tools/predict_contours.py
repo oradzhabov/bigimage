@@ -60,6 +60,8 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     image = image.astype(np.float16)
     gc.collect()
 
+    store_predicted_result_to_ram = False
+
     pr_mask_list = list()
     if model is not None:
         # Save original image params
@@ -116,25 +118,33 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
 
             # Store result with unique(per scale) name
             predict_sc_png = 'probability_' + solver.signature() + '_' + str(sc_factor) + '.png'
-            cv2.imwrite(os.path.join(src_proj_dir, predict_sc_png), (pr_mask * 255).astype(np.uint8))
+            fpath = os.path.join(src_proj_dir, predict_sc_png)
+            cv2.imwrite(fpath, (pr_mask * 255).astype(np.uint8))
 
-            pr_item = dict({'scale': sc_factor, 'img': pr_mask})
+            if store_predicted_result_to_ram:
+                pr_item = dict({'scale': sc_factor, 'img': pr_mask, 'img_dtype': pr_mask.dtype})
+            else:
+                pr_item = dict({'scale': sc_factor, 'img': fpath, 'img_dtype': pr_mask.dtype})
             pr_mask_list.append(pr_item)
         del model
     else:
         for sc_factor in cfg.pred_scale_factors:
             predict_sc_png = 'probability_' + solver.signature() + '_' + str(sc_factor) + '.png'
+            fpath = os.path.join(src_proj_dir, predict_sc_png)
+
             print('Prediction skipped. Trying to read already predicted result from {}'.format(predict_sc_png))
 
-            # Read and map result to the same type as source data. It completely simulate prediction results
-            pr_mask = cv2.imread(os.path.join(src_proj_dir, predict_sc_png),
-                                 cv2.IMREAD_UNCHANGED).astype(image.dtype) / 255.0
+            if store_predicted_result_to_ram:
+                # Read and map result to the same type as source data. It completely simulate prediction results
+                pr_mask = cv2.imread(fpath, cv2.IMREAD_UNCHANGED).astype(image.dtype) / 255.0
 
-            # Just to simulate shape of real generated data
-            if len(pr_mask.shape) == 2:
-                pr_mask = pr_mask[..., np.newaxis]
+                # Just to simulate shape of real generated data
+                if len(pr_mask.shape) == 2:
+                    pr_mask = pr_mask[..., np.newaxis]
 
-            pr_item = dict({'scale': sc_factor, 'img': pr_mask})
+                pr_item = dict({'scale': sc_factor, 'img': pr_mask, 'img_dtype': image.dtype})
+            else:
+                pr_item = dict({'scale': sc_factor, 'img': fpath, 'img_dtype': image.dtype})
             pr_mask_list.append(pr_item)
     # Release memory
     K.clear_session()

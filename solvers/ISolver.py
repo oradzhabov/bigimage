@@ -1,4 +1,5 @@
 import os
+import cv2
 import numpy as np
 import random
 from abc import ABCMeta, abstractmethod
@@ -30,22 +31,36 @@ class ISolver(metaclass=ABCMeta):
 
     @staticmethod
     def get_avg_prob_field(pr_mask_list):
+        def get_ndarray(pr_mask_item):
+            result = cv2.imread(pr_mask_item['img'],
+                                cv2.IMREAD_UNCHANGED) if isinstance(pr_mask_item['img'], str) else pr_mask_item['img']
+            result = result.squeeze()
+            if pr_mask_item['img_dtype'] != np.uint8:
+                # if pr_mask_item['img_dtype'] in [np.float16, np.float32, np.float64]:
+                if isinstance(pr_mask_item['img_dtype'], np.floating):
+                    result = result.astype(pr_mask_item['img_dtype']) / 255.0
+                elif pr_mask_item['img_dtype'] == np.bool:
+                    result = result.astype(pr_mask_item['img_dtype'])
+                else:
+                    raise NotImplementedError
+            return result
+
         # To speed up the performance, returns result if it is single
         if len(pr_mask_list) == 1:
-            return pr_mask_list[0]['img']
+            return get_ndarray(pr_mask_list[0])
 
         # Get average probability field
         pr_mask = None
         pr_mask_dtype = None
         for item in pr_mask_list:
             if pr_mask is None:
-                pr_mask = item['img'].copy()
+                pr_mask = get_ndarray(item).copy()
                 # Predict data overflow
                 pr_mask_dtype = pr_mask.dtype
                 if pr_mask_dtype is np.uint8 or pr_mask_dtype is np.int8:
                     pr_mask = pr_mask.astype(np.float16)
             else:
-                pr_mask += item['img']
+                pr_mask += get_ndarray(item)
         if pr_mask is not None:
             pr_mask /= len(pr_mask_list)
             pr_mask = pr_mask.astype(pr_mask_dtype)
