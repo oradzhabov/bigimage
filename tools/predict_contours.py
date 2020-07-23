@@ -8,6 +8,7 @@ sys.path.append(sys.path[0] + "/..")
 from kutils import PrepareData
 from kutils.read_sample import read_sample
 from kmodel.smooth_tiled_predictions import predict_img_with_smooth_windowing
+from kmodel.data import read_image
 from kutils.utilites import denormalize
 
 
@@ -49,11 +50,6 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
                        prep_getter=solver.get_prep_getter())
 
     model = None
-    if not skip_prediction:
-        model, _, _ = solver.build(compile_model=False)
-        if model is None:
-            print('ERROR: Cannot create model')
-            return -1, dict({})
 
     image, _ = dataset[0]
     # map input space to float16
@@ -63,12 +59,44 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     store_predicted_result_to_ram = False
 
     pr_mask_list = list()
-    if model is not None:
-        # Save original image params
-        src_image_shape = image.shape
-        src_image_dtype = image.dtype
 
-        for sc_factor in cfg.pred_scale_factors:
+    # Save original image params
+    src_image_shape = image.shape
+    src_image_dtype = image.dtype
+    for sc_factor in cfg.pred_scale_factors:
+        predict_sc_png = 'probability_' + solver.signature() + '_' + str(sc_factor) + '.png'
+        fpath = os.path.join(src_proj_dir, predict_sc_png)
+
+        pr_item = dict({'scale': sc_factor})
+
+        pr_result_descriptor = fpath
+
+        if skip_prediction and os.path.isfile(fpath):
+            # Use pre-saved results if it allowed and file exist
+
+            # If result obtained from pre-saved file, its type will be the same as source file
+            pr_item['img_dtype'] = src_image_dtype
+
+            print('Prediction skipped. Trying to read already prepared result from {}'.format(predict_sc_png))
+
+            if store_predicted_result_to_ram:
+                # Read and map result to the same type as source data. It completely simulate prediction results
+                pr_mask = read_image(fpath).astype(src_image_dtype) / 255.0
+
+                # Just to simulate shape of real generated data
+                if len(pr_mask.shape) == 2:
+                    pr_mask = pr_mask[..., np.newaxis]
+
+                pr_result_descriptor = pr_mask
+        else:
+            # Prepare model if it necessary
+            if model is None:
+                print('Build model...')
+                model, _, _ = solver.build(compile_model=False)
+                if model is None:
+                    print('ERROR: Cannot create model')
+                    return -1, dict({})
+
             # Scale image if it necessary
             if sc_factor != 1.0:
                 # For downscale the best interpolation INTER_AREA
@@ -116,36 +144,23 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
 
             pr_mask = solver.post_predict(pr_mask)
 
+            pr_item['img_dtype'] = pr_mask.dtype
+
             # Store result with unique(per scale) name
-            predict_sc_png = 'probability_' + solver.signature() + '_' + str(sc_factor) + '.png'
-            fpath = os.path.join(src_proj_dir, predict_sc_png)
+            print('Store predicted result to file {}'.format(predict_sc_png))
             cv2.imwrite(fpath, (pr_mask * 255).astype(np.uint8))
 
             if store_predicted_result_to_ram:
-                pr_item = dict({'scale': sc_factor, 'img': pr_mask, 'img_dtype': pr_mask.dtype})
+                pr_result_descriptor = pr_mask
             else:
-                pr_item = dict({'scale': sc_factor, 'img': fpath, 'img_dtype': pr_mask.dtype})
-            pr_mask_list.append(pr_item)
-        del model
-    else:
-        for sc_factor in cfg.pred_scale_factors:
-            predict_sc_png = 'probability_' + solver.signature() + '_' + str(sc_factor) + '.png'
-            fpath = os.path.join(src_proj_dir, predict_sc_png)
+                # Release memory from predicted result if it will not use
+                del pr_mask
+                gc.collect()
 
-            print('Prediction skipped. Trying to read already predicted result from {}'.format(predict_sc_png))
+        pr_item['img'] = pr_result_descriptor
+        pr_mask_list.append(pr_item)
 
-            if store_predicted_result_to_ram:
-                # Read and map result to the same type as source data. It completely simulate prediction results
-                pr_mask = cv2.imread(fpath, cv2.IMREAD_UNCHANGED).astype(image.dtype) / 255.0
-
-                # Just to simulate shape of real generated data
-                if len(pr_mask.shape) == 2:
-                    pr_mask = pr_mask[..., np.newaxis]
-
-                pr_item = dict({'scale': sc_factor, 'img': pr_mask, 'img_dtype': image.dtype})
-            else:
-                pr_item = dict({'scale': sc_factor, 'img': fpath, 'img_dtype': image.dtype})
-            pr_mask_list.append(pr_item)
+    # =================================================================================================================
     # Release memory
     K.clear_session()
     del image

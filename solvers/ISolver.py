@@ -1,8 +1,11 @@
+import sys
 import os
 import cv2
 import numpy as np
 import random
 from abc import ABCMeta, abstractmethod
+sys.path.append(sys.path[0] + "/..")
+from kmodel.data import read_image
 
 
 class ISolver(metaclass=ABCMeta):
@@ -32,12 +35,11 @@ class ISolver(metaclass=ABCMeta):
     @staticmethod
     def get_avg_prob_field(pr_mask_list):
         def get_ndarray(pr_mask_item):
-            result = cv2.imread(pr_mask_item['img'],
-                                cv2.IMREAD_UNCHANGED) if isinstance(pr_mask_item['img'], str) else pr_mask_item['img']
+            result = read_image(pr_mask_item['img']) if isinstance(pr_mask_item['img'], str) else pr_mask_item['img']
             result = result.squeeze()
             if pr_mask_item['img_dtype'] != np.uint8:
                 # if pr_mask_item['img_dtype'] in [np.float16, np.float32, np.float64]:
-                if isinstance(pr_mask_item['img_dtype'], np.floating):
+                if pr_mask_item['img_dtype'] in (np.float16, np.float32, np.float64):
                     result = result.astype(pr_mask_item['img_dtype']) / 255.0
                 elif pr_mask_item['img_dtype'] == np.bool:
                     result = result.astype(pr_mask_item['img_dtype'])

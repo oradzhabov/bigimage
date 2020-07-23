@@ -5,6 +5,7 @@ import cv2
 from . import RegrSolver
 sys.path.append(sys.path[0] + "/..")
 from kutils import utilites
+from kmodel.data import read_image
 
 
 def find_rock_masks(prob_field, prob_glue_th=0.25, debug=False):
@@ -126,8 +127,7 @@ def postprocess_prob_list(prob_list, debug=False):
 
     # Process the first scale
     img_descriptor = list(filter(lambda x: x['scale'] == 1.0, prob_list))[0]['img']
-    pr_field_sc1 = cv2.imread(img_descriptor,
-                              cv2.IMREAD_UNCHANGED) if isinstance(img_descriptor, str) else img_descriptor
+    pr_field_sc1 = read_image(img_descriptor) if isinstance(img_descriptor, str) else img_descriptor
     pr_field_sc1 = pr_field_sc1.squeeze()
     # Set proper type to guaranty that pipeline will be processed
     if pr_field_sc1.dtype != np.uint8:
@@ -145,8 +145,7 @@ def postprocess_prob_list(prob_list, debug=False):
 
     # Process the next scale
     img_descriptor = list(filter(lambda x: x['scale'] != 1.0, prob_list))[0]['img']
-    pr_field_sc025 = cv2.imread(img_descriptor,
-                                cv2.IMREAD_UNCHANGED) if isinstance(img_descriptor, str) else img_descriptor
+    pr_field_sc025 = read_image(img_descriptor) if isinstance(img_descriptor, str) else img_descriptor
     pr_field_sc025 = pr_field_sc025.squeeze()
     # Set proper type to guaranty that pipeline will be processed
     if pr_field_sc025.dtype != np.uint8:
