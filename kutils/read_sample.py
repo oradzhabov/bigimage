@@ -11,7 +11,10 @@ def read_sample(data_paths, mask_path):
 
     # read data
     img = read_image(img_path)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = img[..., :3]      # Make sure that we will drop out Alpha channel
+    img = img[..., ::-1]    # BGR->RGB
+    # ATTENTION: We should make copy, because some methods(drawContours) from cv2 will not work properly
+    img = img.copy()
 
     if himg_path is not None:
         himg = read_image(himg_path)
