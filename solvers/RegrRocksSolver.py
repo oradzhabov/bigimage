@@ -181,7 +181,11 @@ def postprocess_prob_list(prob_list, debug=False):
     ret, markers = cv2.connectedComponents(img)
     # Add one to all labels so that sure background is not 0, but 1
     markers = markers + 1
-    # Now, mark the region of unknown with zero
+    # Now, mark the region of unknown with zero.
+    # So following indices will be in use:
+    # 0 - Unknown area(will be filled later)
+    # 1 - Background. Absolutely well-known that there are no rocks
+    # 2 - Index of first rock
     markers[(img == 0) & prob_field_greate_prob_th] = 0
 
     # Format the results

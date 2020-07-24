@@ -51,7 +51,7 @@ def test_prediction(src_proj_dir):
 
 if __name__ == "__main__":
 
-    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1334'  # Especially good for rocks
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1334'  # Especially good for rocks
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.outputs/dyno/1341'  # small size
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12105'  # unseen during training BIG
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12120'  # unseen during training
@@ -73,5 +73,6 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dyno/2192'  # mppx 0.05 big rocks, big ortho ortho
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7145'  # orig:d2192 but 0.01 mppx. HUGE ROCKS
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17042'  # ROCKS DETECTION/COLORING DEATH
+    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17115'  # DEATH IN ROCKS POSTPROC EVEN ON SERVER
 
     exit(test_prediction(proj_dir))

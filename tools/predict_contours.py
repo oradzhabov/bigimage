@@ -56,6 +56,8 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     image = image.astype(np.float16)
     gc.collect()
 
+    # If don't store results to RAM, predicted results will be reused from Disk. So it will save the RAM during
+    # postprocessing if read each result from Disk by demand.
     store_predicted_result_to_ram = False
 
     pr_mask_list = list()
@@ -67,17 +69,20 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
         predict_sc_png = 'probability_' + solver.signature() + '_' + str(sc_factor) + '.png'
         fpath = os.path.join(src_proj_dir, predict_sc_png)
 
+        # Define predicted result structure
         pr_item = dict({'scale': sc_factor})
 
+        # Default result descriptor - path to result file. It could be overwrite by np.ndarray later
+        # if condition satisfied
         pr_result_descriptor = fpath
 
+        # Use pre-saved results if it allowed and file exist
         if skip_prediction and os.path.isfile(fpath):
-            # Use pre-saved results if it allowed and file exist
+
+            print('Prediction skipped. Trying to read already prepared result from {}'.format(predict_sc_png))
 
             # If result obtained from pre-saved file, its type will be the same as source file
             pr_item['img_dtype'] = src_image_dtype
-
-            print('Prediction skipped. Trying to read already prepared result from {}'.format(predict_sc_png))
 
             if store_predicted_result_to_ram:
                 # Read and map result to the same type as source data. It completely simulate prediction results
@@ -89,12 +94,12 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
 
                 pr_result_descriptor = pr_mask
         else:
-            # Prepare model if it necessary
+            # Prepare the model if it necessary
             if model is None:
-                print('Build model...')
+                print('Build the model...')
                 model, _, _ = solver.build(compile_model=False)
                 if model is None:
-                    print('ERROR: Cannot create model')
+                    print('ERROR: Cannot create the model')
                     return -1, dict({})
 
             # Scale image if it necessary
@@ -136,7 +141,7 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
                 pr_mask = cv2.resize(pr_mask.astype(np.float32),
                                      (src_image_shape[1], src_image_shape[0]),
                                      interpolation=cv2.INTER_CUBIC).astype(pr_mask_dtype)
-                # Adjust shape after resizing
+                # Adjust shape after resizing because cv2.resize() could modify the shape length
                 if len(pr_mask.shape) > len(pr_mask_shape):
                     pr_mask = pr_mask.squeeze()
                 if len(pr_mask.shape) < len(pr_mask_shape):
@@ -160,7 +165,6 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
         pr_item['img'] = pr_result_descriptor
         pr_mask_list.append(pr_item)
 
-    # =================================================================================================================
     # Release memory
     K.clear_session()
     del image
