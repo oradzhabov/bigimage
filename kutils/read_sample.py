@@ -5,19 +5,20 @@ sys.path.append(sys.path[0] + "/..")
 from kmodel.data import read_image
 
 
-def read_sample(data_paths, mask_path):
+def read_sample(data_paths, mask_path, bbox=((0, 0), (None, None))):
+    # bbox: ((minx, miny), (xsize, ysize)). Default values assumes reading whole image
+
     data_paths = data_paths + [None] * (2 - len(data_paths))
     img_path, himg_path = data_paths
 
     # read data
-    img = read_image(img_path)
+    img = read_image(img_path, bbox)
     img = img[..., :3]      # Make sure that we will drop out Alpha channel
     img = img[..., ::-1]    # BGR->RGB
-    # ATTENTION: We should make copy, because some methods(drawContours) from cv2 will not work properly
-    img = img.copy()
+    img = img.copy()  # todo: take too much RAM (temporary)
 
     if himg_path is not None:
-        himg = read_image(himg_path)
+        himg = read_image(himg_path, bbox)
         if len(himg.shape) > 2:
             himg = himg[..., 0][..., np.newaxis]
         if len(himg.shape) == 2:

@@ -12,7 +12,7 @@ import albumentations as alb
 
 class SemanticSegmentationDataProvider(IDataProvider):
     @staticmethod
-    def _initializer(obj, data_reader, augmentation, configure, prep_getter):
+    def _initializer(obj, data_reader, augmentation, bbox, configure, prep_getter):
         def random_color():
             levels = range(32, 256, 32)
             return [random.choice(levels) for _ in range(3)]
@@ -23,6 +23,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         obj.himages_fps = list()
         obj.masks_fps = list()
         obj.augmentation = augmentation
+        obj.bbox = bbox
         obj.conf = configure
         obj.data_reader = data_reader
         obj.prep_getter = prep_getter
@@ -35,12 +36,13 @@ class SemanticSegmentationDataProvider(IDataProvider):
                  data_reader,
                  data_dir,
                  ids,
+                 bbox,
                  conf,
                  min_mask_ratio=0.0,
                  augmentation=None,
                  prep_getter=None):
         super(SemanticSegmentationDataProvider, self).__init__()
-        SemanticSegmentationDataProvider._initializer(self, data_reader, augmentation, conf, prep_getter)
+        SemanticSegmentationDataProvider._initializer(self, data_reader, augmentation, bbox, conf, prep_getter)
 
         # todo: it will be better if remove hardcoded subfolders outside the class
         if conf.use_heightmap:
@@ -106,7 +108,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         data_paths = [self.src_data[k][i] if i < len(self.src_data[k]) else None for k in self.src_folders]
         mask_path = self.src_mask[i] if i < len(self.src_mask) else None
 
-        image, mask = self.data_reader(data_paths, mask_path)
+        image, mask = self.data_reader(data_paths, mask_path, self.bbox)
 
         if mask is not None:
             mask = self._preprocess_mask(mask)
@@ -128,7 +130,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
                         # image, mask = sample['image'], sample['mask']
                         image = sample['image']
                     else:
-                        image = preprocessor(image)
+                        image = preprocessor(image)  # todo: Take too much RAM
                         # Operate possible case when custom preprocessor modified data size
         if mask is not None:
             if image.shape[:2] != mask.shape[:2]:
@@ -227,10 +229,11 @@ class SemanticSegmentationDataProvider(IDataProvider):
 
 class SemanticSegmentationSingleDataProvider(SemanticSegmentationDataProvider):
     # todo: seems copy of other class RegressionSegmentationSingleDataProvider
-    def __init__(self, data_reader, img_fname, himg_fname, configure, prep_getter):
+    def __init__(self, data_reader, img_fname, himg_fname, bbox, configure, prep_getter):
         super().__init__(data_reader=data_reader,
                          data_dir='',
                          ids=list(),
+                         bbox=bbox,
                          conf=configure,
                          min_mask_ratio=0.0,
                          augmentation=None,

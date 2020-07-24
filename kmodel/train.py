@@ -43,7 +43,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
         matplotlib.use('TkAgg')  # Enable interactive mode
 
         # Lets look at augmented data we have
-        dataset = dataprovider(data_reader, data_dir, ids_train, cfg,
+        dataset = dataprovider(data_reader, data_dir, ids_train, ((0, 0), (None, None)), cfg,
                                min_mask_ratio=cfg.min_mask_ratio,
                                augmentation=aug.get_training_augmentation(cfg),
                                prep_getter=None  # don't use preparation to see actually augmentation the data

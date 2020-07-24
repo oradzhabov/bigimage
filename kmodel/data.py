@@ -26,7 +26,7 @@ def get_ids(root_folder, subfolder_list):
     return ids_filtered
 
 
-def read_image(geotiff_path):
+def read_image(geotiff_path, bbox=((0, 0), (None, None))):
     if not os.path.isfile(geotiff_path):
         print('ERROR: File {} does not exist'.format(geotiff_path))
         return None
@@ -34,7 +34,11 @@ def read_image(geotiff_path):
     gtif = gdal.Open(geotiff_path)
 
     # Read data
-    im = gtif.ReadAsArray()  # channel first
+    xoff = bbox[0][0]
+    yoff = bbox[0][1]
+    xsize = bbox[1][0]
+    ysize = bbox[1][1]
+    im = gtif.ReadAsArray(xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize)  # channel first
     del gtif
 
     if im.ndim > 2:
@@ -44,7 +48,7 @@ def read_image(geotiff_path):
         im = im.astype(np.uint8)
 
     # RGB->BGR
-    im[..., [0, 1, 2]] = im[..., [2, 1, 0]]
+    im[..., [0, 1, 2]] = im[..., [2, 1, 0]]  # todo: take too much RAM (temporary)
 
     return im
 

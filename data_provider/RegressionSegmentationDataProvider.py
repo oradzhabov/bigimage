@@ -71,10 +71,11 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
 
 class RegressionSegmentationSingleDataProvider(RegressionSegmentationDataProvider):
     # todo: seems copy of other class SemanticSegmentationSingleDataProvider
-    def __init__(self, data_reader, img_fname, himg_fname, configure, prep_getter):
+    def __init__(self, data_reader, img_fname, himg_fname, bbox, configure, prep_getter):
         super().__init__(data_reader=data_reader,
                          data_dir='',
                          ids=list(),
+                         bbox=bbox,
                          conf=configure,
                          min_mask_ratio=0.0,
                          augmentation=None,

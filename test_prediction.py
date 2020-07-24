@@ -11,7 +11,7 @@ from tools.predict_contours import predict_contours
 def test_prediction(src_proj_dir):
     # If enable following flag it will avoid long prediction and will try to read already created result.
     # Useful for debugging
-    skip_prediction = False
+    skip_prediction = True
     memmap_batch_size = 4
     predict_img_with_group_d4 = False
 
@@ -24,20 +24,20 @@ def test_prediction(src_proj_dir):
     image, _ = dataset[0]
     image_fname = dataset.get_fname(0)
 
-    img_temp = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
-    del image
-    gc.collect()
+    # Make sure that we will drop out Alpha channel
+    image = image[..., :3].copy()
+
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
-        cv2.drawContours(img_temp, class_ctrs, -1, dataset.get_color(class_ind), 0)
+        cv2.drawContours(image, class_ctrs, -1, dataset.get_color(class_ind), 0)
 
     result_png = 'classes_' + solver.signature() + '.png'
-    cv2.imwrite(os.path.join(src_proj_dir, result_png), img_temp[..., ::-1])
+    cv2.imwrite(os.path.join(src_proj_dir, result_png), image[..., ::-1])
 
     utilites.visualize(
         title='{}'.format(src_proj_dir),
-        result=img_temp
+        result=image
     )
-    del img_temp
+    del image
     gc.collect()
 
     print('Creating VIA-json...')

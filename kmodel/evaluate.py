@@ -20,7 +20,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
 
     data_reader = read_sample
 
-    test_dataset = dataprovider(data_reader, data_dir, ids_test, cfg,
+    test_dataset = dataprovider(data_reader, data_dir, ids_test, ((0, 0), (None, None)), cfg,
                                 min_mask_ratio=cfg.min_mask_ratio,
                                 augmentation=aug.get_validation_augmentation(cfg),
                                 prep_getter=solver.get_prep_getter())
