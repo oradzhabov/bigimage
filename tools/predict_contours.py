@@ -1,3 +1,4 @@
+import pickle
 import os
 import sys
 import numpy as np
@@ -154,7 +155,8 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
     return 0, dict({'contours_px': pr_cntrs_list_px})
 
 
-def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size=0, predict_img_with_group_d4=True):
+def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size=0, predict_img_with_group_d4=True,
+                     crop_size_px=(10000, 10000)):
     """
     :param cfg:
     :param src_proj_dir:
@@ -164,6 +166,7 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     efficientb5(512_wh) as for efficcientb3(1024_wh). So if GPU will be 16 GB GPU, could be increased to 6**2 = 36
     :param predict_img_with_group_d4: If False, it will take 8 times faster and 2-times less CPU RAM, but will not use
     D4-group augmentation for prediction smoothing.
+    :param crop_size_px:
     :return:
     """
 
@@ -174,64 +177,74 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
                                   'tmp_mppx{:.2f}.png'.format(cfg.mppx))
     dest_himg_fname = os.path.join(src_proj_dir,
                                    'htmp_mppx{:.2f}.png'.format(cfg.mppx)) if cfg.use_heightmap else None
-
-    is_success = PrepareData.build_from_project(src_proj_dir, cfg.mppx, dest_img_fname, dest_himg_fname)
-    if not is_success:
-        print('ERROR: Cannot prepare data')
-        return -1, dict({})
-
-    # Obtain source image shape
-    src_img_shape, _ = get_raster_info(dest_img_fname)
-
-    # Collect bounding boxes
-    bbox_list = list()
-    crop_size_px = (10000, 10000)
-    w0, w1, h0, h1 = kutils.get_tiled_bbox(src_img_shape, crop_size_px, crop_size_px)
-    for i in range(len(w0)):
-        cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
-        cr_x2, extr_x2 = (w1[i], 0) if w1[i] < src_img_shape[1] else (src_img_shape[1], w1[i] - src_img_shape[1])
-
-        cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
-        cr_y2, extr_y2 = (h1[i], 0) if h1[i] < src_img_shape[0] else (src_img_shape[0], h1[i] - src_img_shape[0])
-
-        bbox = ((cr_x, cr_y), (cr_x2-cr_x, cr_y2-cr_y))
-        bbox_list.append(bbox)
-    print('Source image cropped to {} patches with cropping size {}'.format(len(bbox_list), crop_size_px))
+    result_contours_fpath = os.path.join(src_proj_dir, 'result_cntrs_' + solver.signature() + '.pkl')
 
     pr_cntrs_list_px = None
-    # Process each bound box
-    for bbox_ind, bbox in enumerate(bbox_list):
-        print('Patch #{} (from {}) in processing...'.format(bbox_ind, len(bbox_list)))
-        dataset = provider(read_sample,
-                           dest_img_fname,
-                           dest_himg_fname,
-                           bbox,
-                           cfg,
-                           prep_getter=solver.get_prep_getter())
+    if os.path.isfile(result_contours_fpath) and skip_prediction:
+        with open(result_contours_fpath, 'rb') as inp:
+            pr_cntrs_list_px = pickle.load(inp)
+            print('Prediction skipped. Result has been restored from file {}'.format(result_contours_fpath))
 
-        err, result_dict = predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
-                                                 skip_prediction=skip_prediction,
-                                                 memmap_batch_size=memmap_batch_size,
-                                                 predict_img_with_group_d4=predict_img_with_group_d4,
-                                                 bbox=bbox)
-        # Map contours to base CS
-        bbox_contours = result_dict['contours_px']
-        bbox_contours = [[cntr + bbox[0] for cntr in cntrs] for cntrs in bbox_contours]
+    if pr_cntrs_list_px is None:
+        is_success = PrepareData.build_from_project(src_proj_dir, cfg.mppx, dest_img_fname, dest_himg_fname)
+        if not is_success:
+            print('ERROR: Cannot prepare data')
+            return -1, dict({})
 
-        # Store contours
-        if pr_cntrs_list_px is None:
-            pr_cntrs_list_px = bbox_contours
-        else:
-            # For each particular lass
-            for class_ind in range(len(pr_cntrs_list_px)):
-                pr_cntrs_list_px[class_ind] = pr_cntrs_list_px[class_ind] + bbox_contours[class_ind]
+        # Obtain source image shape
+        src_img_shape, _ = get_raster_info(dest_img_fname)
 
-    # Release memory
-    if solver.model is not None:
-        del solver.model
-        solver.model = None
-    K.clear_session()
-    gc.collect()
+        # Collect bounding boxes
+        bbox_list = list()
+        w0, w1, h0, h1 = kutils.get_tiled_bbox(src_img_shape, crop_size_px, crop_size_px)
+        for i in range(len(w0)):
+            cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
+            cr_x2, extr_x2 = (w1[i], 0) if w1[i] < src_img_shape[1] else (src_img_shape[1], w1[i] - src_img_shape[1])
+
+            cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
+            cr_y2, extr_y2 = (h1[i], 0) if h1[i] < src_img_shape[0] else (src_img_shape[0], h1[i] - src_img_shape[0])
+
+            bbox = ((cr_x, cr_y), (cr_x2-cr_x, cr_y2-cr_y))
+            bbox_list.append(bbox)
+        print('Source image cropped to {} patches with cropping size {}'.format(len(bbox_list), crop_size_px))
+
+        # Process each bound box
+        for bbox_ind, bbox in enumerate(bbox_list):
+            print('Patch #{} (from {}) in processing...'.format(bbox_ind+1, len(bbox_list)))
+            dataset = provider(read_sample,
+                               dest_img_fname,
+                               dest_himg_fname,
+                               bbox,
+                               cfg,
+                               prep_getter=solver.get_prep_getter())
+
+            err, result_dict = predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
+                                                     skip_prediction=skip_prediction,
+                                                     memmap_batch_size=memmap_batch_size,
+                                                     predict_img_with_group_d4=predict_img_with_group_d4,
+                                                     bbox=bbox)
+            # Map contours to base CS
+            bbox_contours = result_dict['contours_px']
+            bbox_contours = [[cntr + bbox[0] for cntr in cntrs] for cntrs in bbox_contours]
+
+            # Store contours
+            if pr_cntrs_list_px is None:
+                pr_cntrs_list_px = bbox_contours
+            else:
+                # For each particular lass
+                for class_ind in range(len(pr_cntrs_list_px)):
+                    pr_cntrs_list_px[class_ind] = pr_cntrs_list_px[class_ind] + bbox_contours[class_ind]
+
+        # Release memory
+        if solver.model is not None:
+            del solver.model
+            solver.model = None
+        K.clear_session()
+        gc.collect()
+
+        # Store results for debug purposes
+        with open(result_contours_fpath, 'wb') as output:
+            pickle.dump(pr_cntrs_list_px, output, pickle.HIGHEST_PROTOCOL)
 
     # Prepare final dataset without pre-processing to minimize RAM using during image reading
     dataset = provider(read_sample,

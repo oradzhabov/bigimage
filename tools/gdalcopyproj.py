@@ -59,6 +59,7 @@ def apply_projection(inp_proj, output):
 
 def copy_projection(inp, output):
     # Copy GDAL projection metadata from one file into other.
+    # todo: needs to be implemented with get_projection() and apply_projection()
 
     dataset = gdal.Open(inp)
     if dataset is None:

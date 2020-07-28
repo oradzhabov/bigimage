@@ -116,7 +116,7 @@ def collect_statistics(contours):
         max_diameter = max(np.max(rect[1]), 1)
 
         # CenterX, CenterY, MinD, MaxD
-        item = [rect[0][0], rect[0][1], min_diameter, max_diameter, cnt.tolist()]
+        item = [int(rect[0][0]), int(rect[0][1]), min_diameter, max_diameter, cnt.tolist()]
         geometry_px.append(item)
 
     return geometry_px
