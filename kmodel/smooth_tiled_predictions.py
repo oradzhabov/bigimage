@@ -381,6 +381,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     if isinstance(prd, np.memmap):
         prd_ram = np.array(prd)
         del prd  # close file
+        del padded_results
         prd = prd_ram
 
     if PLOT_PROGRESS:
