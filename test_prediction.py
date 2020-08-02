@@ -1,9 +1,10 @@
+import logging
 import gc
 import os
 import numpy as np
 import cv2
 from kutils import utilites
-from config_rocks import cfg
+from config import cfg
 from kutils.VIAConverter import *
 from tools.predict_contours import predict_contours
 
@@ -11,7 +12,7 @@ from tools.predict_contours import predict_contours
 def test_prediction(src_proj_dir):
     # If enable following flag it will avoid long prediction and will try to read already created result.
     # Useful for debugging
-    skip_prediction = True
+    skip_prediction = False
     memmap_batch_size = 4
     predict_img_with_group_d4 = False
 
@@ -40,7 +41,7 @@ def test_prediction(src_proj_dir):
     del image
     gc.collect()
 
-    print('Creating VIA-json...')
+    logging.info('Creating VIA-json...')
     via_item = create_json_item(image_fname, pr_cntrs_list, cfg.classes)
     output_filename = 'via_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.json'
     with open(os.path.join(src_proj_dir, output_filename), 'w', newline=os.linesep) as f:

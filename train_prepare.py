@@ -1,3 +1,4 @@
+import logging
 import os
 from kutils import PrepareData
 from kutils import VIAConverter
@@ -19,6 +20,6 @@ if __name__ == "__main__":
 
     PrepareData.prepare_dataset(cfg.root_projects_dir, cfg.data_dir, cfg.mppx, cfg.data_subset, img_fnames)
 
-    print('Prepare mask files...')
+    logging.info('Prepare mask files...')
     VIAConverter.convert_to_images(via_annotation_file, 0.05, cfg.classes,
                                    mask_postprocess=cfg.mask_postprocess)

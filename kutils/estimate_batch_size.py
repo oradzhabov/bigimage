@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from itertools import chain
 from math import log, floor
@@ -17,9 +18,9 @@ def get_free_gpu_mem(gpu_index):
 
     info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
 
-    # print("Total GPU memory:", info.total)
-    # print("Free GPU memory:", info.free)
-    # print("Used GPU memory:", info.used)
+    # logging.info("Total GPU memory: {}".format(info.total))
+    # logging.info("Free GPU memory: {}".format(info.free))
+    # logging.info("Used GPU memory: {}".format(info.used))
 
     nvidia_smi.nvmlShutdown()
 
@@ -75,8 +76,8 @@ def estimate_batch_size(gpu_index: int, model: Model, inpu_shape: tuple,
 
     m1 = get_model_memory_usage(1, model_wh)
     m2 = get_model_memory_usage(2, model_wh)
-    print('m1: ', m1)
-    print('m2: ', m2)
+    logging.info('m1: {}'.format(m1))
+    logging.info('m2: {}'.format(m2))
     del model_wh
     K.clear_session()
     model._layers[0].batch_input_shape = old_batch_input_shape
@@ -84,7 +85,7 @@ def estimate_batch_size(gpu_index: int, model: Model, inpu_shape: tuple,
     m21 = m2 - m1
 
     free_mem = get_free_gpu_mem(gpu_index)
-    print('free_mem: ', free_mem)
+    logging.info('free_mem: {}'.format(free_mem))
 
     free_mem_1 = free_mem - m1
 
@@ -92,6 +93,6 @@ def estimate_batch_size(gpu_index: int, model: Model, inpu_shape: tuple,
 
     batch_size = max(1, batch_size)
 
-    print('batch_size: ', batch_size)
+    logging.info('batch_size: {}'.format(batch_size))
     exit(0)
     return batch_size

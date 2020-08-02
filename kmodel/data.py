@@ -1,3 +1,4 @@
+import logging
 import os
 import cv2
 import random
@@ -28,7 +29,7 @@ def get_ids(root_folder, subfolder_list):
 
 def read_image(geotiff_path, bbox=((0, 0), (None, None))):
     if not os.path.isfile(geotiff_path):
-        print('ERROR: File {} does not exist'.format(geotiff_path))
+        logging.error('File {} does not exist'.format(geotiff_path))
         return None
 
     gtif = gdal.Open(geotiff_path)
@@ -54,7 +55,7 @@ def read_image(geotiff_path, bbox=((0, 0), (None, None))):
 
 
 def crop(input_root, output_root, subfolder_list, file_names, output_shape):
-    print('Cropping dataset by size: {}'.format(output_shape))
+    logging.info('Cropping dataset by size: {}'.format(output_shape))
 
     for subfolder in subfolder_list:
         # Left output subfolders if it already exist.
@@ -141,7 +142,7 @@ def get_data(conf, test_size):
     data_dir, ids = get_cropped_ids(conf)
 
     # stat, stratify = asd(ids)
-    # print(stat)
+    # logging.info(stat)
 
     # Split Train/Test data
     ids_train, ids_test, _, _ = train_test_split(ids, ids, test_size=test_size, random_state=conf.seed, shuffle=True)

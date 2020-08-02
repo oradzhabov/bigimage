@@ -63,9 +63,9 @@ def instance_segmentation_old(prob_field, debug=False):
     prob_field: shape:[h,w], dtype: float32, range[0..1]
     """
     """
-    print('Instance segmentation...')
+    logging.info('Instance segmentation...')
     if prob_field is None or prob_field.size == 0:
-        print('ERROR: Source array is empty')
+        logging.error('Source array is empty')
         return None
     """
     # Less than 13 predict not all little rocks, but till logic cannot separate them from big blob,

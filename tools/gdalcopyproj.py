@@ -1,17 +1,18 @@
+import logging
 from osgeo import gdal
 
 
 def get_projection(inp):
     dataset = gdal.Open(inp)
     if dataset is None:
-        print('Unable to open ', inp, ' for reading')
+        logging.error('Unable to open {}'.format(inp))
         return None
 
     projection = dataset.GetProjection()
     geotransform = dataset.GetGeoTransform()
 
     if projection is None and geotransform is None:
-        print('No projection or geotransform found on file ' + inp)
+        logging.error('No projection or geotransform found on file {}'.format(inp))
         return None
 
     gcp_count = dataset.GetGCPCount()
@@ -34,7 +35,7 @@ def apply_projection(inp_proj, output):
     dataset2 = gdal.Open(output, gdal.GA_Update)
 
     if dataset2 is None:
-        print('Unable to open ', output, ' for writing')
+        logging.error('Unable to open {}'.format(output))
         return -1
 
     geotransform = inp_proj['geotransform']
@@ -58,41 +59,14 @@ def apply_projection(inp_proj, output):
 
 
 def copy_projection(inp, output):
-    # Copy GDAL projection metadata from one file into other.
-    # todo: needs to be implemented with get_projection() and apply_projection()
+    src_projection = get_projection(inp)
 
-    dataset = gdal.Open(inp)
-    if dataset is None:
-        print('Unable to open', inp, 'for reading')
+    if src_projection is None:
         return -1
 
-    projection = dataset.GetProjection()
-    geotransform = dataset.GetGeoTransform()
+    ret_code = apply_projection(src_projection, output)
 
-    if projection is None and geotransform is None:
-        print('No projection or geotransform found on file ' + inp)
-        return -1
-
-    dataset2 = gdal.Open(output, gdal.GA_Update)
-
-    if dataset2 is None:
-        print('Unable to open', output, 'for writing')
-        return -1
-
-    if geotransform is not None and geotransform != (0, 1, 0, 0, 0, 1):
-        dataset2.SetGeoTransform(geotransform)
-
-    if projection is not None and projection != '':
-        dataset2.SetProjection(projection)
-
-    gcp_count = dataset.GetGCPCount()
-    if gcp_count != 0:
-        dataset2.SetGCPs(dataset.GetGCPs(), dataset.GetGCPProjection())
-
-    del dataset
-    del dataset2
-
-    return 0
+    return ret_code
 
 
 def create_tiles(args):

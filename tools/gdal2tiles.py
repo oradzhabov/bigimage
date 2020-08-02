@@ -36,13 +36,14 @@
 #******************************************************************************
 
 import sys
+import logging
 
 try:
     from osgeo import gdal
     from osgeo import osr
 except:
     import gdal
-    print('You are using "old gen" bindings. gdal2tiles needs "new gen" bindings.')
+    logging.error('You are using "old gen" bindings. gdal2tiles needs "new gen" bindings.')
     sys.exit(1)
 
 import os
@@ -630,11 +631,11 @@ gdal_vrtmerge.py -o merged.vrt %s""" % " ".join(self.args))
         # Output the results
 
         if self.options.verbose:
-            print("Options:", self.options)
-            print("Input:", self.input)
-            print("Output:", self.output)
-            print("Cache: %s MB" % (gdal.GetCacheMax() / 1024 / 1024))
-            print('')
+            logging.info("Options: {}".format(self.options))
+            logging.info("Input: {}".format(self.input))
+            logging.info("Output: {}".format(self.output))
+            logging.info("Cache: {} MB".format((gdal.GetCacheMax() / 1024 / 1024)))
+            logging.info('')
 
     # -------------------------------------------------------------------------
     def optparse_init(self):

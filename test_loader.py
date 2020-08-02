@@ -1,3 +1,4 @@
+import logging
 import os
 from kmodel.data import get_data, Dataloder
 from config import cfg
@@ -9,7 +10,7 @@ import time
 if __name__ == "__main__":
     # Check folder path
     if not os.path.exists(cfg.data_dir):
-        print('There are no such data folder {}'.format(cfg.data_dir))
+        logging.error('There are no such data folder {}'.format(cfg.data_dir))
         exit(-1)
 
     # Get all data into test-set
@@ -30,4 +31,4 @@ if __name__ == "__main__":
     a = train_dataloader[0]
     a = train_dataloader[1]
     a = train_dataloader[2]
-    print("Spend time: ", time.time() - t1)
+    logging.info("Spend time: {}".format(time.time() - t1))

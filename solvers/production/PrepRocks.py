@@ -1,3 +1,4 @@
+import logging
 import gc
 import numpy as np
 import cv2
@@ -11,9 +12,9 @@ def instance_segmentation(prob_field, debug=False):
     prob_field: shape:[h,w], dtype: float32, range[0..1]
     """
     """
-    print('Instance segmentation...')
+    logging.info('Instance segmentation...')
     if prob_field is None or prob_field.size == 0:
-        print('ERROR: Source array is empty')
+        logging.error('Source array is empty')
         return None
     """
     prob_field = (prob_field * 255).astype(np.uint8).squeeze()
@@ -112,7 +113,7 @@ def instance_segmentation(prob_field, debug=False):
 
 
 def collect_statistics(instances, img=None, debug=False, orthophoto_filename=''):
-    print('Collect statistics...')
+    logging.info('Collect statistics...')
     geometry_px = []
     instMax = np.max(instances) + 1
 
@@ -143,16 +144,16 @@ def collect_statistics(instances, img=None, debug=False, orthophoto_filename='')
     #
     grand = [contours[i] for i in range(len(contours)) if hierarchy[0][i][2] >= 0 and hierarchy[0][i][3] < 0] # NO parents HAVE childs
     cv2.drawContours(img, grand, -1, (0,0,255), 3)
-    print('len(grand): ', len(grand))
+    logging.info('len(grand): {}'.format(len(grand)))
     holes = [contours[i] for i in range(len(contours)) if hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0] # HAVE parents NO childs
     cv2.drawContours(img, holes, -1, (0,255,0), 1)
-    print('len(holes): ', len(holes))
+    logging.info('len(holes): {}'.format(len(holes)))
     ones = [contours[i] for i in range(len(contours)) if hierarchy[0][i][2] < 0 and hierarchy[0][i][3] < 0] # NO parents NO childs
     cv2.drawContours(img, ones, -1, (0,255,255), 1)
-    print('len(ones): ', len(ones))
+    logging.info('len(ones): {}'.format(len(ones)))
     siblings = [contours[i] for i in range(len(contours)) if hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0 and (hierarchy[0][i][0] >= 0 or hierarchy[0][i][1] >= 0) ] # HAVE parents NO childs HAVE SIBLINGS
     cv2.drawContours(img, siblings, -1, (255,255,0), 1)
-    print('len(siblings): ', len(siblings))
+    logging.info('len(siblings): {}'.format(len(siblings)))
     """
     # Pay attention - if rocks are black which put on white background -
     # each rock will be a child, and main parent - image rectangle
@@ -184,7 +185,7 @@ def collect_statistics(instances, img=None, debug=False, orthophoto_filename='')
             cv2.drawContours(img, [box], 0, (0, 0, 255), 1)
 
     if debug:
-        print('Number of rocks: {}'.format(len(rocks)))
+        logging.debug('Number of rocks: {}'.format(len(rocks)))
 
     if img is not None:
         cv2.drawContours(img, rocks, -1, (0, 255, 0), 1)

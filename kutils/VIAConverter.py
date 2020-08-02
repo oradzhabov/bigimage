@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import numpy as np
@@ -65,12 +66,12 @@ def convert_to_images(json_filename, json_mppx, region_attr_mapper, mask_postpro
             img_filename = os.path.normpath(img_filename)
 
             if not os.path.exists(img_filename):
-                print('WARNING: Image {} not found. Try to find it in sibling of parent'.format(img_filename))
+                logging.info('Image {} not found. Try to find it in sibling of parent'.format(img_filename))
 
                 img_filename = os.path.join(os.path.dirname(img_filename), '../imgs', os.path.basename(img_filename))
                 img_filename = os.path.abspath(img_filename)
                 if not os.path.exists(img_filename):
-                    print('ERROR: Image {} not found'.format(img_filename))
+                    logging.error('Image {} not found'.format(img_filename))
                     continue
 
             out_filename = os.path.splitext(os.path.basename(img_filename))[0] + '.png'
@@ -101,7 +102,7 @@ def convert_to_images(json_filename, json_mppx, region_attr_mapper, mask_postpro
 
             img_shape, img_mppx = get_raster_info(img_filename)
             if img_shape is None:
-                print('ERROR: File {} does not have raster info'.format(img_filename))
+                logging.error('File {} does not have raster info'.format(img_filename))
 
             contours_map = {k: [np.multiply(c, json_mppx / img_mppx).astype(np.int32) for c in v]
                             for k, v in contours_map.items()}
@@ -114,13 +115,13 @@ def convert_to_images(json_filename, json_mppx, region_attr_mapper, mask_postpro
                 cntrs_nb = cntrs_nb + len(v)
             #
             if mask_postprocess is not None:
-                print('Extra processing mask file {}'.format(out_filename))
+                logging.info('Extra processing mask file {}'.format(out_filename))
                 img = mask_postprocess(img)
 
             cv2.imwrite(out_filename, img)
-            print("Image \"{}\" created successfully. {} classes, {} contours".format(out_filename,
-                                                                                      len(contours_map.keys()),
-                                                                                      cntrs_nb))
+            logging.info("Image \"{}\" created successfully. {} classes, {} contours".format(out_filename,
+                                                                                             len(contours_map.keys()),
+                                                                                             cntrs_nb))
 
             if preview:
                 cv2.imshow(out_filename, img)

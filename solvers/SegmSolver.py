@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import numpy as np
@@ -32,7 +33,7 @@ class SegmSolver(ISolver):
             os.makedirs(solution_path)
         self.weights_path = os.path.join(solution_path, self.weights_path)
 
-        print('Trying to find model\'s weight by path \"{}\"'.format(self.weights_path))
+        logging.info('Trying to find model\'s weight by path \"{}\"'.format(self.weights_path))
         weights_init_path = self.weights_path if os.path.isfile(self.weights_path) else None
 
         base_model = sm.Unet(self.conf.backbone,
@@ -64,11 +65,11 @@ class SegmSolver(ISolver):
             # loading model weights
             self.model.load_weights(weights_init_path)
 
-            print('Model has been initialized from file: \"{}\"'.format(weights_init_path))
+            logging.info('Model has been initialized from file: \"{}\"'.format(weights_init_path))
         else:
             # Provide model info for first call of model
             self.model.summary()
-            print('Model\'s weights has not been found by path \"{}\"'.format(self.weights_path))
+            logging.info('Model\'s weights has not been found by path \"{}\"'.format(self.weights_path))
 
         if compile_model:
             # todo: actually compilation could be moved out to parent class.

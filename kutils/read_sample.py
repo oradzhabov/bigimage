@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import cv2
 import sys
@@ -25,7 +26,7 @@ def read_sample(data_paths, mask_path, bbox=((0, 0), (None, None))):
             himg = himg[..., np.newaxis]
 
         if himg.shape[:2] != img.shape[:2]:
-            print('WARNING: Height map has not matched image resolution. To match shape it was scaled.')
+            logging.info('Height map has not matched image resolution. To match shape it was scaled')
             himg = cv2.resize(himg, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_CUBIC)
 
         img = np.concatenate((img, himg), axis=-1)

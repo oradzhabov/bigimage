@@ -124,17 +124,17 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
             """
             grand = [contours[i] for i in range(len(contours)) if
                      hierarchy[0][i][2] >= 0 and hierarchy[0][i][3] < 0] # NO parents HAVE children
-            print('len(grand): ', len(grand))
+            logging.info('len(grand): {}'.format(len(grand)))
             holes = [contours[i] for i in range(len(contours)) if
                      hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0] # HAVE parents NO children
-            print('len(holes): ', len(holes))
+            logging.info('len(holes): {}'.format(len(holes)))
             ones = [contours[i] for i in range(len(contours)) if
                     hierarchy[0][i][2] < 0 and hierarchy[0][i][3] < 0] # NO parents NO children
-            print('len(ones): ', len(ones))
+            logging.info('len(ones): {}'.format(len(ones)))
             siblings = [contours[i] for i in range(len(contours)) if
                         hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0 and
                         (hierarchy[0][i][0] >= 0 or hierarchy[0][i][1] >= 0) ] # HAVE parents NO childs HAVE SIBLINGS
-            print('len(siblings): ', len(siblings))
+            logging.info('len(siblings): {}'.format(len(siblings)))
             """
             # Pay attention - if objects are black which put on white background -
             # each objects will be a child, and main parent - image rectangle

@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import json
@@ -82,9 +83,9 @@ def get_raster_info(img_fname):
     srs = osr.SpatialReference(wkt=prj)
     unit = srs.GetAttrValue('unit')  # todo: could return None. In that way behavior is not correct
     if unit is None:
-        print('ERROR: Try to read raster info from file {} which does not contain these data'.format(img_fname))
+        logging.error('Try to read raster info from file {} which does not contain these data'.format(img_fname))
         return None, None
-    # print('GeoTIFF length units: {}'.format(unit))
+    # logging.info('GeoTIFF length units: {}'.format(unit))
     scale_to_meter = 1.0
     if unit != 'metre':
         scale_to_meter = 0.3048
@@ -95,18 +96,18 @@ def get_raster_info(img_fname):
 
 
 def create_orthophoto(dataset_path, dst_mppx, dest_img_fname):
-    print('Mapping orthographic image into {}'.format(dest_img_fname))
+    logging.info('Mapping orthographic image into {}'.format(dest_img_fname))
 
     recreated = False
     src_img_fname = os.path.join(dataset_path, 'orthophoto/orthophoto_export.tif')
     if not os.path.isfile(src_img_fname):
-        print('ERROR: File {} does not exist'.format(src_img_fname))
+        logging.error('File {} does not exist'.format(src_img_fname))
         return False, recreated
 
     if not os.path.isfile(dest_img_fname):
         src_img_shape, src_mppx = get_raster_info(src_img_fname)
         if src_img_shape is None:
-            print('ERROR: Cannot create orthophoto because file {} does not have raster info'.format(src_img_fname))
+            logging.error('Cannot create orthophoto because file {} does not have raster info'.format(src_img_fname))
             return False, recreated
 
         rescale = src_mppx / dst_mppx
@@ -121,11 +122,11 @@ def create_orthophoto(dataset_path, dst_mppx, dest_img_fname):
 def create_heightmap_color(dataset_path, dst_img_shape, dest_himg_fname):
     fname = os.path.join(dataset_path, 'dem/color_relief/color_relief.tif')
     if not os.path.isfile(fname):
-        print('ERROR: File {0} does not exist'.format(fname))
+        logging.error('File {} does not exist'.format(fname))
         return False
     himg_bgr = cv2.imread(fname)[:, :, :3]
     if himg_bgr is None:
-        print('ERROR: Cannot read file {0}'.format(fname))
+        logging.error('Cannot read file {}'.format(fname))
         return False
     himg_gray = color2height(os.path.join(dataset_path, 'dem/color_relief/color_relief.txt'), himg_bgr)
     himg_gray_resized = cv2.resize(himg_gray, (dst_img_shape[1], dst_img_shape[0]))
@@ -136,7 +137,7 @@ def create_heightmap_color(dataset_path, dst_img_shape, dest_himg_fname):
 def create_heightmap_dsm(dataset_path, dst_img_shape, dest_himg_fname):
     src_himg_fname = os.path.join(dataset_path, 'dem/dsm.tif')
     if not os.path.isfile(src_himg_fname):
-        print('ERROR: File {0} does not exist'.format(src_himg_fname))
+        logging.error('File {} does not exist'.format(src_himg_fname))
         return False
     # Param '-scale' without parameters rescales the value's range from min/max to 0/255
     gdal.Translate(dest_himg_fname, src_himg_fname,
@@ -146,12 +147,12 @@ def create_heightmap_dsm(dataset_path, dst_img_shape, dest_himg_fname):
 
 
 def create_heightmap(dataset_path, dst_img_shape, dest_himg_fname):
-    print('Mapping heightmap image into {}'.format(dest_himg_fname))
+    logging.info('Mapping heightmap image into {}'.format(dest_himg_fname))
 
     # Using DSM(even u8c1) provides better smoothed results rather using colored height-map
     if create_heightmap_dsm(dataset_path, dst_img_shape, dest_himg_fname):
         return True
-    print('There are no dsm-file. Try to operate with colored depth map')
+    logging.info('There are no dsm-file. Try to operate with colored depth map')
     return create_heightmap_color(dataset_path, dst_img_shape, dest_himg_fname)
 
 
@@ -164,7 +165,8 @@ def build_from_project(dataset_path, dst_mppx, dest_img_fname, dest_himg_fname):
         if not os.path.isfile(dest_himg_fname) or bgr_recreated:
             dst_img_shape, _ = get_raster_info(dest_img_fname)
             if dst_img_shape is None:
-                print('ERROR: Cannot create heightmap because file {} does not have raster info'.format(dest_img_fname))
+                logging.error('Cannot create heightmap because file {} does not have raster info'.
+                              format(dest_img_fname))
                 return False
 
             is_success = create_heightmap(dataset_path, dst_img_shape, dest_himg_fname)
@@ -175,7 +177,7 @@ def build_from_project(dataset_path, dst_mppx, dest_img_fname, dest_himg_fname):
 
 
 def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
-    print('Prepare dataset...')
+    logging.info('Prepare dataset...')
 
     # Create destination folders
     dest_img_folder = os.path.join(destdir, 'imgs')
@@ -218,7 +220,7 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
                 if uniq_fname + '.png' not in img_fnames:
                     continue
 
-            print('Iterate dataset {0}'.format(dataset_path))
+            logging.info('Iterate dataset {}'.format(dataset_path))
             #
             dest_img_fname = os.path.join(dest_img_folder, uniq_fname + '.png')
             dest_himg_fname = os.path.join(dest_himg_folder, uniq_fname + '.png')
@@ -231,11 +233,11 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
             if os.path.isfile(contour_fname):
                 gdalinfo = os.path.join(dataset_path, 'orthophoto/tiles/gdalinfo.txt')
                 if not os.path.isfile(gdalinfo):
-                    print('ERROR: File {0} does not exist'.format(gdalinfo))
+                    logging.error('File {} does not exist'.format(gdalinfo))
                     continue
                 mapdata_fname = os.path.join(dataset_path, 'orthophoto/tiles/mapdata.json')
                 if not os.path.isfile(mapdata_fname):
-                    print('ERROR: File {0} does not exist'.format(mapdata_fname))
+                    logging.error('File {} does not exist'.format(mapdata_fname))
                     continue
                 # Get mapdata
                 with open(mapdata_fname, 'r') as f:
@@ -251,7 +253,7 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
                     json_contours = json_data['contours']
                     dst_img_shape, dst_f_mppx = get_raster_info(dest_img_fname)
                     if dst_img_shape is None:
-                        print('ERROR: File {} does not have raster info'.format(dest_img_fname))
+                        logging.error('File {} does not have raster info'.format(dest_img_fname))
                         continue
 
                     mask = np.zeros(shape=(dst_img_shape[0], dst_img_shape[1], 1), dtype=np.uint8)

@@ -1,3 +1,4 @@
+import logging
 import sys
 sys.path.append(sys.path[0] + "/..")
 import os
@@ -55,7 +56,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         self.src_data = dict({k: list() for k in self.src_folders})
         self.src_mask = list()
 
-        print('Collect samples...')
+        logging.info('Collect samples...')
         for fn in tqdm(ids):
             is_data_fully_exist = True
             subitem = dict({k: list() for k in self.src_folders})
@@ -134,7 +135,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
                         # Operate possible case when custom preprocessor modified data size
         if mask is not None:
             if image.shape[:2] != mask.shape[:2]:
-                print('WARNING: Mask has not matched image resolution. To match shape it was scaled.')
+                logging.info('Mask has not matched image resolution. To match shape it was scaled.')
                 mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
 
         return image, mask
@@ -155,10 +156,11 @@ class SemanticSegmentationDataProvider(IDataProvider):
 
     def show(self, i):
         image, mask = self.__getitem__(i)
-        print('name: ', os.path.basename(self.get_fname(i)))
-        print('img shape,dtype,min,max: ', image.shape, image.dtype, np.min(image), np.max(image))
-        print('mask shape,dtype,min,max,info_ratio: ', mask.shape, mask.dtype, np.min(mask), np.max(mask),
-              np.count_nonzero(mask) / mask.size)
+        logging.info('name: {}'.format(os.path.basename(self.get_fname(i))))
+        logging.info('img shape {},dtype {},min {},max {}'.format(image.shape, image.dtype,
+                                                                   np.min(image), np.max(image)))
+        logging.info('mask shape {},dtype {},min {},max {}, info_ratio {}'.
+                     format(mask.shape, mask.dtype, np.min(mask), np.max(mask), np.count_nonzero(mask) / mask.size))
 
         # image_rgb = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
         image_rgb = image[..., :3].copy()

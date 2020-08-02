@@ -1,3 +1,4 @@
+import logging
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import cv2
@@ -27,7 +28,7 @@ if TRIM_GPU:
 def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_augmented_sample=False):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
-        print('There are no such data folder {}'.format(cfg.data_dir))
+        logging.error('There are no such data folder {}'.format(cfg.data_dir))
         exit(-1)
 
     # Prepare data and split to train/test subsets
@@ -48,7 +49,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
                                augmentation=aug.get_training_augmentation(cfg),
                                prep_getter=None  # don't use preparation to see actually augmentation the data
                                )
-        print('Dataset length: ', len(dataset))
+        logging.info('Dataset length: {}'.format(len(dataset)))
 
         for i in range(150):
             dataset.show(i)
@@ -76,10 +77,12 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
 
     # Inform general samples info
     train_batch = train_dataloader[0]
-    print('X: ', train_batch[0].shape, train_batch[0].dtype, np.min(train_batch[0]), np.max(train_batch[0]))
-    print('Y: ', train_batch[1].shape, train_batch[1].dtype, np.min(train_batch[1]), np.max(train_batch[1]))
-    print('Train Samples Nb: ', len(train_dataset))
-    print('Validate Samples Nb: ', len(valid_dataset))
+    logging.info('X: {},{},{},{}'.format(train_batch[0].shape, train_batch[0].dtype,
+                                         np.min(train_batch[0]), np.max(train_batch[0])))
+    logging.info('Y: {},{},{},{}'.format(train_batch[1].shape, train_batch[1].dtype,
+                                         np.min(train_batch[1]), np.max(train_batch[1])))
+    logging.info('Train Samples Nb: {}'.format(len(train_dataset)))
+    logging.info('Validate Samples Nb: {}'.format(len(valid_dataset)))
 
     # Get monitoring metric
     monitoring_metric_name, monitoring_metric_mode = solver.monitoring_metric()

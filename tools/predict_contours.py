@@ -1,4 +1,5 @@
 import pickle
+import logging
 import os
 import sys
 import numpy as np
@@ -49,7 +50,7 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
         # Use pre-saved results if it allowed and file exist
         if skip_prediction and os.path.isfile(fpath):
 
-            print('Prediction skipped. Trying to read already prepared result from {}'.format(predict_sc_png))
+            logging.info('Prediction skipped. Trying to read already prepared result from {}'.format(predict_sc_png))
 
             # If result obtained from pre-saved file, its type will be the same as source file
             pr_item['img_dtype'] = working_dtype
@@ -73,10 +74,10 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
 
             # Prepare the model if it necessary
             if solver.model is None:
-                print('Build the model...')
+                logging.info('Build the model...')
                 model, _, _ = solver.build(compile_model=False)
                 if model is None:
-                    print('ERROR: Cannot create the model')
+                    logging.error('Cannot create the model')
                     return -1, dict({})
 
             # Scale image if it necessary
@@ -95,7 +96,7 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
             # * Do not use size bigger than actual image size because blending(with generated border)
             # will suppress actual prediction result.
             window_size = int(find_nearest([64, 128, 256, 512, 1024], min(image.shape[0], image.shape[1])))
-            print('Window size in smoothing predicting: {}'.format(window_size))
+            logging.info('Window size in smoothing predicting: {}'.format(window_size))
 
             pr_mask = predict_img_with_smooth_windowing(
                 image,
@@ -130,7 +131,7 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
             pr_item['img_dtype'] = pr_mask.dtype
 
             # Store result with unique(per scale) name
-            print('Store predicted result to file {}'.format(predict_sc_png))
+            logging.info('Store predicted result to file {}'.format(predict_sc_png))
             cv2.imwrite(fpath, (pr_mask * 255).astype(np.uint8))
 
             if store_predicted_result_to_ram:
@@ -183,12 +184,12 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     if os.path.isfile(result_contours_fpath) and skip_prediction:
         with open(result_contours_fpath, 'rb') as inp:
             pr_cntrs_list_px = pickle.load(inp)
-            print('Prediction skipped. Result has been restored from file {}'.format(result_contours_fpath))
+            logging.info('Prediction skipped. Result has been restored from file {}'.format(result_contours_fpath))
 
     if pr_cntrs_list_px is None:
         is_success = PrepareData.build_from_project(src_proj_dir, cfg.mppx, dest_img_fname, dest_himg_fname)
         if not is_success:
-            print('ERROR: Cannot prepare data')
+            logging.error('Cannot prepare data')
             return -1, dict({})
 
         # Obtain source image shape
@@ -206,11 +207,11 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
 
             bbox = ((cr_x, cr_y), (cr_x2-cr_x, cr_y2-cr_y))
             bbox_list.append(bbox)
-        print('Source image cropped to {} patches with cropping size {}'.format(len(bbox_list), crop_size_px))
+        logging.info('Source image cropped to {} patches with cropping size {}'.format(len(bbox_list), crop_size_px))
 
         # Process each bound box
         for bbox_ind, bbox in enumerate(bbox_list):
-            print('Patch #{} (from {}) in processing...'.format(bbox_ind+1, len(bbox_list)))
+            logging.info('Patch #{} (from {}) in processing...'.format(bbox_ind+1, len(bbox_list)))
             dataset = provider(read_sample,
                                dest_img_fname,
                                dest_himg_fname,

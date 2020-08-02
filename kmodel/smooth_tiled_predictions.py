@@ -11,6 +11,7 @@
 # ros: input shape fixed
 
 
+import logging
 import os
 import numpy as np
 import scipy.signal
@@ -197,10 +198,10 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     gc.collect()
 
     a, b, c, d, e = shape
-    print('Smoothing prediction samples: {}'.format(a * b))
+    logging.info('Smoothing prediction samples: {}'.format(a * b))
 
     if memmap_batch_size > 0:
-        print('Smoothing prediction memmap_batch_size: {}'.format(memmap_batch_size))
+        logging.info('Smoothing prediction memmap_batch_size: {}'.format(memmap_batch_size))
         subdivs_r_fname = os.path.join(temp_dir, 'subdivs_r.tmp')
         if os.path.isfile(subdivs_r_fname):
             os.remove(subdivs_r_fname)
@@ -401,7 +402,7 @@ def cheap_tiling_prediction(img, window_size, nb_classes, pred_func):
     tmp = np.zeros((full_border, full_border, original_shape[-1]))
     tmp[:original_shape[0], :original_shape[1], :] = img
     img = tmp
-    print(img.shape, tmp.shape, prd.shape)
+    logging.info('{}, {}, {}'.format(img.shape, tmp.shape, prd.shape))
     for i in tqdm(range(0, prd.shape[0], window_size)):
         for j in range(0, prd.shape[0], window_size):
             im = img[i:i+window_size, j:j+window_size]
