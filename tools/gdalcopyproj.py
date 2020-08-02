@@ -2,6 +2,54 @@ import logging
 from osgeo import gdal
 
 
+def create_empty(fname, inp_proj, clear_img=False):
+    """
+    Create empty geoTiff-image based on metadata from another geoTiff image. Metadata could be obtained by method
+    get_projection().
+    :param fname: Full path to new created image
+    :param inp_proj: Projection dictionary metadata from another geoTiff image
+    :param clear_img: If True, fill new image by 0(spends much more time). Default is False.
+    :return:
+    """
+    driver = gdal.GetDriverByName('GTiff')
+
+    outfn = fname
+    dtype = gdal.GDT_Byte
+    inp_shape = inp_proj['shape']
+    nbands = 4
+    nodata = 255
+
+    ds = driver.Create(outfn, inp_shape[1], inp_shape[0], nbands, dtype, options=['COMPRESS=LZW', 'TILED=YES'])
+    ds.SetProjection(inp_proj['projection'])
+    ds.SetGeoTransform(inp_proj['geotransform'])
+
+    if clear_img:
+        for i in range(nbands):
+            ds.GetRasterBand(1+i).Fill(0)
+            ds.GetRasterBand(1+i).SetNoDataValue(nodata)
+        ds.FlushCache()
+
+    del ds  # close file
+
+
+def put_into_image(fname, start_xy, bgra):
+    """
+    Put into already created geoTiff image BGRA patch by specific XY-position.
+    :param fname: Full path to existing geoTiff image
+    :param start_xy: X/Y pixel position where patch will be placed
+    :param bgra: BGRA (8-bit per channel)
+    :return:
+    """
+    rgba = [2, 1, 0, 3]
+    ds = gdal.Open(fname, gdal.GA_Update)
+    for band_ind in range(4):
+        out_band = ds.GetRasterBand(band_ind + 1)
+        # GDAL operate with bands first dim
+        out_band.WriteArray(bgra[..., rgba[band_ind]], xoff=int(start_xy[0]), yoff=int(start_xy[1]))
+
+    del ds  # close file
+
+
 def get_projection(inp):
     dataset = gdal.Open(inp)
     if dataset is None:
