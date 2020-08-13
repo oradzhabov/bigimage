@@ -4,7 +4,7 @@ import os
 import numpy as np
 import cv2
 from kutils import utilites
-from config import cfg
+from config_rocks import cfg
 from kutils.VIAConverter import *
 from tools.predict_contours import predict_contours
 
@@ -70,10 +70,11 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7964'
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/12189'
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/qa/7969'
-    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7128'  # big rocks, small ortho
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7128'  # big rocks, small ortho
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dyno/2192'  # mppx 0.05 big rocks, big ortho ortho
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7145'  # orig:d2192 but 0.01 mppx. HUGE ROCKS
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17042'  # ROCKS DETECTION/COLORING DEATH
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17115'  # DEATH IN ROCKS POSTPROC EVEN ON SERVER
+    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/18618'  # 2020.08.13 Not well big rocks prediction
 
     exit(test_prediction(proj_dir))
