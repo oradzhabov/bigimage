@@ -1,5 +1,5 @@
-from kmodel import evaluate
 from config_rocks import cfg
+from kmodel import evaluate
 
 
 if __name__ == "__main__":
@@ -7,4 +7,4 @@ if __name__ == "__main__":
     provider = cfg.provider
     aug = cfg.aug()
 
-    evaluate.run(cfg, solver, provider, aug, show_random_items_nb=10)
+    evaluate.run(cfg, solver, provider, aug, show_random_items_nb=0)

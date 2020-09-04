@@ -88,7 +88,7 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
                 gc.collect()
 
             # Store result with unique(scaled) name
-            # sc_png = 'image_scaled_' + solver.signature() + '_' + str(sc_factor) + '.png'
+            # sc_png = 'image_scaled_' + solver.signature() + '_' + bbox_str + '_' + str(sc_factor) + '.png'
             # img_temp = (denormalize(image[..., :3]) * 255).astype(np.uint8)
             # cv2.imwrite(os.path.join(src_proj_dir, sc_png), img_temp.astype(np.uint8))
 

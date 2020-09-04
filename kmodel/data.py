@@ -1,15 +1,12 @@
 import logging
 import os
 import cv2
-import random
 import numpy as np
 import keras
 from .kutils import get_tiled_bbox
 from sklearn.model_selection import train_test_split
 from osgeo import gdal
 import multiprocessing as mp
-import albumentations as alb
-import segmentation_models as sm
 from .parallel import SimpleProcessor
 
 

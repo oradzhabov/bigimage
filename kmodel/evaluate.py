@@ -37,6 +37,14 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
     logging.info('Evaluate model...')
     scores = model.evaluate_generator(test_dataloader, verbose=1)
 
+    # Provide evaluation report
+    logging.info('*** EVALUATION REPORT ***')
+    logging.info('Data dir: {}'.format(cfg.data_dir))
+    logging.info('Data subset: {}'.format(cfg.data_subset))
+    logging.info('Testing data aspect: {}'.format(cfg.test_aspect))
+    logging.info('Solution dir: {}'.format(cfg.solution_dir))
+    logging.info('Seed: {}'.format(cfg.seed))
+    logging.info('Min mask ratio: {}'.format(cfg.min_mask_ratio))
     result_dict = dict({'cfg': dict(cfg)})
     logging.info("Loss: {:.5}".format(scores[0]))
     result_dict['loss'] = scores[0]
@@ -44,7 +52,6 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
         metric_name = metric if isinstance(metric, str) else metric.__name__
         logging.info("mean {}: {:.5}".format(metric_name, value))
         result_dict[metric_name] = value
-
     #
     # todo: till config contains complex objects/classes it cannot be stored into json.
     #

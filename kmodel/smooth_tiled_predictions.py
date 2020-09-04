@@ -19,6 +19,11 @@ from tqdm import tqdm
 
 import gc
 
+import sys
+import cv2
+sys.path.append(sys.path[0] + "/..")
+from kutils.utilites import denormalize
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -82,6 +87,7 @@ def _pad_img(img, window_size, subdivisions):
     more_borders = ((aug, aug), (aug, aug), (0, 0))
     ret = np.pad(img, pad_width=more_borders, mode='reflect')
     # gc.collect()
+    logging.info('Padding aug size: {}. Img size changed from {} to {}'.format(aug, img.shape[:2], ret.shape[:2]))
 
     if PLOT_PROGRESS:
         # For demo purpose, let's look once at the window:
@@ -105,6 +111,37 @@ def _unpad_img(padded_img, window_size, subdivisions):
     ]
     # gc.collect()
     return ret
+
+
+def _create_ovelap05_mask(x_nb, y_nb):
+    """
+    To be able analyse the boundary of overlapped areas (which should be merged in special way), this method creates
+    the list of masks for detecting boundaries. Result masks will have codes: 1 for corner, 2 for edge, 4-inside
+    :param x_nb:
+    :param y_nb:
+    :return:
+    """
+    # Fill overlapping mask. Assumes that overlap is 0.5.
+    # Each patch represented by square 2x2, so mask with params x_nb=3, y_nb=2 will have next content
+    # 1,2,2,1
+    # 2,4,4,2
+    # 1,2,2,1
+    mask = np.zeros(shape=(y_nb + 1, x_nb + 1), dtype=np.uint8)
+    for y in range(y_nb):
+        for x in range(x_nb):
+            mask[y:y+2, x:x+2] += 1
+
+    # Stack the doubled rows. Since result will use entire loop instead of loop in loop(by x_nb and y_nb),
+    # make flat array for each patch. So mask created with params x_nb=3, y_nb=2 will have next content
+    # 1,2, 2,2, 2,1, 2,4, 4,4, 4,2
+    # 2,4, 4,4, 4,2, 1,2, 2,2, 2,1
+    result = np.zeros(shape=(2, x_nb*y_nb*2), dtype=np.uint8)
+    for y in range(y_nb):
+        for x in range(x_nb):
+            ind = (y * x_nb + x) * 2
+            result[:, ind:ind+2] = mask[y:y+2, x:x+2]
+
+    return result
 
 
 def _rotate_mirror_do(im):
@@ -151,6 +188,7 @@ def _rotate_mirror_undo(im_mirrs):
 def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir):
     """
     @param memmap_batch_size: Note unet(efficientb3) could process 6 x 1024_wh by 4GB GPU
+    If subdivisions is 2, boundary will be processed by special logic and will not be suppressed by smoothing mask
     Create tiled overlapping patches.
     Returns:
         5D numpy array of shape = (
@@ -178,6 +216,7 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     x_range = np.arange(0, padx_len-window_size+1, step)
     shape = (len(y_range), len(x_range), window_size, window_size, padded_img.shape[2])
     subdivs0 = np.memmap(subdivs_fname, dtype=dtype, mode='w+', shape=shape)
+    overlap05_mask = _create_ovelap05_mask(shape[1], shape[0]) if subdivisions == 2 else None
 
     # Store subdivisions to file
     one_row_size_bytes = subdivs0.shape[1] * subdivs0.shape[2] * subdivs0.shape[3] * subdivs0.shape[4] * np.dtype(dtype).itemsize
@@ -216,8 +255,19 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
             subdivs = np.memmap(subdivs_fname, dtype=dtype, mode='r',
                                 shape=(memmap_batch_size_it, c, d, e), offset=offset)
 
+            # for aa in range(memmap_batch_size_it):
+            #     sc_png = 'input_' + str(aa) + '.png'
+            #     img_temp = (denormalize(subdivs[aa, ...]) * 255).astype(np.uint8)
+            #     cv2.imwrite(os.path.join('./', sc_png), img_temp.astype(np.uint8))
+
             # Predict results of opened subdivisions
             pred_1 = pred_func(subdivs[0:memmap_batch_size_it])
+
+            # for aa in range(memmap_batch_size_it):
+            #     sc_png = 'output_' + str(aa) + '.png'
+            #     pred_1[aa] = np.clip(pred_1[aa], 0, 1)
+            #     img_temp = (pred_1[aa] * 255).astype(np.uint8)
+            #     cv2.imwrite(os.path.join('./', sc_png), img_temp.astype(np.uint8))
 
             # Result will have the same type as source data
             pred_1 = pred_1.astype(dtype)
@@ -241,7 +291,32 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     WINDOW_SPLINE_2D = WINDOW_SPLINE_2D.astype(dtype)
     # Update results on the disk. Thats why here is loop instead of direct operation(which lost ref to memmap)
     for i in range(len(subdivs)):
-        subdivs[i] = subdivs[i] * WINDOW_SPLINE_2D
+        w = WINDOW_SPLINE_2D.copy()
+
+        if overlap05_mask is not None:
+            m = overlap05_mask[:, i*2: (i+1)*2]
+
+            if np.max(m[0, :]) < 4:
+                w = np.flip(w, axis=0)
+                w = np.vstack([w[:w.shape[0] // 2, :],
+                               np.repeat(w[w.shape[0] // 2, :][np.newaxis, :],
+                                         w.shape[0] - w.shape[0] // 2, axis=0)])
+                w = np.flip(w, axis=0)
+            if np.max(m[1, :]) < 4:
+                w = np.vstack([w[:w.shape[0] // 2, :],
+                               np.repeat(w[w.shape[0] // 2, :][np.newaxis, :],
+                                         w.shape[0] - w.shape[0] // 2, axis=0)])
+            if np.max(m[:, 1]) < 4:
+                w = np.hstack([w[:, :w.shape[1] // 2],
+                               np.repeat(w[:, w.shape[1] // 2][:, np.newaxis],
+                                         w.shape[1] - w.shape[1] // 2, axis=1)])
+            if np.max(m[:, 0]) < 4:
+                w = np.flip(w, axis=1)
+                w = np.hstack([w[:, :w.shape[1] // 2],
+                               np.repeat(w[:, w.shape[1] // 2][:, np.newaxis],
+                                         w.shape[1] - w.shape[1] // 2, axis=1)])
+                w = np.flip(w, axis=1)
+        subdivs[i] = subdivs[i] * w
 
     # Such 5D array:
     subdivs = subdivs.reshape(a, b, c, d, nb_classes)
@@ -311,6 +386,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     the predictions to merge them smoothly.
     See 6th, 7th and 8th idea here:
     http://blog.kaggle.com/2017/05/09/dstl-satellite-imagery-competition-3rd-place-winners-interview-vladimir-sergey/
+    If subdivisions is 2, boundary will be processed by special logic and will not be suppressed by smoothing mask
     """
     input_img_shape = input_img.shape
     pad = _pad_img(input_img, window_size, subdivisions)
