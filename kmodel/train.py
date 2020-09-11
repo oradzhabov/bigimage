@@ -60,12 +60,12 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
     # Create model
     # ****************************************************************************************************************
     # Dataset for train images
-    train_dataset = dataprovider(data_reader, data_dir, ids_train, cfg,
+    train_dataset = dataprovider(data_reader, data_dir, ids_train, ((0, 0), (None, None)), cfg,
                                  min_mask_ratio=cfg.min_mask_ratio,
                                  augmentation=aug.get_training_augmentation(cfg, cfg.minimize_train_aug),
                                  prep_getter=solver.get_prep_getter())
     # Dataset for validation images
-    valid_dataset = dataprovider(data_reader, data_dir, ids_test, cfg,
+    valid_dataset = dataprovider(data_reader, data_dir, ids_test, ((0, 0), (None, None)), cfg,
                                  min_mask_ratio=cfg.min_mask_ratio,
                                  augmentation=aug.get_validation_augmentation(cfg, cfg.minimize_train_aug),
                                  prep_getter=solver.get_prep_getter())

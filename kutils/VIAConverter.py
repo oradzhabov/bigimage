@@ -52,7 +52,8 @@ def get_imgs(json_filename):
         filecontent = f.read()
         content = json.loads(filecontent)
         for parameters in content.values():
-            img_filename = os.path.join(os.path.dirname(json_filename), parameters['filename'].rstrip())
+            # img_filename = os.path.join(os.path.dirname(json_filename), parameters['filename'].rstrip())
+            img_filename = parameters['filename'].rstrip()
             result.append(os.path.basename(img_filename))
     return result
 
