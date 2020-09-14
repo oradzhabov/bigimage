@@ -1,4 +1,4 @@
-from config_rocks import cfg
+from config_stockpile import cfg
 from kmodel import evaluate
 
 

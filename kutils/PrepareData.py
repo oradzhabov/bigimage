@@ -7,7 +7,8 @@ import cv2
 import time
 from .color2height import color2height
 from .mapLoc2EPSG import map_epsg2loc
-from osgeo import gdal, osr
+from osgeo import gdal, osr, ogr
+import affine
 
 
 DATETIME_FORMAT = '%Y-%m-%d'  # '%Y-%m-%d_%H-%M-%S'
@@ -38,6 +39,104 @@ def map_contour_meter_pix(img_shape, contours_m, x0_m, y0_m, x1_m, y1_m):
             cntr_px.append([x_px, y_px])
         contours_px.append(cntr_px)
     return contours_px
+
+
+def retrieve_pixel_value(geo_coords, data_source):
+    """ Map points from CRS to image space """
+
+    # Get matrix to transform from CRS to image/pixel space
+    forward_transform = affine.Affine.from_gdal(*data_source.GetGeoTransform())
+    reverse_transform = ~forward_transform
+
+    result = []
+    for p in geo_coords:
+        ppx = reverse_transform * p
+        result.append((int(ppx[0] + 0.5), int(ppx[1] + 0.5)))
+
+    return result
+
+
+def get_via_item(proj_dir, mppx, src_shp_fname='shp.shp', src_epsg=4326):
+    """ Create VIA item based on project content and geometry poygones stored in shape-file """
+
+    geotiff_fname = os.path.relpath(os.path.join(proj_dir, './orthophoto/orthophoto_export.tif'))
+    in_shape_file = os.path.join(proj_dir, src_shp_fname)
+
+    for f in [in_shape_file, geotiff_fname]:
+        if not os.path.isfile(f):
+            logging.error('There is no input file {}'.format(f))
+            return None
+
+    ds = gdal.Open(geotiff_fname)
+    ds_epsg = int(osr.SpatialReference(wkt=ds.GetProjection()).GetAttrValue('AUTHORITY', 1))
+
+    ds_transofrmation = ds.GetGeoTransform()
+    ds_mppx = abs(ds_transofrmation[1])
+    coords_scale = ds_mppx / mppx
+
+    # input SpatialReference
+    in_spat_ref = osr.SpatialReference()
+    in_spat_ref.ImportFromEPSG(src_epsg)
+
+    # output SpatialReference
+    out_spat_ref = osr.SpatialReference()
+    out_spat_ref.ImportFromEPSG(ds_epsg)
+
+    # create the CoordinateTransformation
+    coord_trans = osr.CoordinateTransformation(in_spat_ref, out_spat_ref)
+
+    # get the input layer
+    driver = ogr.GetDriverByName('ESRI Shapefile')
+    in_dataset = driver.Open(in_shape_file, 0)  # 0 means read-only. 1 means writeable.
+    in_layer = in_dataset.GetLayer()
+    # inFeatureCount = in_layer.GetFeatureCount()
+
+    size = int(-1)
+    regions = list()
+    file_attributes = dict()
+    for inFeature in in_layer:
+        # get the input geometry
+        geom = inFeature.GetGeometryRef()
+        if geom is None:
+            logging.warning('Feature has no geometry. Skip feature')
+            continue
+
+        # Map the geometry from shape-file space to geo-tiff space
+        geom.Transform(coord_trans)
+
+        pts = geom.GetGeometryRef(0).GetPoints()
+
+        # Map points from geotiff space into pixel space
+        contour_px = retrieve_pixel_value(pts, ds)
+
+        # Store results to VIA sub-structure
+        shape_attributes = dict()
+        shape_attributes['name'] = 'polygon'
+        shape_attributes['all_points_x'] = [int(px[0] * coords_scale) for px in contour_px]
+        shape_attributes['all_points_y'] = [int(px[1] * coords_scale) for px in contour_px]
+        region_attributes = dict()
+        attributes = dict({'shape_attributes': shape_attributes, 'region_attributes': region_attributes})
+        regions.append(attributes)
+    in_layer.ResetReading()  # You must call ResetReading if you want to start iterating over the layer again.
+
+    f_item = dict({'filename': geotiff_fname, 'size': size, 'regions': regions, 'file_attributes': file_attributes})
+
+    return tuple((geotiff_fname, f_item))
+
+
+def map_shapefiles_to_via(rootdir, customer_list, proj_list, src_shp_fname, mppx):
+    via_items = dict()
+    for customer in customer_list:
+        for proj_id in proj_list:
+            proj_path = os.path.join(rootdir, customer, str(proj_id))
+
+            item = get_via_item(proj_path, mppx, src_shp_fname=src_shp_fname, src_epsg=4326)
+            if item is not None:
+                # Overwrite special field by uniq id
+                item[1]['filename'] = '../imgs/{}_{}.png'.format(customer, proj_id)
+                via_items[item[0]] = item[1]
+
+    return via_items
 
 
 def get_geoloc_gata(gdalinfo, mapdata):

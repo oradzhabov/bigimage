@@ -1,5 +1,5 @@
+from config_stockpile import cfg
 from kmodel import train
-from config_rocks import cfg
 
 
 if __name__ == "__main__":
