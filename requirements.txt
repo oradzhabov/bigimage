@@ -1,4 +1,5 @@
 nvidia-ml-py3
+pip3 install affine
 pip3 install --upgrade albumentations>=0.3.0
 pip3 install --upgrade git+https://github.com/qubvel/efficientnet
 pip3 install --upgrade git+https://github.com/qubvel/segmentation_models

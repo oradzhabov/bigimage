@@ -5,6 +5,7 @@ import numpy as np
 import segmentation_models as sm
 import keras
 from . import ISolver
+from .optimizers import AccumOptimizer
 sys.path.append(sys.path[0] + "/..")
 from kutils import utilites
 
@@ -18,8 +19,8 @@ class SegmSolver(ISolver):
         # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
         dice_loss = sm.losses.DiceLoss()
         focal_loss = sm.losses.BinaryFocalLoss() if self.conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
-        self.total_loss = dice_loss + focal_loss
-        # total_loss = focal_loss
+        # self.total_loss = dice_loss + focal_loss
+        self.total_loss = focal_loss
         # total_loss = 'binary_crossentropy'
 
         # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
@@ -77,6 +78,8 @@ class SegmSolver(ISolver):
 
             # define optimizer
             optimizer = keras.optimizers.Adam(self.conf.lr)
+            if self.conf.batch_size_multiplier > 1:
+                optimizer = AccumOptimizer.AccumOptimizer(optimizer, self.conf.batch_size_multiplier)
 
             # compile model with defined optimizer, loss and metrics
             self.model.compile(optimizer, self.total_loss, self.metrics)
