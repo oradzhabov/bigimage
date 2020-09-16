@@ -37,17 +37,16 @@ class SegmSolver(ISolver):
     def _create_metrics(self, **kwargs):
         # How to control the FocalLoss parameters:
         # https://www.analyticsvidhya.com/blog/2020/08/a-beginners-guide-to-focal-loss-in-object-detection/
+        # https://leimao.github.io/blog/Focal-Loss-Explained/
         mask_nonzero_aspect = kwargs['mask_nonzero_aspect'] if 'mask_nonzero_aspect' in kwargs else -1.0
-        if mask_nonzero_aspect < 0.0:
-            mask_nonzero_aspect = 0.25  # default value
-        logging.info('Declare FocalLoss with alpha param: {}'.format(mask_nonzero_aspect))
+        alpha = 1.0
+        gamma = 2.0
         if self.conf.cls_nb == 1:
-            focal_loss = sm.losses.BinaryFocalLoss(alpha=mask_nonzero_aspect)
+            focal_loss = sm.losses.BinaryFocalLoss(alpha=alpha, gamma=gamma)
         else:
-            focal_loss = sm.losses.CategoricalFocalLoss(alpha=mask_nonzero_aspect)
+            focal_loss = sm.losses.CategoricalFocalLoss(alpha=alpha, gamma=gamma)
         #
-        # self.total_loss = focal_loss + sm.losses.DiceLoss()
-        self.total_loss = focal_loss
+        self.total_loss = focal_loss + sm.losses.DiceLoss(beta=2)  # Dice(beta=2) = 1 - F2-score
         # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
         threshold = 0.5
         self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold),
