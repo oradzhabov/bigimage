@@ -16,13 +16,38 @@ class SegmSolver(ISolver):
         self.weights_path = 'unet.h5'
         self.activation = 'sigmoid' if self.conf.cls_nb == 1 else 'softmax'
 
+        """
         # Segmentation models losses can be combined together by '+' and scaled by integer or float factor
         dice_loss = sm.losses.DiceLoss()
         focal_loss = sm.losses.BinaryFocalLoss() if self.conf.cls_nb == 1 else sm.losses.CategoricalFocalLoss()
-        # self.total_loss = dice_loss + focal_loss
-        self.total_loss = focal_loss
+        # Practice hints:
+        # 'focal_loss' could maximize F1, but it has no any affect to F2 (even for train-set) when dataset extended by
+        # "rich" background samples. Even 0.001 value of 'focal_loss' could make 0.8 F1 and 0.1 F2.
+        # If add 'dice_loss', total loss will grown from 0.001 (focal_loss only) to 0.9. F2 became Increases with heavy
+        # background imbalance.
+        self.total_loss = dice_loss + focal_loss
+        # self.total_loss = focal_loss
         # total_loss = 'binary_crossentropy'
 
+        # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
+        threshold = 0.5
+        self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold),
+                        sm.metrics.f2_score]
+        """
+    def _create_metrics(self, **kwargs):
+        # How to control the FocalLoss parameters:
+        # https://www.analyticsvidhya.com/blog/2020/08/a-beginners-guide-to-focal-loss-in-object-detection/
+        mask_nonzero_aspect = kwargs['mask_nonzero_aspect'] if 'mask_nonzero_aspect' in kwargs else -1.0
+        if mask_nonzero_aspect < 0.0:
+            mask_nonzero_aspect = 0.25  # default value
+        logging.info('Declare FocalLoss with alpha param: {}'.format(mask_nonzero_aspect))
+        if self.conf.cls_nb == 1:
+            focal_loss = sm.losses.BinaryFocalLoss(alpha=mask_nonzero_aspect)
+        else:
+            focal_loss = sm.losses.CategoricalFocalLoss(alpha=mask_nonzero_aspect)
+        #
+        # self.total_loss = focal_loss + sm.losses.DiceLoss()
+        self.total_loss = focal_loss
         # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
         threshold = 0.5
         self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold),

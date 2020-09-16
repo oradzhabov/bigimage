@@ -70,7 +70,8 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
                                  augmentation=aug.get_validation_augmentation(cfg, cfg.minimize_train_aug),
                                  prep_getter=solver.get_prep_getter())
 
-    model, weights_path, metrics = solver.build(compile_model=True)
+    mask_nonzero_aspect = train_dataset.mask_nonzero_aspect if hasattr(train_dataset, 'mask_nonzero_aspect') else None
+    model, weights_path, metrics = solver.build(compile_model=True, mask_nonzero_aspect=mask_nonzero_aspect)
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)
@@ -81,6 +82,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
                                          np.min(train_batch[0]), np.max(train_batch[0])))
     logging.info('Y: {},{},{},{}'.format(train_batch[1].shape, train_batch[1].dtype,
                                          np.min(train_batch[1]), np.max(train_batch[1])))
+    logging.info('Batch size multiplier: {}'.format(cfg.batch_size_multiplier))
     logging.info('Train Samples Nb: {}'.format(len(train_dataset)))
     logging.info('Validate Samples Nb: {}'.format(len(valid_dataset)))
 

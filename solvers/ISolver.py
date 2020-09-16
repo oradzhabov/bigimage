@@ -69,6 +69,11 @@ class ISolver(metaclass=ABCMeta):
         return pr_mask
 
     @abstractmethod
+    def _create_metrics(self, **kwargs):
+        """ This method responds to creating parameters self.metrics and self.total_loss """
+        raise NotImplementedError
+
+    @abstractmethod
     def _create(self, compile_model=True, **kwargs):
         raise NotImplementedError
 
@@ -88,5 +93,6 @@ class ISolver(metaclass=ABCMeta):
         raise NotImplementedError
 
     def build(self, compile_model=True, **kwargs):
+        self._create_metrics(**kwargs)
         self._create(compile_model, **kwargs)
         return self.model, self.weights_path, self.metrics

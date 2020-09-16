@@ -10,7 +10,8 @@ class BasicAug(IAug):
 
             alb.HorizontalFlip(p=0.5),
             alb.VerticalFlip(p=0.5),
-            alb.RandomRotate90(always_apply=False, p=0.5),
+            # Equal probability to obtain one from 4 possible position: always_apply=True
+            alb.RandomRotate90(always_apply=True),
             #
             # scale_limit ((float, float) or float) – scaling factor range. If scale_limit is a single float value,
             # the range will be (-scale_limit, scale_limit). Default: (-0.1, 0.1).

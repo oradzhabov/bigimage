@@ -28,6 +28,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         obj.conf = configure
         obj.data_reader = data_reader
         obj.prep_getter = prep_getter
+        obj.mask_nonzero_aspect = -1.0  # This value shows the class imbalance and could be used in focal-loss
 
         if obj.conf.cls_nb > len(colors_default):
             colors_default = colors_default + [random_color() for _ in range(obj.conf.cls_nb - len(colors_default))]
@@ -56,6 +57,8 @@ class SemanticSegmentationDataProvider(IDataProvider):
         self.src_data = dict({k: list() for k in self.src_folders})
         self.src_mask = list()
 
+        mask_total_nonzero_nb = 0
+        mask_total_nb = 0
         logging.info('Collect samples...')
         for fn in tqdm(ids):
             is_data_fully_exist = True
@@ -83,8 +86,15 @@ class SemanticSegmentationDataProvider(IDataProvider):
                     mask_nonzero_ratio = mask_nonzero_nb / img.size
                     if mask_nonzero_ratio >= min_mask_ratio:
                         self.src_mask.append(mask_fn)
+                        mask_total_nonzero_nb += mask_nonzero_nb
+                        mask_total_nb += img.size
                         for k, v in subitem.items():
                             self.src_data[k] += v
+
+        # This value shows the class imbalance and could be used in focal-loss
+        if mask_total_nb > 0:
+            self.mask_nonzero_aspect = mask_total_nonzero_nb / mask_total_nb
+        logging.info('Aspect non-zero mask over total mask size: {}'.format(self.mask_nonzero_aspect))
 
         # Find the actual length of dataset
         keys = list(self.src_data)
@@ -221,9 +231,10 @@ class SemanticSegmentationDataProvider(IDataProvider):
                 cv2.drawContours(img_temp, class_ctrs, -1, color, 2)
 
             utilites.visualize(
-                title='{}, F1:{:.4f}, IoU:{:.4f}'.format(img_fname,
+                title='{}, F1:{:.4f}, IoU:{:.4f}, F2:{:.4f}'.format(img_fname,
                                                          item['metrics']['f1-score'],
-                                                         item['metrics']['iou_score']),
+                                                         item['metrics']['iou_score'],
+                                                         item['metrics']['f2-score']),
                 Result=img_temp,
                 Height=image[..., 3] if image.shape[-1] > 3 else None,
             )

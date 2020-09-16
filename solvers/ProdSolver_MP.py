@@ -14,6 +14,9 @@ class ProdSolver_MP(ISolver):
         # './mp_cntr_ff2_p1a_3_weights-ep495-loss0.00879-val_loss0.00905-val_acc0.99146-val_mean_iou0.95021.h5'
         self.weights_path = './mp_cntr_production_ff2.h5'
 
+    def _create_metrics(self, **kwargs):
+        pass
+
     def _create(self, compile_model=True, **kwargs):
         assert self.conf.use_heightmap, 'Production utilizes height map. Check it in config before running'
         assert self.conf.mppx == 0.25, 'Production utilizes 0.25 mppx. Check it in config before running'

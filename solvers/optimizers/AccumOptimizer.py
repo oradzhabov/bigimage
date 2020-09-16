@@ -27,8 +27,15 @@ class AccumOptimizer(Optimizer):
             self.steps_per_update = steps_per_update
             self.iterations = K.variable(0, dtype='int64', name='iterations')
             self.cond = K.equal(self.iterations % self.steps_per_update, 0)
-            self.lr = self.optimizer.lr
-            self.optimizer.lr = K.switch(self.cond, self.optimizer.lr, 0.)
+
+            # Depending on Keras version(KERAS 2.3.0 renamed param self.lr to self.learning_rate)
+            if hasattr(self.optimizer, 'learning_rate'):
+                self.learning_rate = self.optimizer.learning_rate
+                self.optimizer.learning_rate = K.switch(self.cond, self.optimizer.learning_rate, 0.)
+            else:
+                self.lr = self.optimizer.lr
+                self.optimizer.lr = K.switch(self.cond, self.optimizer.lr, 0.)
+
             for attr in ['momentum', 'rho', 'beta_1', 'beta_2']:
                 if hasattr(self.optimizer, attr):
                     value = getattr(self.optimizer, attr)

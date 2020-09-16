@@ -8,6 +8,7 @@ class RegrSolver(SegmSolver):
         self.weights_path = 'runet.h5'
         self.activation = 'linear'
 
+    def _create_metrics(self, **kwargs):
         self.total_loss = 'mse'
         self.metrics = ['mae']
 
