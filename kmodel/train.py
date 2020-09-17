@@ -78,13 +78,22 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
 
     # Inform general samples info
     train_batch = train_dataloader[0]
-    logging.info('X: {},{},{},{}'.format(train_batch[0].shape, train_batch[0].dtype,
-                                         np.min(train_batch[0]), np.max(train_batch[0])))
-    logging.info('Y: {},{},{},{}'.format(train_batch[1].shape, train_batch[1].dtype,
-                                         np.min(train_batch[1]), np.max(train_batch[1])))
-    logging.info('Batch size multiplier: {}'.format(cfg.batch_size_multiplier))
+    logging.info('Train X: {},{},{},{}'.format(train_batch[0].shape, train_batch[0].dtype,
+                                               np.min(train_batch[0]), np.max(train_batch[0])))
+    logging.info('Train Y: {},{},{},{}'.format(train_batch[1].shape, train_batch[1].dtype,
+                                               np.min(train_batch[1]), np.max(train_batch[1])))
+    logging.info('Train Batch size multiplier: {}'.format(cfg.batch_size_multiplier))
     logging.info('Train Samples Nb: {}'.format(len(train_dataset)))
+    #
+    val_batch = valid_dataloader[0]
     logging.info('Validate Samples Nb: {}'.format(len(valid_dataset)))
+    logging.info('Val X: {},{},{},{}'.format(val_batch[0].shape, val_batch[0].dtype,
+                                             np.min(val_batch[0]), np.max(val_batch[0])))
+    logging.info('Val Y: {},{},{},{}'.format(val_batch[1].shape, val_batch[1].dtype,
+                                             np.min(val_batch[1]), np.max(val_batch[1])))
+    if train_batch[0].shape[1] != val_batch[0].shape[1] or train_batch[0].shape[2] != val_batch[0].shape[2]:
+        logging.info('Pay attention, that sample HW in train subset is different to validation subset. '
+                     'It may affect to metric cross comparison')
 
     # Get monitoring metric
     monitoring_metric_name, monitoring_metric_mode = solver.monitoring_metric()
