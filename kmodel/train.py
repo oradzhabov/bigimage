@@ -70,8 +70,6 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
                                  augmentation=aug.get_validation_augmentation(cfg, cfg.minimize_train_aug),
                                  prep_getter=solver.get_prep_getter())
 
-    model, weights_path, metrics = solver.build(compile_model=True)
-
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)
 
@@ -83,6 +81,14 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
                                                np.min(train_batch[1]), np.max(train_batch[1])))
     logging.info('Train Batch size multiplier: {}'.format(cfg.batch_size_multiplier))
     logging.info('Train Samples Nb: {}'.format(len(train_dataset)))
+    class_weights = None
+    if hasattr(train_dataset, 'mask_uniq_values_nb'):
+        mask_uniq_values = np.array(list(train_dataset.mask_uniq_values_nb.values()))
+        if mask_uniq_values is not None:
+            mask_min_nb = np.min(mask_uniq_values)
+            if mask_min_nb > 0:
+                class_weights = (mask_uniq_values / mask_min_nb) ** -1
+                logging.info('Class weights:  {}'.format(class_weights))
     #
     val_batch = valid_dataloader[0]
     logging.info('Validate Samples Nb: {}'.format(len(valid_dataset)))
@@ -93,6 +99,8 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
     if train_batch[0].shape[1] != val_batch[0].shape[1] or train_batch[0].shape[2] != val_batch[0].shape[2]:
         logging.info('Pay attention, that sample HW in train subset is different to validation subset. '
                      'It may affect to metric cross comparison')
+
+    model, weights_path, metrics = solver.build(compile_model=True, class_weights=class_weights)
 
     # Get monitoring metric
     monitoring_metric_name, monitoring_metric_mode = solver.monitoring_metric()

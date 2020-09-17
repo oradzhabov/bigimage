@@ -45,7 +45,7 @@ cfg.test_aspect = 0.33
 cfg.batch_size = 1
 cfg.batch_size_multiplier = 32
 cfg.minimize_train_aug = False
-cfg.lr = 0.0001  # 0.0002, 0.0005, 0.001
+cfg.lr = 0.001  # 0.0002, 0.0005, 0.001
 cfg.epochs = 4000
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,

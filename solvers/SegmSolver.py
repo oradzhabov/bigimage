@@ -38,14 +38,15 @@ class SegmSolver(ISolver):
         # How to control the FocalLoss parameters:
         # https://www.analyticsvidhya.com/blog/2020/08/a-beginners-guide-to-focal-loss-in-object-detection/
         # https://leimao.github.io/blog/Focal-Loss-Explained/
+        class_weights = kwargs['class_weights'] if 'class_weights' in kwargs else None
         alpha = 1.0
         gamma = 2.0
         if self.conf.cls_nb == 1:
             focal_loss = sm.losses.BinaryFocalLoss(alpha=alpha, gamma=gamma)
         else:
             focal_loss = sm.losses.CategoricalFocalLoss(alpha=alpha, gamma=gamma)
-        #
-        self.total_loss = focal_loss + sm.losses.DiceLoss(beta=2)  # Dice(beta=2) = 1 - F2-score
+        # Dice(beta=2) = 1 - F2-score
+        self.total_loss = sm.losses.DiceLoss(beta=2, class_weights=class_weights)
         # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
         threshold = 0.5
         self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold),
