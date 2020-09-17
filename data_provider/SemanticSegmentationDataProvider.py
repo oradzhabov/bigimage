@@ -28,7 +28,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         obj.conf = configure
         obj.data_reader = data_reader
         obj.prep_getter = prep_getter
-        obj.mask_nonzero_aspect = -1.0  # This value shows the class imbalance and could be used in focal-loss
+        obj.mask_uniq_values_nb = None
 
         if obj.conf.cls_nb > len(colors_default):
             colors_default = colors_default + [random_color() for _ in range(obj.conf.cls_nb - len(colors_default))]
@@ -57,13 +57,13 @@ class SemanticSegmentationDataProvider(IDataProvider):
         self.src_data = dict({k: list() for k in self.src_folders})
         self.src_mask = list()
 
-        mask_total_nonzero_nb = 0
-        mask_total_nb = 0
+        self.mask_uniq_values_nb = dict(zip(range(max(2, conf.cls_nb)), [0] * max(2, conf.cls_nb)))
         logging.info('Collect samples...')
         for fn in tqdm(ids):
             is_data_fully_exist = True
             subitem = dict({k: list() for k in self.src_folders})
             std_data_max = 0.0
+            data_nonzero_ratio_max = 0.0
             for data_folder, _ in self.src_data.items():
                 file_fn = os.path.join(data_dir, data_folder, fn)
                 if not os.path.isfile(file_fn):
@@ -72,12 +72,16 @@ class SemanticSegmentationDataProvider(IDataProvider):
 
                 subitem[data_folder].append(file_fn)
 
-                # Check is data not empty
+                # Check the data fullness
                 img = cv2.imread(file_fn)
                 std_data = np.max(cv2.meanStdDev(img)[1])
                 std_data_max = max(std_data_max, std_data)
+                #
+                data_nonzero_nb = np.count_nonzero(img)
+                data_nonzero_ratio = data_nonzero_nb / img.size
+                data_nonzero_ratio_max = max(data_nonzero_ratio_max, data_nonzero_ratio)
 
-            if is_data_fully_exist and std_data_max > 0.0:
+            if is_data_fully_exist and std_data_max > 0.0 and data_nonzero_ratio_max > 0.25:
                 mask_fn = os.path.join(data_dir, src_mask_folder, fn)
                 if os.path.isfile(mask_fn):
                     img = cv2.imread(mask_fn, cv2.IMREAD_GRAYSCALE)
@@ -86,15 +90,21 @@ class SemanticSegmentationDataProvider(IDataProvider):
                     mask_nonzero_ratio = mask_nonzero_nb / img.size
                     if mask_nonzero_ratio >= min_mask_ratio:
                         self.src_mask.append(mask_fn)
-                        mask_total_nonzero_nb += mask_nonzero_nb
-                        mask_total_nb += img.size
+                        mask_uniq_values = np.unique(img)
+                        mask_uniq_ind = mask_uniq_values.copy()
+                        mask_uniq_ind[mask_uniq_ind > 0] = 256 - mask_uniq_ind[mask_uniq_ind > 0]
+                        for uniq_i in range(len(mask_uniq_values)):
+                            uniq_v = mask_uniq_values[uniq_i]
+                            uniq_a = mask_uniq_ind[uniq_i]
+                            self.mask_uniq_values_nb[uniq_a] += np.count_nonzero(img == uniq_v)
                         for k, v in subitem.items():
                             self.src_data[k] += v
 
-        # This value shows the class imbalance and could be used in focal-loss
-        if mask_total_nb > 0:
-            self.mask_nonzero_aspect = mask_total_nonzero_nb / mask_total_nb
-        logging.info('Aspect non-zero mask over total mask size: {}'.format(self.mask_nonzero_aspect))
+        # This value shows the class imbalance
+        mask_uniq_values_sum = sum(list(self.mask_uniq_values_nb.values()))
+        if mask_uniq_values_sum > 0:
+            for key, val in self.mask_uniq_values_nb.items():
+                logging.info('Class #{} has {:.1f} % of data'.format(key, val / mask_uniq_values_sum * 100))
 
         # Find the actual length of dataset
         keys = list(self.src_data)
@@ -169,7 +179,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         logging.info('name: {}'.format(os.path.basename(self.get_fname(i))))
         logging.info('img shape {},dtype {},min {},max {}'.format(image.shape, image.dtype,
                                                                    np.min(image), np.max(image)))
-        logging.info('mask shape {},dtype {},min {},max {}, info_ratio {}'.
+        logging.info('mask shape {},dtype {},min {},max {}, masked ratio {}'.
                      format(mask.shape, mask.dtype, np.min(mask), np.max(mask), np.count_nonzero(mask) / mask.size))
 
         # image_rgb = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)

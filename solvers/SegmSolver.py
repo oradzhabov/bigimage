@@ -38,7 +38,6 @@ class SegmSolver(ISolver):
         # How to control the FocalLoss parameters:
         # https://www.analyticsvidhya.com/blog/2020/08/a-beginners-guide-to-focal-loss-in-object-detection/
         # https://leimao.github.io/blog/Focal-Loss-Explained/
-        mask_nonzero_aspect = kwargs['mask_nonzero_aspect'] if 'mask_nonzero_aspect' in kwargs else -1.0
         alpha = 1.0
         gamma = 2.0
         if self.conf.cls_nb == 1:

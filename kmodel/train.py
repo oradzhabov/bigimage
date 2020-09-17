@@ -70,8 +70,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
                                  augmentation=aug.get_validation_augmentation(cfg, cfg.minimize_train_aug),
                                  prep_getter=solver.get_prep_getter())
 
-    mask_nonzero_aspect = train_dataset.mask_nonzero_aspect if hasattr(train_dataset, 'mask_nonzero_aspect') else None
-    model, weights_path, metrics = solver.build(compile_model=True, mask_nonzero_aspect=mask_nonzero_aspect)
+    model, weights_path, metrics = solver.build(compile_model=True)
 
     train_dataloader = Dataloder(train_dataset, batch_size=cfg.batch_size, shuffle=True)
     valid_dataloader = Dataloder(valid_dataset, batch_size=1, shuffle=False)
