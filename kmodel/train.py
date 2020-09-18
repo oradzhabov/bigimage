@@ -83,12 +83,10 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
     logging.info('Train Samples Nb: {}'.format(len(train_dataset)))
     class_weights = None
     if hasattr(train_dataset, 'mask_uniq_values_nb'):
-        mask_uniq_values = np.array(list(train_dataset.mask_uniq_values_nb.values()))
-        if mask_uniq_values is not None:
-            mask_min_nb = np.min(mask_uniq_values)
+        if train_dataset.mask_uniq_values_nb is not None and cfg.apply_class_weights:
+            mask_min_nb = np.min(train_dataset.mask_uniq_values_nb)
             if mask_min_nb > 0:
-                class_weights = (mask_uniq_values / mask_min_nb) ** -1
-                logging.info('Class weights:  {}'.format(class_weights))
+                class_weights = (train_dataset.mask_uniq_values_nb / mask_min_nb) ** -1
     #
     val_batch = valid_dataloader[0]
     logging.info('Validate Samples Nb: {}'.format(len(valid_dataset)))

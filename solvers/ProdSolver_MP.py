@@ -20,7 +20,7 @@ class ProdSolver_MP(ISolver):
     def _create(self, compile_model=True, **kwargs):
         assert self.conf.use_heightmap, 'Production utilizes height map. Check it in config before running'
         assert self.conf.mppx == 0.25, 'Production utilizes 0.25 mppx. Check it in config before running'
-        assert self.conf.classes is None, 'Production utilizes None for classes. Check it in config before running'
+        assert self.conf.class_names is None, 'Production utilizes None for classes. Check it in config before running'
 
         self.model, self.metrics = create_model_production(self.conf, compile_model)
         self.model.load_weights(self.weights_path)

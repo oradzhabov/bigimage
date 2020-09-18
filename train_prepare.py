@@ -42,5 +42,7 @@ if __name__ == "__main__":
     PrepareData.prepare_dataset(cfg.root_projects_dir, cfg.data_dir, cfg.mppx, cfg.data_subset, img_fnames)
 
     logging.info('Prepare mask files...')
-    VIAConverter.convert_to_images(via_annotation_file, json_mppx, cfg.classes,
+    # Regression task could be declared without attribute `class_names`.
+    class_names = cfg.class_names if hasattr(cfg, 'class_names') else None
+    VIAConverter.convert_to_images(via_annotation_file, json_mppx, class_names,
                                    mask_postprocess=cfg.mask_postprocess)

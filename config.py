@@ -18,9 +18,11 @@ cfg.mask_postprocess = None
 #                                                Sample Space Block
 # ==================================================================================================================== #
 cfg.use_heightmap = True
-# dict with key/value: 'class'/['cls_1','cls_2'], or None
-cfg.classes = {'class': ['muckpile', 'highwall']}  # {'class': ['muckpile', 'pile', 'car']}
-cfg.cls_nb = (len(cfg.classes['class']) + 1 if len(cfg.classes['class']) > 1 else 1) if cfg.classes is not None else 1
+# dict with key/value: 'class'/['cls_1','cls_2'], or None. Dict assumes using background class and softmax activation
+cfg.class_names = {'class': ['muckpile', 'highwall']}  # {'class': ['muckpile', 'pile', 'car']}
+cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None else 1
+cfg.apply_class_weights = False
+cfg.min_data_ratio = 0.0
 cfg.min_mask_ratio = 0.0
 cfg.img_wh = 512
 cfg.img_wh_crop = 1024

@@ -39,10 +39,13 @@ class SegmSolver(ISolver):
         # https://www.analyticsvidhya.com/blog/2020/08/a-beginners-guide-to-focal-loss-in-object-detection/
         # https://leimao.github.io/blog/Focal-Loss-Explained/
         class_weights = kwargs['class_weights'] if 'class_weights' in kwargs else None
-        if self.conf.cls_nb != len(class_weights):
-            logging.info('Class Nb {} not matched with Weights Nb {}.'
-                         'Class Weights will not be used in model'.format(self.conf.cls_nb, len(class_weights)))
-            class_weights = None
+        if class_weights is not None:
+            if self.conf.cls_nb != len(class_weights):
+                logging.info('Class Nb {} not matched with Weights Nb {}.'
+                             'Class Weights will not be used in model'.format(self.conf.cls_nb, len(class_weights)))
+                class_weights = None
+            else:
+                logging.info('Metrics uses class weights: {}'.format(class_weights))
         alpha = 1.0
         gamma = 2.0
         if self.conf.cls_nb == 1:

@@ -104,7 +104,7 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
     if inverse_mask:
         mask_u8cn = 255 - mask_u8cn
 
-    class_nb = mask_u8cn.shape[2] - 1 if mask_u8cn.shape[2] > 1 else 1
+    class_nb = max(1, mask_u8cn.shape[2] - 1)
     contours_list = list()
 
     # Collect contours except background

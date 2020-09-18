@@ -19,9 +19,11 @@ cfg.mask_postprocess = mask_to_dist  # mask needs to be mapped from binary to no
 #                                                Sample Space Block
 # ==================================================================================================================== #
 cfg.use_heightmap = False
-# dict with key/value: 'class'/['cls_1','cls_2'], or None
-cfg.classes = None  # {'class': ['muckpile', 'highwall']}  # {'class': ['muckpile', 'pile', 'car']}
-cfg.cls_nb = (len(cfg.classes['class']) + 1 if len(cfg.classes['class']) > 1 else 1) if cfg.classes is not None else 1
+# dict with key/value: 'class'/['cls_1','cls_2'], or None. Dict assumes using background class and softmax activation.
+# If there is no attribute `class_names` it means that task is not classification but regression
+cfg.cls_nb = 1
+cfg.apply_class_weights = False
+cfg.min_data_ratio = 0.0
 # cannot set 0 for rocks, because there are lot of unlabeled areas with real rocks(all rocks cannot be tagged)
 cfg.min_mask_ratio = 0.1
 cfg.img_wh = 256

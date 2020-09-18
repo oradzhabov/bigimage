@@ -57,7 +57,11 @@ class SemanticSegmentationDataProvider(IDataProvider):
         self.src_data = dict({k: list() for k in self.src_folders})
         self.src_mask = list()
 
-        self.mask_uniq_values_nb = dict(zip(range(max(2, conf.cls_nb)), [0] * max(2, conf.cls_nb)))
+        # If there is no attribute 'class_names' such problem is Regression and we cannot calc class weights
+        if hasattr(conf, 'class_names'):
+            # Class weights assumes existing at least 2 classes(background + 'class_names')
+            self.mask_uniq_values_nb = np.zeros(shape=(max(2, conf.cls_nb)), dtype=np.int64)
+
         logging.info('Collect samples...')
         for fn in tqdm(ids):
             is_data_fully_exist = True
@@ -81,7 +85,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
                 data_nonzero_ratio = data_nonzero_nb / img.size
                 data_nonzero_ratio_max = max(data_nonzero_ratio_max, data_nonzero_ratio)
 
-            if is_data_fully_exist and std_data_max > 0.0 and data_nonzero_ratio_max > 0.25:
+            if is_data_fully_exist and std_data_max > 0.0 and data_nonzero_ratio_max >= self.conf.min_data_ratio:
                 mask_fn = os.path.join(data_dir, src_mask_folder, fn)
                 if os.path.isfile(mask_fn):
                     img = cv2.imread(mask_fn, cv2.IMREAD_GRAYSCALE)
@@ -90,35 +94,41 @@ class SemanticSegmentationDataProvider(IDataProvider):
                     mask_nonzero_ratio = mask_nonzero_nb / img.size
                     if mask_nonzero_ratio >= min_mask_ratio:
                         self.src_mask.append(mask_fn)
-                        mask_uniq_values = np.unique(img)
-                        mask_uniq_ind = mask_uniq_values.copy()
-                        mask_uniq_ind[mask_uniq_ind > 0] = 256 - mask_uniq_ind[mask_uniq_ind > 0]
-                        for uniq_i in range(len(mask_uniq_values)):
-                            uniq_v = mask_uniq_values[uniq_i]
-                            uniq_a = mask_uniq_ind[uniq_i]
-                            self.mask_uniq_values_nb[uniq_a] += np.count_nonzero(img == uniq_v)
                         for k, v in subitem.items():
                             self.src_data[k] += v
+                        if self.mask_uniq_values_nb is not None:
+                            mask_uniq_values = np.unique(img)
+                            mask_uniq_ind = mask_uniq_values.copy()
+                            mask_uniq_ind[mask_uniq_ind > 0] = 256 - mask_uniq_ind[mask_uniq_ind > 0]
+                            for uniq_i in range(len(mask_uniq_values)):
+                                uniq_a = mask_uniq_ind[uniq_i]
+                                uniq_v = mask_uniq_values[uniq_i]
+                                self.mask_uniq_values_nb[uniq_a] += np.count_nonzero(img == uniq_v)
 
-        # This value shows the class imbalance
-        mask_uniq_values_sum = sum(list(self.mask_uniq_values_nb.values()))
-        if mask_uniq_values_sum > 0:
-            for key, val in self.mask_uniq_values_nb.items():
-                logging.info('Class #{} has {:.1f} % of data'.format(key, val / mask_uniq_values_sum * 100))
+        if self.mask_uniq_values_nb is not None:
+            # Since we assume that background placed to the end of class list, shift first(index 0 corresponds
+            # to class background) to the end of list
+            self.mask_uniq_values_nb = np.roll(self.mask_uniq_values_nb, -1)  # [0,1,2] -> [1,2,0]
+
+            # This value shows the class imbalance
+            mask_uniq_values_sum = np.sum(self.mask_uniq_values_nb)
+            if mask_uniq_values_sum > 0:
+                for key, val in enumerate(self.mask_uniq_values_nb):
+                    logging.info('Class #{} has {:.1f} % of data'.format(key, val / mask_uniq_values_sum * 100))
 
         # Find the actual length of dataset
         keys = list(self.src_data)
         self._length = len(self.src_data[keys[0]]) if len(keys) > 0 else 0
 
     def _preprocess_mask(self, mask):
-        class_values = np.arange(len(self.conf.classes['class']) if self.conf.classes is not None else 1,
+        class_values = np.arange(len(self.conf.class_names['class']) if self.conf.class_names is not None else 1,
                                  dtype=np.uint8)
         # extract certain classes from mask (e.g. cars)
         masks = [(mask == 255 - v) for v in class_values]
         mask = np.stack(masks, axis=-1).astype('float32')
 
         # add background if mask is not binary
-        if mask.shape[-1] != 1:
+        if self.conf.class_names is not None:
             background = 1 - mask.sum(axis=-1, keepdims=True)
             mask = np.concatenate((mask, background), axis=-1)
         return mask
@@ -187,8 +197,8 @@ class SemanticSegmentationDataProvider(IDataProvider):
         gt_cntrs_list = utilites.get_contours(((mask * 255).astype(np.uint8)))
         for class_index, class_ctrs in enumerate(gt_cntrs_list):
             cv2.drawContours(image_rgb, class_ctrs, -1, self.get_color(class_index), int(3 * self.conf.img_wh / 512))
-        if self.conf.classes is not None:
-            class_names = self.conf.classes['class']
+        if self.conf.class_names is not None:
+            class_names = self.conf.class_names['class']
             for class_index, class_name in enumerate(class_names):
                 fsc = self.conf.img_wh / 512
                 x = int(6 * fsc)
@@ -222,7 +232,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
             item['image'] = image.squeeze()
             result_list.append(item)
         # sort list to start from the worst result
-        result_list = sorted(result_list, key=lambda it: it['metrics']['f1-score'])
+        result_list = sorted(result_list, key=lambda it: it['metrics']['f1-score'])  # todo: why hardcoded f1-score ?
 
         for item in result_list:
             image = item['image']
@@ -239,6 +249,11 @@ class SemanticSegmentationDataProvider(IDataProvider):
                 cv2.drawContours(img_temp, class_ctrs, -1, color, 6)
                 color = [c // 2 for c in color]
                 cv2.drawContours(img_temp, class_ctrs, -1, color, 2)
+                #
+                fsc = self.conf.img_wh / 512
+                x = int(6 * fsc)
+                y = int(30 * (1 + class_index) * fsc)
+                utilites.write_text(img_temp, self.conf.class_names['class'][class_index], (x, y), color, fsc)
 
             utilites.visualize(
                 title='{}, F1:{:.4f}, IoU:{:.4f}, F2:{:.4f}'.format(img_fname,
