@@ -1,5 +1,6 @@
 import logging
 import os
+import numpy as np
 import json
 from .data import get_data, Dataloder
 import sys
@@ -44,6 +45,8 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
     logging.info('Testing data aspect: {}'.format(cfg.test_aspect))
     logging.info('Solution dir: {}'.format(cfg.solution_dir))
     logging.info('Seed: {}'.format(cfg.seed))
+    logging.info('Apply class weights: {}'.format(cfg.apply_class_weights))
+    logging.info('Min data ratio: {}'.format(cfg.min_data_ratio))
     logging.info('Min mask ratio: {}'.format(cfg.min_mask_ratio))
     result_dict = dict({'cfg': dict(cfg)})
     logging.info("Loss: {:.5}".format(scores[0]))

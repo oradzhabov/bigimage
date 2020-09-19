@@ -52,12 +52,25 @@ class SegmSolver(ISolver):
             focal_loss = sm.losses.BinaryFocalLoss(alpha=alpha, gamma=gamma)
         else:
             focal_loss = sm.losses.CategoricalFocalLoss(alpha=alpha, gamma=gamma)
+
+        if self.conf.cls_nb == 1:
+            ce_loss = sm.losses.BinaryCELoss()
+        else:
+            ce_loss = sm.losses.CategoricalCELoss(class_weights=class_weights)
+
+        # Why we need use BCE(or FL) instead of DiceLoss at least at the beginning:
+        # https://stats.stackexchange.com/a/344244
+        self.total_loss = ce_loss
+        #
         # Dice(beta=2) = 1 - F2-score
-        self.total_loss = sm.losses.DiceLoss(beta=2, class_weights=class_weights)
+        # self.total_loss = ce_loss + sm.losses.DiceLoss(beta=2, class_weights=class_weights)
+
         # Value to round predictions (use ``>`` comparison), if ``None`` prediction will not be round
+        # here should not be weights
         threshold = 0.5
-        self.metrics = [sm.metrics.IOUScore(threshold=threshold), sm.metrics.FScore(threshold=threshold),
-                        sm.metrics.f2_score]
+        self.metrics = [sm.metrics.IOUScore(threshold=threshold),
+                        sm.metrics.FScore(beta=1, threshold=threshold),
+                        sm.metrics.FScore(beta=2, threshold=threshold)]
 
     def _create(self, compile_model=True, **kwargs):
         solution_path = os.path.normpath(os.path.abspath(self.conf.solution_dir))
