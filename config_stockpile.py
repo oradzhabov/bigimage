@@ -25,7 +25,7 @@ cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None el
 #
 cfg.apply_class_weights = True
 cfg.min_data_ratio = 0.5
-cfg.min_mask_ratio = 0.0  # 0.0, 0.1, 0.25
+cfg.min_mask_ratio = 0.0
 cfg.img_wh = 512
 cfg.img_wh_crop = 1024
 cfg.solver = SegmSolver
@@ -36,7 +36,9 @@ cfg.pred_scale_factors = [1.0]  # List of scale factors. Each item should be les
 # ==================================================================================================================== #
 #                                                   Network Block
 # ==================================================================================================================== #
-cfg.backbone = 'efficientnetb5'  # 'efficientnetb5'  # 'mobilenet'  # 'efficientnetb3'
+# useful regarding EfficientTent: https://keras.io/examples/vision/image_classification_efficientnet_fine_tuning/
+# batch_size(64), efficientnetb6(for 512 cfg.img_wh)
+cfg.backbone = 'efficientnetb6'  # 'efficientnetb5'  # 'mobilenet'  # 'efficientnetb3'
 cfg.encoder_weights = 'imagenet'
 cfg.encoder_freeze = False
 cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
@@ -46,9 +48,9 @@ cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 cfg.seed = 42
 cfg.test_aspect = 0.33
 cfg.batch_size = 2
-cfg.batch_size_multiplier = 4
+cfg.batch_size_multiplier = 32
 cfg.minimize_train_aug = False
-cfg.lr = 0.001  # 0.0002, 0.0005, 0.001
+cfg.lr = 0.0001  # 0.0002, 0.0005, 0.001
 cfg.epochs = 4000
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,

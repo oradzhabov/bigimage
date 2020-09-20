@@ -10,6 +10,15 @@ sys.path.append(sys.path[0] + "/..")
 from kutils import utilites
 
 
+def freeze_bn(obj):
+    for layer in obj.layers:
+        if isinstance(layer, keras.layers.BatchNormalization):
+            layer.trainable = False
+        elif isinstance(layer, keras.Model):
+            freeze_bn(layer)
+
+
+
 class SegmSolver(ISolver):
     def __init__(self, conf):
         super(SegmSolver, self).__init__(conf)
@@ -111,6 +120,13 @@ class SegmSolver(ISolver):
             self.model.load_weights(weights_init_path)
 
             logging.info('Model has been initialized from file: \"{}\"'.format(weights_init_path))
+
+            # "The BathcNormalization layers need to be kept frozen.
+            # (more details: https://keras.io/guides/transfer_learning/). If they are also turned to trainable, the
+            # first epoch after unfreezing will significantly reduce accuracy."
+            # from: https://keras.io/examples/vision/image_classification_efficientnet_fine_tuning/
+            freeze_bn(self.model)
+            logging.info('BatchNormalization layers have been frozen')
         else:
             # Provide model info for first call of model
             self.model.summary()
