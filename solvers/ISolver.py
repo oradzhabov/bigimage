@@ -32,10 +32,14 @@ class ISolver(metaclass=ABCMeta):
                                                                   self.conf.data_subset)
         return signature
 
-    @staticmethod
-    def get_avg_prob_field(pr_mask_list):
+    def _get_avg_prob_field(self, pr_mask_list):
         def get_ndarray(pr_mask_item):
             result = read_image(pr_mask_item['img']) if isinstance(pr_mask_item['img'], str) else pr_mask_item['img']
+
+            # Sometime(e.g. 2-channels output) data stored with bigger channels num. Trunc used channels.
+            if len(result.shape) > 2:
+                result = result[..., :self.conf.cls_nb]
+
             result = result.squeeze()
             if pr_mask_item['img_dtype'] != np.uint8:
                 # if pr_mask_item['img_dtype'] in [np.float16, np.float32, np.float64]:

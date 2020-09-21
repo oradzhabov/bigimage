@@ -29,7 +29,7 @@ class ProdSolver_MP(ISolver):
         return get_preprocessing_production
 
     def get_contours(self, pr_mask_list):
-        pr_mask = ISolver.get_avg_prob_field(pr_mask_list)
+        pr_mask = self._get_avg_prob_field(pr_mask_list)
         return utilites.get_contours((pr_mask * 255).astype(np.uint8))
 
     def monitoring_metric(self):

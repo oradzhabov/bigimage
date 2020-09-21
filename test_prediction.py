@@ -4,7 +4,7 @@ import os
 import numpy as np
 import cv2
 from kutils import utilites
-from config_rocks import cfg
+from config_stockpile import cfg
 from kutils.VIAConverter import *
 from tools.predict_contours import predict_contours
 
@@ -13,7 +13,7 @@ def test_prediction(src_proj_dir):
     # If enable following flag it will avoid long prediction and will try to read already created result.
     # Useful for debugging
     skip_prediction = False
-    memmap_batch_size = 4
+    memmap_batch_size = 1  # 4 for config_rocks, 1 for config_stockpile
     predict_img_with_group_d4 = False
 
     err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
@@ -75,6 +75,10 @@ if __name__ == "__main__":
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/dev-oktai/7145'  # orig:d2192 but 0.01 mppx. HUGE ROCKS
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17042'  # ROCKS DETECTION/COLORING DEATH
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17115'  # DEATH IN ROCKS POSTPROC EVEN ON SERVER
-    proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/18618'  # 2020.08.13 Not well big rocks prediction
+    ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/18618'  # 2020.08.13 Not well big rocks prediction
+    #
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/8048'
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/8336'  # unseen during training
+    proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/9027'  # HUGE(split by 100m), unseen during training
 
     exit(test_prediction(proj_dir))

@@ -126,7 +126,7 @@ class SegmSolver(ISolver):
             # first epoch after unfreezing will significantly reduce accuracy."
             # from: https://keras.io/examples/vision/image_classification_efficientnet_fine_tuning/
             freeze_bn(self.model)
-            logging.info('BatchNormalization layers have been frozen')
+            logging.info('BatchNormalization layers have been frozen')  # todo: needs to be controlled from config
         else:
             # Provide model info for first call of model
             self.model.summary()
@@ -163,7 +163,7 @@ class SegmSolver(ISolver):
         return pr_result.astype(np.bool)
 
     def get_contours(self, pr_mask_list):
-        pr_mask = ISolver.get_avg_prob_field(pr_mask_list)
+        pr_mask = self._get_avg_prob_field(pr_mask_list)
         return utilites.get_contours((pr_mask * 255).astype(np.uint8))
 
     def monitoring_metric(self):

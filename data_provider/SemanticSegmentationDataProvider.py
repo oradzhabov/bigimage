@@ -217,8 +217,8 @@ class SemanticSegmentationDataProvider(IDataProvider):
         for i in ids:
             image, gt_mask = self.__getitem__(i)
             image = np.expand_dims(image, axis=0)
-            pr_mask = solver.model.predict(image, verbose=0)[0]
-            pr_mask = solver.post_predict(pr_mask)
+            pr_mask_raw = solver.model.predict(image, verbose=0)[0]
+            pr_mask = solver.post_predict(pr_mask_raw.copy())
             scores = solver.model.evaluate(image, np.expand_dims(gt_mask, axis=0), batch_size=1, verbose=0)
 
             gt_cntrs = utilites.get_contours((gt_mask * 255).astype(np.uint8))
@@ -228,7 +228,8 @@ class SemanticSegmentationDataProvider(IDataProvider):
                 metric_name = metric if isinstance(metric, str) else metric.__name__
                 img_metrics[metric_name] = value
 
-            item = dict({'index': i, 'gt_cntrs': gt_cntrs, 'pr_cntrs': pr_cntrs, 'metrics': img_metrics})
+            item = dict({'index': i, 'gt_cntrs': gt_cntrs, 'pr_cntrs': pr_cntrs, 'metrics': img_metrics,
+                         'pr_mask_raw': pr_mask_raw})
             item['image'] = image.squeeze()
             result_list.append(item)
         # sort list to start from the worst result
@@ -255,6 +256,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
                 y = int(30 * (1 + class_index) * fsc)
                 utilites.write_text(img_temp, self.conf.class_names['class'][class_index], (x, y), color, fsc)
 
+            predicted_imgs = dict({'pr_{}'.format(i): item['pr_mask_raw'][..., i] for i in range(self.conf.cls_nb)})
             utilites.visualize(
                 title='{}, F1:{:.4f}, IoU:{:.4f}, F2:{:.4f}'.format(img_fname,
                                                          item['metrics']['f1-score'],
@@ -262,6 +264,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
                                                          item['metrics']['f2-score']),
                 Result=img_temp,
                 Height=image[..., 3] if image.shape[-1] > 3 else None,
+                # **predicted_imgs
             )
 
 

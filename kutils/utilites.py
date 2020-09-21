@@ -146,6 +146,9 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
                   hierarchy[0][i][2] >= 0 and hierarchy[0][i][3] >= 0]  # HAVE parents HAVE children
             contours = c1 + c2
 
+        # Filter out non-manifold contours
+        contours = list(filter(lambda x: len(x) > 2, contours))
+
         contours_list.append(contours)
 
     return contours_list

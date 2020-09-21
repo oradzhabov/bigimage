@@ -30,7 +30,7 @@ class ProdSolverRocks(ISolver):
         return get_preprocessing_production_rock
 
     def get_contours(self, pr_mask_list):
-        pr_mask = ISolver.get_avg_prob_field(pr_mask_list)
+        pr_mask = self._get_avg_prob_field(pr_mask_list)
         pr_mask = postprocessing_prod_rock(pr_mask)
         return utilites.get_contours((pr_mask * 255).astype(np.uint8), find_alg=cv2.CHAIN_APPROX_SIMPLE,
                                      find_mode=cv2.RETR_TREE, inverse_mask=True)

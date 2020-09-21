@@ -63,6 +63,10 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
                 if len(pr_mask.shape) == 2:
                     pr_mask = pr_mask[..., np.newaxis]
 
+                # Sometime(e.g. 2-channels output) data stored with bigger channels num. Trunc used channels.
+                if len(pr_mask.shape) > 2:
+                    pr_mask = pr_mask[..., :cfg.cls_nb]
+
                 pr_result_descriptor = pr_mask
         else:
             image, _ = dataset[0]
@@ -132,7 +136,13 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
 
             # Store result with unique(per scale) name
             logging.info('Store predicted result to file {}'.format(predict_sc_png))
-            cv2.imwrite(fpath, (pr_mask * 255).astype(np.uint8))
+            if len(pr_mask.shape) > 2 and pr_mask.shape[2] == 2:
+                # Operate with 2-channels output
+                # Add extra channel and save
+                cv2.imwrite(fpath, ((np.pad(pr_mask, ((0, 0),)*2 + ((0, 1),),
+                                            'constant', constant_values=0)) * 255).astype(np.uint8))
+            else:
+                cv2.imwrite(fpath, (pr_mask * 255).astype(np.uint8))
 
             if store_predicted_result_to_ram:
                 pr_result_descriptor = pr_mask
