@@ -133,6 +133,11 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
                    figsize=(12, 4*(1 + len(metrics))))  # PNG-files processed in Windows & Ubuntu
     ]
 
+    if hasattr(cfg, 'lr_scheduler'):
+        callbacks.append(keras.callbacks.LearningRateScheduler(cfg.lr_scheduler))
+    else:
+        logging.info('There is no LR scheduler')
+
     matplotlib.use('Agg')  # Disable TclTk because it sometime crash training!
     # train model
     model.fit_generator(

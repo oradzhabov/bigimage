@@ -3,6 +3,7 @@ from kutils.EasyDict import EasyDict
 from solvers import *
 from data_provider import *
 from augmentation import *
+from lr_scheduler import learning_rate_schedulers
 
 cfg = EasyDict()
 
@@ -50,8 +51,9 @@ cfg.test_aspect = 0.33
 cfg.batch_size = 2
 cfg.batch_size_multiplier = 32
 cfg.minimize_train_aug = False
-cfg.lr = 0.0001  # 0.0002, 0.0005, 0.001
-cfg.epochs = 4000
+cfg.epochs = 200
+cfg.lr = 0.0001  # Initial LR
+cfg.lr_scheduler = learning_rate_schedulers.PolynomialDecay(cfg.epochs, cfg.lr, 1.0)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,
