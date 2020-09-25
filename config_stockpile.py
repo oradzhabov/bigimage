@@ -3,7 +3,8 @@ from kutils.EasyDict import EasyDict
 from solvers import *
 from data_provider import *
 from augmentation import *
-from lr_scheduler import learning_rate_schedulers
+from lr_scheduler import learning_rate_schedulers as lr_sc
+import keras
 
 cfg = EasyDict()
 
@@ -49,11 +50,12 @@ cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 cfg.seed = 42
 cfg.test_aspect = 0.33
 cfg.batch_size = 2
-cfg.batch_size_multiplier = 32
+cfg.batch_size_multiplier = 4
 cfg.minimize_train_aug = False
 cfg.epochs = 200
 cfg.lr = 0.0001  # Initial LR
-cfg.lr_scheduler = learning_rate_schedulers.PolynomialDecay(cfg.epochs, cfg.lr, 1.0)
+cfg.callbacks = [
+    keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 2.0))]
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,

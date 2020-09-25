@@ -1,8 +1,12 @@
-# src: https://www.pyimagesearch.com/2019/07/22/keras-learning-rate-schedules-and-decay/
-
-# import the necessary packages
+import os
 import matplotlib.pyplot as plt
 import numpy as np
+import keras
+import math
+import logging
+
+# src:
+# https://www.pyimagesearch.com/2019/07/22/keras-learning-rate-schedules-and-decay/
 
 
 class LearningRateDecay:
@@ -65,3 +69,47 @@ class PolynomialDecay(LearningRateDecay):
         alpha = self.init_alpha * decay
         # return the new learning rate
         return float(alpha)
+
+
+class SnapshotEnsemble(keras.callbacks.Callback, LearningRateDecay):
+    # std:
+    # https://machinelearningmastery.com/snapshot-ensemble-deep-learning-neural-network/
+
+    def __init__(self, n_epochs, n_cycles, lrate_max, save_dir):
+        self.epochs = n_epochs
+        self.cycles = n_cycles
+        self.lr_max = lrate_max
+        self.save_dir = save_dir
+
+    @staticmethod
+    def cosine_annealing(epoch, n_epochs, n_cycles, lrate_max):
+        # calculate learning rate for epoch
+        epochs_per_cycle = math.floor(n_epochs / n_cycles)
+        cos_inner = (math.pi * (epoch % epochs_per_cycle)) / epochs_per_cycle
+        return lrate_max / 2 * (math.cos(cos_inner) + 1)
+
+    def __call__(self, epoch):
+        return SnapshotEnsemble.cosine_annealing(epoch, self.epochs, self.cycles, self.lr_max)
+
+    # calculate and set learning rate at the start of the epoch
+    def on_epoch_begin(self, epoch):
+        lr = SnapshotEnsemble.cosine_annealing(epoch, self.epochs, self.cycles, self.lr_max)
+
+        # Set learning rate
+        # Depending on Keras version(KERAS 2.3.0 renamed param self.lr to self.learning_rate)
+        if hasattr(self.model.optimizer, 'learning_rate'):
+            keras.backend.set_value(self.model.optimizer.learning_rate, lr)
+        else:
+            keras.backend.set_value(self.model.optimizer.lr, lr)
+
+    # save models at the end of each cycle
+    def on_epoch_end(self, epoch):
+        # check if we can save model
+        epochs_per_cycle = math.floor(self.epochs / self.cycles)
+        if epoch != 0 and (epoch + 1) % epochs_per_cycle == 0:
+            # save model to file
+            filename = "snapshot_weights_%d.h5" % int((epoch + 1) / epochs_per_cycle)
+            filename = os.path.join(self.save_dir, filename)
+            # self.model.save(filename)
+            self.model.save_weights(filename)
+            logging.info('Saved weights %s, epoch %d' % (filename, epoch))

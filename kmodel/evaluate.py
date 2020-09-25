@@ -57,5 +57,5 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
         logging.info("mean {}: {:.5}".format(metric_name, value))
         result_dict[metric_name] = value
 
-    with open(os.path.join(cfg.solution_dir, 'evaluation.json'), 'w', newline=os.linesep) as f:
-        json.dump(result_dict, f, indent=4, ensure_ascii=False, default=json_def_encoder)
+    # with open(os.path.join(cfg.solution_dir, 'evaluation.json'), 'w', newline=os.linesep) as f:
+    #     json.dump(result_dict, f, indent=4, ensure_ascii=False, default=json_def_encoder)

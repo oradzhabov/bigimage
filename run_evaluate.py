@@ -12,4 +12,4 @@ if __name__ == "__main__":
     cfg.provider = provider
     cfg.aug = aug
 
-    evaluate.run(cfg, solver, provider, aug, show_random_items_nb=0)
+    evaluate.run(cfg, solver, provider, aug, show_random_items_nb=10)
