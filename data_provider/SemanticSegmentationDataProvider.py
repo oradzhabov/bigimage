@@ -235,7 +235,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         # sort list to start from the worst result
         result_list = sorted(result_list, key=lambda it: it['metrics']['f1-score'])  # todo: why hardcoded f1-score ?
 
-        for item in result_list:
+        for item_ind, item in enumerate(result_list):
             image = item['image']
             img_fname = self.get_fname(item['index'])
 
@@ -256,15 +256,17 @@ class SemanticSegmentationDataProvider(IDataProvider):
                 y = int(30 * (1 + class_index) * fsc)
                 utilites.write_text(img_temp, self.conf.class_names['class'][class_index], (x, y), color, fsc)
 
-            predicted_imgs = dict({'pr_{}'.format(i): item['pr_mask_raw'][..., i] for i in range(self.conf.cls_nb)})
+            show_cls_nb = max(1, self.conf.cls_nb - 1)  # drop background class
+            predicted_imgs = dict({'pr_{}'.format(i): item['pr_mask_raw'][..., i] for i in range(show_cls_nb)})
             utilites.visualize(
-                title='{}, F1:{:.4f}, IoU:{:.4f}, F2:{:.4f}'.format(img_fname,
-                                                         item['metrics']['f1-score'],
-                                                         item['metrics']['iou_score'],
-                                                         item['metrics']['f2-score']),
+                title='{}, {}, F1:{:.4f}, IoU:{:.4f}, F2:{:.4f}'.format('{}/{}'.format(item_ind, len(result_list)),
+                                                                        img_fname,
+                                                                        item['metrics']['f1-score'],
+                                                                        item['metrics']['iou_score'],
+                                                                        item['metrics']['f2-score']),
                 Result=img_temp,
                 Height=image[..., 3] if image.shape[-1] > 3 else None,
-                # **predicted_imgs
+                **predicted_imgs
             )
 
 
