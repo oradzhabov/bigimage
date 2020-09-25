@@ -9,6 +9,7 @@ from solvers import ISolver
 from data_provider import IDataProvider
 from augmentation import IAug
 from kutils.read_sample import read_sample
+from kutils.JSONEncoder import json_def_encoder
 
 
 def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_random_items_nb=0):
@@ -55,11 +56,6 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
         metric_name = metric if isinstance(metric, str) else metric.__name__
         logging.info("mean {}: {:.5}".format(metric_name, value))
         result_dict[metric_name] = value
-    #
-    # todo: till config contains complex objects/classes it cannot be stored into json.
-    #
-    """
-    dir_to_save = os.path.dirname(weights_path)
-    with open(os.path.join(dir_to_save, 'evaluation.json'), 'w', newline=os.linesep) as f:
-        json.dump(result_dict, f)
-    """
+
+    with open(os.path.join(cfg.solution_dir, 'evaluation.json'), 'w', newline=os.linesep) as f:
+        json.dump(result_dict, f, indent=4, ensure_ascii=False, default=json_def_encoder)

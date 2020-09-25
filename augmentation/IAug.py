@@ -1,7 +1,10 @@
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
+import sys
+sys.path.append(sys.path[0] + "/..")
+from kutils.JSONEncoder import JSONEncoder
 
 
-class IAug(metaclass=ABCMeta):
+class IAug(JSONEncoder):
 
     @abstractmethod
     def get_training_augmentation(self, conf, is_stub=False):

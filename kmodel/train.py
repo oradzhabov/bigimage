@@ -2,6 +2,7 @@ import logging
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import cv2
+import json
 import keras
 import numpy as np
 import matplotlib
@@ -14,6 +15,7 @@ from solvers import ISolver
 from data_provider import IDataProvider
 from augmentation import IAug
 from kutils.read_sample import read_sample
+from kutils.JSONEncoder import json_def_encoder
 
 
 TRIM_GPU = False
@@ -30,6 +32,10 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
     if not os.path.exists(cfg.data_dir):
         logging.error('There are no such data folder {}'.format(cfg.data_dir))
         exit(-1)
+
+    logging.info('Storing configuration...')
+    with open(os.path.join(cfg.solution_dir, 'configuration.json'), 'w', newline=os.linesep) as f:
+        json.dump(dict({'cfg': dict(cfg)}), f, default=json_def_encoder)
 
     # Prepare data and split to train/test subsets
     data_dir, ids_train, ids_test = get_data(cfg, test_size=cfg.test_aspect)

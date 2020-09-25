@@ -3,12 +3,17 @@ import os
 import cv2
 import numpy as np
 import random
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 sys.path.append(sys.path[0] + "/..")
 from kmodel.data import read_image
+from kutils.JSONEncoder import JSONEncoder
 
 
-class ISolver(metaclass=ABCMeta):
+class ISolver(JSONEncoder):
+    def json_instance_encode(self):
+        result = dict()
+        result['signature'] = self.signature()
+        return result
 
     def __init__(self, conf):
         self.model = None

@@ -1,7 +1,11 @@
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
+import sys
+sys.path.append(sys.path[0] + "/..")
+from kutils.JSONEncoder import JSONEncoder
 
 
-class IDataProvider(metaclass=ABCMeta):
+class IDataProvider(JSONEncoder):
+
     def __init__(self):
         pass
 

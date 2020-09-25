@@ -18,7 +18,6 @@ def freeze_bn(obj):
             freeze_bn(layer)
 
 
-
 class SegmSolver(ISolver):
     def __init__(self, conf):
         super(SegmSolver, self).__init__(conf)

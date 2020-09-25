@@ -7,4 +7,9 @@ if __name__ == "__main__":
     provider = cfg.provider
     aug = cfg.aug()
 
-    evaluate.run(cfg, solver, provider, aug, show_random_items_nb=10)
+    # Store initialized params to config for proper serialization with evaluation results
+    cfg.solver = solver
+    cfg.provider = provider
+    cfg.aug = aug
+
+    evaluate.run(cfg, solver, provider, aug, show_random_items_nb=0)
