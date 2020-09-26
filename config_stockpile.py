@@ -26,7 +26,7 @@ cfg.class_names = {'class': ['stockpile']}
 cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None else 1
 #
 cfg.apply_class_weights = True
-cfg.min_data_ratio = 0.5
+cfg.min_data_ratio = 1.0
 cfg.min_mask_ratio = 0.0
 cfg.img_wh = 512
 cfg.img_wh_crop = 1024
@@ -53,9 +53,7 @@ cfg.batch_size = 2
 cfg.batch_size_multiplier = 4
 cfg.minimize_train_aug = False
 cfg.epochs = 200
-cfg.lr = 0.0001  # Initial LR
-cfg.callbacks = [
-    keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 2.0))]
+cfg.lr = 0.001  # Initial LR
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,
@@ -63,3 +61,7 @@ cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_R
                                                                            cfg.backbone,
                                                                            'a' if cfg.use_heightmap else '',
                                                                            cfg.cls_nb)
+cfg.callbacks = [
+    # keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 2.0))
+    lr_sc.SnapshotEnsemble(cfg.epochs, cfg.epochs // 100, cfg.lr, cfg.solution_dir)
+]

@@ -92,7 +92,7 @@ class SnapshotEnsemble(keras.callbacks.Callback, LearningRateDecay):
         return SnapshotEnsemble.cosine_annealing(epoch, self.epochs, self.cycles, self.lr_max)
 
     # calculate and set learning rate at the start of the epoch
-    def on_epoch_begin(self, epoch):
+    def on_epoch_begin(self, epoch, logs=None):
         lr = SnapshotEnsemble.cosine_annealing(epoch, self.epochs, self.cycles, self.lr_max)
 
         # Set learning rate
@@ -102,8 +102,10 @@ class SnapshotEnsemble(keras.callbacks.Callback, LearningRateDecay):
         else:
             keras.backend.set_value(self.model.optimizer.lr, lr)
 
+        logging.info('SnapshotEnsemble LR changed to {}'.format(lr))
+
     # save models at the end of each cycle
-    def on_epoch_end(self, epoch):
+    def on_epoch_end(self, epoch, logs=None):
         # check if we can save model
         epochs_per_cycle = math.floor(self.epochs / self.cycles)
         if epoch != 0 and (epoch + 1) % epochs_per_cycle == 0:
