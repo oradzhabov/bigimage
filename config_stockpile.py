@@ -50,9 +50,9 @@ cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 cfg.seed = 42
 cfg.test_aspect = 0.33
 cfg.batch_size = 2
-cfg.batch_size_multiplier = 4
+cfg.batch_size_multiplier = 16
 cfg.minimize_train_aug = False
-cfg.epochs = 200
+cfg.epochs = 400
 cfg.lr = 0.001  # Initial LR
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
@@ -63,5 +63,5 @@ cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_R
                                                                            cfg.cls_nb)
 cfg.callbacks = [
     # keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 2.0))
-    lr_sc.SnapshotEnsemble(cfg.epochs, cfg.epochs // 100, cfg.lr, cfg.solution_dir)
+    lr_sc.SnapshotEnsemble(cfg.epochs, cfg.epochs // 40, cfg.lr, cfg.solution_dir)
 ]

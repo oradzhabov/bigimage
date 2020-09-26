@@ -102,7 +102,7 @@ class SnapshotEnsemble(keras.callbacks.Callback, LearningRateDecay):
         else:
             keras.backend.set_value(self.model.optimizer.lr, lr)
 
-        logging.info('SnapshotEnsemble LR changed to {}'.format(lr))
+        logging.info('SnapshotEnsemble LR changed to {} on the epoch {}'.format(lr, epoch))
 
     # save models at the end of each cycle
     def on_epoch_end(self, epoch, logs=None):
