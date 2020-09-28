@@ -33,10 +33,6 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
         logging.error('There are no such data folder {}'.format(cfg.data_dir))
         exit(-1)
 
-    logging.info('Storing configuration...')
-    with open(os.path.join(cfg.solution_dir, 'configuration.json'), 'w', newline=os.linesep) as f:
-        json.dump(dict({'cfg': dict(cfg)}), f, default=json_def_encoder)
-
     # Prepare data and split to train/test subsets
     data_dir, ids_train, ids_test = get_data(cfg, test_size=cfg.test_aspect)
 
@@ -105,6 +101,10 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
                      'It may affect to metric cross comparison')
 
     model, weights_path, metrics = solver.build(compile_model=True, class_weights=class_weights)
+
+    logging.info('Storing configuration...')
+    with open(os.path.join(cfg.solution_dir, 'configuration.json'), 'w', newline=os.linesep) as f:
+        json.dump(dict({'cfg': dict(cfg)}), f, default=json_def_encoder)
 
     # Get monitoring metric
     monitoring_metric_name, monitoring_metric_mode = solver.monitoring_metric()
