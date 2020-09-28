@@ -68,7 +68,7 @@ class SegmSolver(ISolver):
 
         # Why we need use BCE(or FL) instead of DiceLoss at least at the beginning:
         # https://stats.stackexchange.com/a/344244
-        self.total_loss = focal_loss
+        self.total_loss = ce_loss
         #
         # Dice(beta=2) = 1 - F2-score
         # self.total_loss = ce_loss + sm.losses.DiceLoss(beta=2, class_weights=class_weights)

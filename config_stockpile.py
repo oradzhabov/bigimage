@@ -14,7 +14,7 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/StockPileDatasets'
 cfg.mppx = 0.1
 cfg.data_dir = 'F:/DATASET/Strayos/StockPileDatasets.Result/2020-09-10/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'stockpiles_2_segm'  # 'all_piles'  # 'rocks_1stPart_clean'
+cfg.data_subset = 'stockpiles_3_segm'  # 'all_piles'  # 'rocks_1stPart_clean'
 cfg.mask_postprocess = None
 # ==================================================================================================================== #
 #                                                Sample Space Block
@@ -22,7 +22,7 @@ cfg.mask_postprocess = None
 cfg.use_heightmap = True
 # dict with key/value: 'class'/['cls_1','cls_2'], or None. Dict assumes using background class and softmax activation.
 # dict with 1-class means using softmax, which can be weighted for class imbalance reduction
-cfg.class_names = {'class': ['stockpile']}
+cfg.class_names = {'class': ['stockpile', 'water']}
 cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None else 1
 #
 cfg.apply_class_weights = True
@@ -55,7 +55,7 @@ cfg.batch_size_multiplier = 8
 cfg.minimize_train_aug = False
 cfg.epochs = 200
 cfg.lr = 0.0001  # Initial LR
-cfg.optimizer = keras.optimizers.SGD(cfg.lr)
+cfg.optimizer = keras.optimizers.Adam(cfg.lr)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,

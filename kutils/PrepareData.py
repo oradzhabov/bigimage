@@ -91,6 +91,8 @@ def get_via_item(proj_dir, mppx, src_shp_fname='shp.shp', src_epsg=4326):
     in_layer = in_dataset.GetLayer()
     # inFeatureCount = in_layer.GetFeatureCount()
 
+    attribute_names = [field.name for field in in_layer.schema]
+
     size = int(-1)
     regions = list()
     file_attributes = dict()
@@ -114,7 +116,10 @@ def get_via_item(proj_dir, mppx, src_shp_fname='shp.shp', src_epsg=4326):
         shape_attributes['name'] = 'polygon'
         shape_attributes['all_points_x'] = [int(px[0] * coords_scale) for px in contour_px]
         shape_attributes['all_points_y'] = [int(px[1] * coords_scale) for px in contour_px]
-        region_attributes = dict()
+        if len(attribute_names) > 0:
+            region_attributes = dict(zip(attribute_names, [inFeature[field_name] for field_name in attribute_names]))
+        else:
+            region_attributes = dict()
         attributes = dict({'shape_attributes': shape_attributes, 'region_attributes': region_attributes})
         regions.append(attributes)
     in_layer.ResetReading()  # You must call ResetReading if you want to start iterating over the layer again.
