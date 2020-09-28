@@ -10,6 +10,8 @@ def json_def_encoder(obj):
         return dict()
     if hasattr(obj, 'json_instance_encode'):
         return obj.json_instance_encode()
+    if hasattr(obj, 'get_config'):
+        return obj.get_config()
     return obj.__dict__
 
 
