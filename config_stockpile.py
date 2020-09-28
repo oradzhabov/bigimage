@@ -26,7 +26,7 @@ cfg.class_names = {'class': ['stockpile']}
 cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None else 1
 #
 cfg.apply_class_weights = True
-cfg.min_data_ratio = 1.0
+cfg.min_data_ratio = 0.5
 cfg.min_mask_ratio = 0.0
 cfg.img_wh = 512
 cfg.img_wh_crop = 1024
@@ -44,6 +44,7 @@ cfg.backbone = 'efficientnetb6'  # 'efficientnetb5'  # 'mobilenet'  # 'efficient
 cfg.encoder_weights = 'imagenet'
 cfg.encoder_freeze = False
 cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
+cfg.freeze_bn = False
 # ==================================================================================================================== #
 #                                               Training Params Block
 # ==================================================================================================================== #
@@ -52,8 +53,9 @@ cfg.test_aspect = 0.33
 cfg.batch_size = 2
 cfg.batch_size_multiplier = 16
 cfg.minimize_train_aug = False
-cfg.epochs = 400
-cfg.lr = 0.001  # Initial LR
+cfg.epochs = 200
+cfg.lr = 0.0001  # Initial LR
+cfg.optimizer = keras.optimizers.SGD(cfg.lr)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,
@@ -62,6 +64,6 @@ cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_R
                                                                            'a' if cfg.use_heightmap else '',
                                                                            cfg.cls_nb)
 cfg.callbacks = [
-    # keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 2.0))
-    lr_sc.SnapshotEnsemble(cfg.epochs, cfg.epochs // 40, cfg.lr, cfg.solution_dir)
+    keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 1.0))
+    # lr_sc.SnapshotEnsemble(cfg.epochs, cfg.epochs // 40, cfg.lr, cfg.solution_dir)
 ]

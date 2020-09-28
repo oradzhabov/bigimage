@@ -4,6 +4,7 @@ from kutils.mask_to_dist import mask_to_dist
 from solvers import *
 from data_provider import *
 from augmentation import *
+import keras
 
 cfg = EasyDict()
 
@@ -43,6 +44,7 @@ cfg.backbone = 'efficientnetb3'  # 'resnet34'  # 'mobilenet'  # 'efficientnetb3'
 cfg.encoder_weights = 'imagenet'
 cfg.encoder_freeze = False
 cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
+cfg.freeze_bn = False
 # ==================================================================================================================== #
 #                                               Training Params Block
 # ==================================================================================================================== #
@@ -53,6 +55,7 @@ cfg.batch_size_multiplier = 1
 cfg.minimize_train_aug = False
 cfg.lr = 0.001  # start from 0.001
 cfg.epochs = 4000
+cfg.optimizer = keras.optimizers.Adam(cfg.lr)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,

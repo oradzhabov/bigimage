@@ -120,12 +120,14 @@ class SegmSolver(ISolver):
 
             logging.info('Model has been initialized from file: \"{}\"'.format(weights_init_path))
 
-            # "The BathcNormalization layers need to be kept frozen.
+            # Sometime "The BathcNormalization layers need to be kept frozen.
             # (more details: https://keras.io/guides/transfer_learning/). If they are also turned to trainable, the
             # first epoch after unfreezing will significantly reduce accuracy."
             # from: https://keras.io/examples/vision/image_classification_efficientnet_fine_tuning/
-            freeze_bn(self.model)
-            logging.info('BatchNormalization layers have been frozen')  # todo: needs to be controlled from config
+            if hasattr(self.conf, 'freeze_bn'):
+                if self.conf.freeze_bn:
+                    freeze_bn(self.model)
+                    logging.info('BatchNormalization layers have been frozen')
         else:
             # Provide model info for first call of model
             self.model.summary()
@@ -136,7 +138,7 @@ class SegmSolver(ISolver):
             #  But there are some limitations - IOUScore/FScore threshold
 
             # define optimizer
-            optimizer = keras.optimizers.Adam(self.conf.lr)
+            optimizer = self.conf.optimizer
             if self.conf.batch_size_multiplier > 1:
                 optimizer = AccumOptimizer.AccumOptimizer(optimizer, self.conf.batch_size_multiplier)
 
