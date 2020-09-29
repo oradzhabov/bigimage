@@ -77,8 +77,23 @@ if __name__ == "__main__":
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17115'  # DEATH IN ROCKS POSTPROC EVEN ON SERVER
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/18618'  # 2020.08.13 Not well big rocks prediction
     #
-    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/8048'
-    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/8336'  # unseen during training
-    proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/9027'  # HUGE(split by 100m), unseen during training
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/8336'  #
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/9027'  # HUGE(split by 100m
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/11914'  # small
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12072'  # middle
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12107'  #
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12140'  #
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12237'  # small
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/13251'  #
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/14451'  # small
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/15495'  # small
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/16376'  # small
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/16511'  # small, VARIANCE ROCKS SIZE. IS IT STOCKPILE ?
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/18379'  # small
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/18514'  # small
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/19110'  # small. VARIANCE ROCKS SIZE. IS IT STOCKPILE ?
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/19945'  # middle
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/20147'  # middle
+    proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/20160'  # middle. BAD BOUNDARIES
 
     exit(test_prediction(proj_dir))
