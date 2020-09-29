@@ -25,6 +25,7 @@ cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None el
 cfg.apply_class_weights = False
 cfg.min_data_ratio = 0.0
 cfg.min_mask_ratio = 0.0
+cfg.thin_out_train_ratio = 1.0  # 0- drop out all samples, 1- don't drop samples
 cfg.img_wh = 512
 cfg.img_wh_crop = 1024
 cfg.solver = SegmSolver

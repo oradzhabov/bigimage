@@ -14,7 +14,8 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/StockPileDatasets'
 cfg.mppx = 0.1
 cfg.data_dir = 'F:/DATASET/Strayos/StockPileDatasets.Result/2020-09-10/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'stockpiles_3_segm'  # 'all_piles'  # 'rocks_1stPart_clean'
+cfg.data_subset = 'stockpiles_3_segm'
+# cfg.data_subset = 'stockpiles_2_segm'
 cfg.mask_postprocess = None
 # ==================================================================================================================== #
 #                                                Sample Space Block
@@ -23,11 +24,13 @@ cfg.use_heightmap = True
 # dict with key/value: 'class'/['cls_1','cls_2'], or None. Dict assumes using background class and softmax activation.
 # dict with 1-class means using softmax, which can be weighted for class imbalance reduction
 cfg.class_names = {'class': ['stockpile', 'water']}
+# cfg.class_names = {'class': ['stockpile']}
 cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None else 1
 #
 cfg.apply_class_weights = True
 cfg.min_data_ratio = 0.5
 cfg.min_mask_ratio = 0.0
+cfg.thin_out_train_ratio = 1.0  # 0- drop out all samples, 1- don't drop samples
 cfg.img_wh = 512
 cfg.img_wh_crop = 1024
 cfg.solver = SegmSolver

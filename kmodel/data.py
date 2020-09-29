@@ -144,6 +144,11 @@ def get_data(conf, test_size):
     # Split Train/Test data
     ids_train, ids_test, _, _ = train_test_split(ids, ids, test_size=test_size, random_state=conf.seed, shuffle=True)
 
+    # Left specified portion of training data. Since data have been shuffle before(in train_test_split) data will
+    # remain in shuffle mode
+    if 0.0 < conf.thin_out_train_ratio < 1.0:
+        ids_train = ids_train[:int(len(ids_train) * conf.thin_out_train_ratio)]
+
     return data_dir, ids_train, ids_test
 
 

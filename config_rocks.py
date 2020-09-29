@@ -27,6 +27,7 @@ cfg.apply_class_weights = False
 cfg.min_data_ratio = 0.0
 # cannot set 0 for rocks, because there are lot of unlabeled areas with real rocks(all rocks cannot be tagged)
 cfg.min_mask_ratio = 0.1
+cfg.thin_out_train_ratio = 1.0  # 0- drop out all samples, 1- don't drop samples
 cfg.img_wh = 256
 # To minimize 'fake' area during scale down aug, crop it with bigger size than img_wh
 # Note: if crop with 1024 and img_wh 512, it will degrade validation metrics because in fact not all rocks labeled and
