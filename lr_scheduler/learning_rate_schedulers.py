@@ -7,6 +7,13 @@ import logging
 
 # src:
 # https://www.pyimagesearch.com/2019/07/22/keras-learning-rate-schedules-and-decay/
+#
+# further reading
+# https://ruder.io/deep-learning-optimization-2017/
+# https://github.com/bckenstler/CLR
+# https://github.com/titu1994/Snapshot-Ensembles
+# https://techburst.io/improving-the-way-we-work-with-learning-rate-5e99554f163b
+# http://teleported.in/posts/cyclic-learning-rate/
 
 
 class LearningRateDecay:

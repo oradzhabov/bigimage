@@ -51,7 +51,7 @@ cfg.batch_size_multiplier = 1
 cfg.minimize_train_aug = False
 cfg.lr = 0.0001
 cfg.epochs = 4000
-cfg.optimizer = keras.optimizers.Adam(cfg.lr)
+cfg.optimizer = keras.optimizers.Adam(cfg.lr)  # Adam() not good for warm restarts(in Ensembles or prev checkpoint)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,

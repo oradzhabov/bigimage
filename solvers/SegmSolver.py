@@ -137,6 +137,11 @@ class SegmSolver(ISolver):
             # todo: actually compilation could be moved out to parent class.
             #  But there are some limitations - IOUScore/FScore threshold
 
+            if weights_init_path is not None and isinstance(self.conf.optimizer, keras.optimizers.Adam):
+                logging.warning('There is no sense to expect a good training convergence '
+                                'after warm restarting with Adam optimizer')
+                # src: https://ruder.io/deep-learning-optimization-2017/
+
             # define optimizer
             optimizer = self.conf.optimizer
             if self.conf.batch_size_multiplier > 1:
