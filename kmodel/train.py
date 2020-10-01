@@ -27,7 +27,7 @@ if TRIM_GPU:
     session = tf.Session(config=config)
 
 
-def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_augmented_sample=False):
+def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_augmented_sample=False, review_train=True):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         logging.error('There are no such data folder {}'.format(cfg.data_dir))
@@ -45,10 +45,14 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
     if review_augmented_sample:
         matplotlib.use('TkAgg')  # Enable interactive mode
 
+        # Specify params according to which subset to review
+        ids, augm = (ids_train, aug.get_training_augmentation(cfg)) if review_train else \
+            (ids_test, aug.get_validation_augmentation(cfg, cfg.minimize_train_aug))
+
         # Lets look at augmented data we have
-        dataset = dataprovider(data_reader, data_dir, ids_train, ((0, 0), (None, None)), cfg,
+        dataset = dataprovider(data_reader, data_dir, ids, ((0, 0), (None, None)), cfg,
                                min_mask_ratio=cfg.min_mask_ratio,
-                               augmentation=aug.get_training_augmentation(cfg),
+                               augmentation=augm,
                                prep_getter=None  # don't use preparation to see actually augmentation the data
                                )
         logging.info('Dataset length: {}'.format(len(dataset)))
