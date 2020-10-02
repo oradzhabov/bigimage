@@ -18,6 +18,15 @@ def freeze_bn(obj):
             freeze_bn(layer)
 
 
+def mult_dropout_rate(obj, coeff):
+    for layer in obj.layers:
+        if isinstance(layer, keras.layers.Dropout):
+            # f(coeff, layer.rate) = [0 .. 1] for any coeff and layer.rate
+            layer.rate = 1.0 - (1.0 - layer.rate) / coeff if coeff > 1.0 else layer.rate * coeff
+        elif isinstance(layer, keras.Model):
+            mult_dropout_rate(layer, coeff)
+
+
 class SegmSolver(ISolver):
     def __init__(self, conf):
         super(SegmSolver, self).__init__(conf)
@@ -113,6 +122,12 @@ class SegmSolver(ISolver):
             self.model = keras.models.Model(inp, out, name=base_model.name)
         else:
             self.model = base_model
+
+        # Multiply dropout layer rates
+        if hasattr(self.conf, 'dropout_rate_mult'):
+            if 0.0 <= self.conf.dropout_rate_mult:
+                mult_dropout_rate(self.model, self.conf.dropout_rate_mult)
+                logging.info('Dropout layers have been multiplied by {}'.format(self.conf.dropout_rate_mult))
 
         if weights_init_path is not None:
             # loading model weights

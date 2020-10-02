@@ -14,7 +14,7 @@ def test_prediction(src_proj_dir):
     # Useful for debugging
     skip_prediction = False
     memmap_batch_size = 1  # 4 for config_rocks, 1 for config_stockpile
-    predict_img_with_group_d4 = False
+    predict_img_with_group_d4 = False  # REALLY HELPS, BUT 8+ TIMES SLOWER
 
     err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
                                              predict_img_with_group_d4)

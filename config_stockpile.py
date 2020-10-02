@@ -14,8 +14,8 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/StockPileDatasets'
 cfg.mppx = 0.1
 cfg.data_dir = 'F:/DATASET/Strayos/StockPileDatasets.Result/2020-09-10/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'stockpiles_3_segm'
-# cfg.data_subset = 'stockpiles_2_segm'
+# cfg.data_subset = 'stockpiles_3_segm'
+cfg.data_subset = 'stockpiles_2_segm'
 cfg.mask_postprocess = None
 # ==================================================================================================================== #
 #                                                Sample Space Block
@@ -23,8 +23,8 @@ cfg.mask_postprocess = None
 cfg.use_heightmap = True
 # dict with key/value: 'class'/['cls_1','cls_2'], or None. Dict assumes using background class and softmax activation.
 # dict with 1-class means using softmax, which can be weighted for class imbalance reduction
-cfg.class_names = {'class': ['stockpile', 'water']}
-# cfg.class_names = {'class': ['stockpile']}
+# cfg.class_names = {'class': ['stockpile', 'water']}
+cfg.class_names = {'class': ['stockpile']}
 cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None else 1
 #
 cfg.apply_class_weights = True
@@ -48,17 +48,22 @@ cfg.encoder_weights = 'imagenet'
 cfg.encoder_freeze = False
 cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 cfg.freeze_bn = False
+cfg.dropout_rate_mult = 2.0  # [0 ... 1 ... inf) => [0 ... same ... 1]
 # ==================================================================================================================== #
 #                                               Training Params Block
 # ==================================================================================================================== #
 cfg.seed = 42
 cfg.test_aspect = 0.33
 cfg.batch_size = 2
-cfg.batch_size_multiplier = 8
+cfg.batch_size_multiplier = 16  # To simulate the enlarging of BS, gradient accumulation will be utilized
 cfg.minimize_train_aug = False
 cfg.epochs = 200
 cfg.lr = 0.0001  # Initial LR
-cfg.optimizer = keras.optimizers.Adam(cfg.lr)  # Adam() not good for warm restarts(in Ensembles or prev checkpoint)
+# TIPS:
+# * SGD with proper LR/BS should provide smooth loss-function(accuracy metric could be not smooth). If loss looks not
+# smooth, LR/BS should be tweaked.
+# * Adam not good for warm restarts(in Snapshot Ensembles or restart from previous checkpoint).
+cfg.optimizer = keras.optimizers.SGD(cfg.lr)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,
@@ -67,6 +72,6 @@ cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_R
                                                                            'a' if cfg.use_heightmap else '',
                                                                            cfg.cls_nb)
 cfg.callbacks = [
-    keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 1.0))
+    # keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 1.0))
     # lr_sc.SnapshotEnsemble(cfg.epochs, cfg.epochs // 40, cfg.lr, cfg.solution_dir)
 ]
