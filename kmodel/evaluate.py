@@ -12,7 +12,7 @@ from kutils.read_sample import read_sample
 from kutils.JSONEncoder import json_def_encoder
 
 
-def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_random_items_nb=0):
+def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_random_items_nb=0, save_imgs=False):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
         logging.error('There are no such data folder {}'.format(cfg.data_dir))
@@ -33,8 +33,11 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
 
     model, _, metrics = solver.build(compile_model=True)
 
-    if show_random_items_nb > 0:
-        test_dataset.show_predicted(solver, show_random_items_nb)
+    if show_random_items_nb >= 0:
+        if show_random_items_nb == 0:
+            show_random_items_nb = len(test_dataset)
+        logging.info('Show {} randomly samples'.format(show_random_items_nb))
+        test_dataset.show_predicted(solver, show_random_items_nb, save_imgs=save_imgs)
 
     logging.info('Evaluate model...')
     scores = model.evaluate_generator(test_dataloader, verbose=1)

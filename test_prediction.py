@@ -36,6 +36,7 @@ def test_prediction(src_proj_dir):
 
     utilites.visualize(
         title='{}'.format(src_proj_dir),
+        img_fname=None,
         result=image
     )
     del image

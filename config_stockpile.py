@@ -14,8 +14,9 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/StockPileDatasets'
 cfg.mppx = 0.1
 cfg.data_dir = 'F:/DATASET/Strayos/StockPileDatasets.Result/2020-09-10/mppx{:.2f}'.format(cfg.mppx)
-# cfg.data_subset = 'stockpiles_3_segm'
 cfg.data_subset = 'stockpiles_2_segm'
+# cfg.data_subset = 'stockpiles_3_segm'  # extra class "water" did not improve general accuracy
+# cfg.data_subset = 'stockpiles_2a_segm'  # train/val split 0.8/0.2 became worse accuracy that it was with 0.66/0.33
 cfg.mask_postprocess = None
 # ==================================================================================================================== #
 #                                                Sample Space Block
@@ -48,7 +49,7 @@ cfg.encoder_weights = 'imagenet'
 cfg.encoder_freeze = False
 cfg.pyramid_block_filters = 256  # default 256. User only for FPN-architecture
 cfg.freeze_bn = False
-cfg.dropout_rate_mult = 2.0  # [0 ... 1 ... inf) => [0 ... same ... 1]
+cfg.dropout_rate_mult = 1.0  # [0 ... 1 ... inf) => [0 ... same ... 1]
 # ==================================================================================================================== #
 #                                               Training Params Block
 # ==================================================================================================================== #
@@ -63,7 +64,7 @@ cfg.lr = 0.0001  # Initial LR
 # * SGD with proper LR/BS should provide smooth loss-function(accuracy metric could be not smooth). If loss looks not
 # smooth, LR/BS should be tweaked.
 # * Adam not good for warm restarts(in Snapshot Ensembles or restart from previous checkpoint).
-cfg.optimizer = keras.optimizers.SGD(cfg.lr)
+cfg.optimizer = keras.optimizers.Adam(cfg.lr)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,

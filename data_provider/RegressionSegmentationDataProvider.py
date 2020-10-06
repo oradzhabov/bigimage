@@ -1,4 +1,7 @@
+import os
+import logging
 import numpy as np
+from tqdm import tqdm
 from . import SemanticSegmentationDataProvider
 import sys
 sys.path.append(sys.path[0] + "/..")
@@ -21,14 +24,15 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
 
         utilites.visualize(
             title=self.get_fname(i),
+            img_fname=None,
             Image=image_rgb,
             Masked_Image=((image_rgb.astype(np.float32) + np.dstack((mask, mask*0, mask*0)).astype(np.float32))//2).astype(np.uint8),
         )
 
-    def show_predicted(self, solver, show_random_items_nb):
-        ids = np.random.choice(np.arange(len(self)), size=show_random_items_nb)
+    def show_predicted(self, solver, show_random_items_nb, save_imgs=False):
+        ids = np.random.choice(np.arange(len(self)), size=show_random_items_nb, replace=False)
         result_list = list()
-        for i in ids:
+        for i in tqdm(ids):
             image, gt_mask = self.__getitem__(i)
             image = np.expand_dims(image, axis=0)
             pr_mask = solver.model.predict(image, verbose=0)[0]
@@ -48,7 +52,12 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
             item['image'] = image.squeeze()
             result_list.append(item)
         # sort list to start from the worst result
-        result_list = sorted(result_list, key=lambda it: it['metrics']['mae'])[::-1]
+        result_list = sorted(result_list, key=lambda it: it['metrics']['mae'])[::-1]  # todo: why hardcoded mae ?
+
+        img_storing_dir = os.path.join(self.conf.solution_dir, 'evaluate_imgs')
+        if not os.path.isdir(img_storing_dir):
+            os.makedirs(img_storing_dir)
+            logging.info('Folder {} has been created'.format(img_storing_dir))
 
         for item in result_list:
             image = item['image']
@@ -63,6 +72,7 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
 
             utilites.visualize(
                 title='{}, MAE:{:.4f}'.format(img_fname, item['metrics']['mae']),
+                img_fname=os.path.join(img_storing_dir, img_fname) if save_imgs else None,
                 Image=img_temp,
                 Masked_Image=((img_temp.astype(np.float32) + np.dstack((pr_mask, pr_mask*0, pr_mask*0)).astype(np.float32))//2).astype(np.uint8),
                 Mask=pr_mask

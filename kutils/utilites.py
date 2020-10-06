@@ -82,7 +82,7 @@ def denormalize(x):
     return x
 
 
-def visualize(title, **images):
+def visualize(title, img_fname, **images):
     """PLot images in one row."""
     img_filtered = {key: value for (key, value) in images.items() if value is not None}
     n = len(img_filtered)
@@ -95,7 +95,11 @@ def visualize(title, **images):
         plt.imshow(img)
     if title is not None:
         fig.suptitle(title, fontsize=16)
-    plt.show()
+    if img_fname is not None:
+        plt.savefig(img_fname)
+    else:
+        plt.show()
+    plt.close(fig)
 
 
 def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR_EXTERNAL, inverse_mask=False):

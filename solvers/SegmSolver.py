@@ -75,8 +75,10 @@ class SegmSolver(ISolver):
         else:
             ce_loss = sm.losses.CategoricalCELoss(class_weights=class_weights)
 
-        # Why we need use BCE(or FL) instead of DiceLoss at least at the beginning:
+        # 1. Why we need use BCE(or FL) instead of DiceLoss at least at the beginning:
         # https://stats.stackexchange.com/a/344244
+        # 2. Practice shows that best strategy starts from wCE(with Adam), when FL(with Adam) and then FL(with SGD).
+        # 3. DiceLoss is too categorical. Usual results have only two values: 0.0 and 1.0 without "doubts"
         self.total_loss = ce_loss
         #
         # Dice(beta=2) = 1 - F2-score
@@ -86,8 +88,8 @@ class SegmSolver(ISolver):
         # here should not be weights
         threshold = 0.5
         self.metrics = [sm.metrics.IOUScore(threshold=threshold),
-                        sm.metrics.FScore(beta=1, threshold=threshold),
-                        sm.metrics.FScore(beta=2, threshold=threshold)]
+                        sm.metrics.FScore(beta=1, threshold=threshold, name='f1-score'),
+                        sm.metrics.FScore(beta=2, threshold=threshold, name='f2-score')]
 
     def _create(self, compile_model=True, **kwargs):
         solution_path = os.path.normpath(os.path.abspath(self.conf.solution_dir))
@@ -125,9 +127,9 @@ class SegmSolver(ISolver):
 
         # Multiply dropout layer rates
         if hasattr(self.conf, 'dropout_rate_mult'):
-            if 0.0 <= self.conf.dropout_rate_mult:
+            if 0.0 <= self.conf.dropout_rate_mult != 1:
                 mult_dropout_rate(self.model, self.conf.dropout_rate_mult)
-                logging.info('Dropout layers have been multiplied by {}'.format(self.conf.dropout_rate_mult))
+                logging.info('Dropout layers have been modified by coefficient {}'.format(self.conf.dropout_rate_mult))
 
         if weights_init_path is not None:
             # loading model weights

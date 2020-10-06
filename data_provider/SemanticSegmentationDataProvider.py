@@ -207,14 +207,15 @@ class SemanticSegmentationDataProvider(IDataProvider):
 
         utilites.visualize(
             title=self.get_fname(i),
+            img_fname=None,
             Image=image_rgb,
             Height=image[..., 3] if image.shape[-1] > 3 else None,
         )
 
-    def show_predicted(self, solver, show_random_items_nb):
-        ids = np.random.choice(np.arange(len(self)), size=show_random_items_nb)
+    def show_predicted(self, solver, show_random_items_nb, save_imgs=False):
+        ids = np.random.choice(np.arange(len(self)), size=show_random_items_nb, replace=False)
         result_list = list()
-        for i in ids:
+        for i in tqdm(ids):
             image, gt_mask = self.__getitem__(i)
             image = np.expand_dims(image, axis=0)
             pr_mask_raw = solver.model.predict(image, verbose=0)[0]
@@ -234,6 +235,11 @@ class SemanticSegmentationDataProvider(IDataProvider):
             result_list.append(item)
         # sort list to start from the worst result
         result_list = sorted(result_list, key=lambda it: it['metrics']['f1-score'])  # todo: why hardcoded f1-score ?
+
+        img_storing_dir = os.path.join(self.conf.solution_dir, 'evaluate_imgs')
+        if not os.path.isdir(img_storing_dir):
+            os.makedirs(img_storing_dir)
+            logging.info('Folder {} has been created'.format(img_storing_dir))
 
         for item_ind, item in enumerate(result_list):
             image = item['image']
@@ -264,6 +270,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
                                                                         item['metrics']['f1-score'],
                                                                         item['metrics']['iou_score'],
                                                                         item['metrics']['f2-score']),
+                img_fname=os.path.join(img_storing_dir, img_fname) if save_imgs else None,
                 Result=img_temp,
                 Height=image[..., 3] if image.shape[-1] > 3 else None,
                 **predicted_imgs
