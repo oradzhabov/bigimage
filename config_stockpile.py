@@ -14,9 +14,10 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/StockPileDatasets'
 cfg.mppx = 0.1
 cfg.data_dir = 'F:/DATASET/Strayos/StockPileDatasets.Result/2020-09-10/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'stockpiles_2_segm'
+cfg.data_subset = 'stockpiles_2_segm'  # best 2020.10.06
 # cfg.data_subset = 'stockpiles_3_segm'  # extra class "water" did not improve general accuracy
 # cfg.data_subset = 'stockpiles_2a_segm'  # train/val split 0.8/0.2 became worse accuracy that it was with 0.66/0.33
+# cfg.data_subset = 'stockpiles_4_segm'
 cfg.mask_postprocess = None
 # ==================================================================================================================== #
 #                                                Sample Space Block
@@ -56,9 +57,9 @@ cfg.dropout_rate_mult = 1.0  # [0 ... 1 ... inf) => [0 ... same ... 1]
 cfg.seed = 42
 cfg.test_aspect = 0.33
 cfg.batch_size = 2
-cfg.batch_size_multiplier = 16  # To simulate the enlarging of BS, gradient accumulation will be utilized
+cfg.batch_size_multiplier = 32  # To simulate the enlarging of BS, gradient accumulation will be utilized
 cfg.minimize_train_aug = False
-cfg.epochs = 200
+cfg.epochs = 400
 cfg.lr = 0.0001  # Initial LR
 # TIPS:
 # * SGD with proper LR/BS should provide smooth loss-function(accuracy metric could be not smooth). If loss looks not

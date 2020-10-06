@@ -17,12 +17,12 @@ if __name__ == "__main__":
 
         customer_list = ['airzaar']
         proj_list = [8018, 8022, 8048, 8225, 8227, 8715, 9100, 9151, 9154, 9155, 9200, 9221, 9264, 9306, 9323, 9459,
-                     9778, 10177, 10439, 10730, 11541, 11654, 11667, 11686, 9098, 13940]
+                     9778, 10177, 10439, 10730, 11541, 11654, 11667, 11686, 9098, 13940, 12072, 12107, 12140]
 
         via_items = PrepareData.map_shapefiles_to_via(cfg.root_projects_dir, customer_list, proj_list,
                                                       'shp.shp', cfg.mppx)
 
-        via_json_fname = os.path.join(maskdir, 'via_shp_stockpiles.json')
+        via_json_fname = os.path.join(maskdir, 'via_shp_{}.json'.format(cfg.data_subset))
         with open(via_json_fname, 'w') as outfile:
             json.dump(via_items, outfile)
 

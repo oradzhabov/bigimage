@@ -81,9 +81,9 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/8336'  #
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/9027'  # HUGE(split by 100m
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/11914'  # small
-    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12072'  # middle
-    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12107'  #
-    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12140'  #
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12072'  # middle.(* train in stockpiles_4_segm)
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12107'  # (* train in stockpiles_4_segm)
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12140'  # (* train in stockpiles_4_segm)
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/12237'  # small
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/13251'  #
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/14451'  # small
