@@ -1,6 +1,4 @@
-import numpy as np
 import math
-import cv2
 
 
 def get_tiled_bbox(img_shape, tile_size, offset):
@@ -34,5 +32,3 @@ def get_tiled_bbox(img_shape, tile_size, offset):
         ah1 = [i - h_extra_half for i in ah1]
 
     return aw0, aw1, ah0, ah1
-
-

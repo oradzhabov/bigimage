@@ -1,8 +1,8 @@
 import logging
 import os
-from kutils import PrepareData
-from kutils import VIAConverter
-from config_stockpile import cfg
+from .kutils import PrepareData
+from .kutils import VIAConverter
+from .config_stockpile import cfg
 
 
 if __name__ == "__main__":

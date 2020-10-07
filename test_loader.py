@@ -1,9 +1,10 @@
 import logging
 import os
-from kmodel.data import get_data, Dataloder
-from config import cfg
-from kmodel.train import get_training_augmentation
-from kutils.read_sample import read_sample
+from .kmodel.data import get_data
+from .bin_keras import Dataloder
+from .config import cfg
+from .kmodel.train import get_training_augmentation
+from .kutils.read_sample import read_sample
 import time
 
 

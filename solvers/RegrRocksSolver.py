@@ -1,11 +1,9 @@
 import gc
-import sys
 import numpy as np
 import cv2
-from . import RegrSolver
-sys.path.append(sys.path[0] + "/..")
-from kutils import utilites
-from kmodel.data import read_image
+from ..kutils import utilites
+from ..kmodel.data import read_image
+from .. import get_submodules_from_kwargs
 
 
 def find_rock_masks(prob_field, prob_glue_th=0.25, debug=False):
@@ -211,15 +209,23 @@ def postprocess_prob_list(prob_list, debug=False):
     return mask
 
 
-class RegrRocksSolver(RegrSolver):
-    def __init__(self, conf):
-        super(RegrRocksSolver, self).__init__(conf)
+def get_solver(**kwarguments):
+    _backend, _layers, _models, _keras_utils, _optimizers, _legacy, _callbacks = get_submodules_from_kwargs(kwarguments)
 
-    def post_predict(self, pr_result):
-        return np.clip(pr_result, 0, 1)
+    from .RegrSolver import get_solver as get_regr_solver
+    regr_solver_class = get_regr_solver(**kwarguments)
 
-    def get_contours(self, pr_mask_list):
-        debug = False
-        pr_mask = postprocess_prob_list(pr_mask_list, debug)
-        return utilites.get_contours((pr_mask * 255).astype(np.uint8), find_alg=cv2.CHAIN_APPROX_SIMPLE,
-                                     find_mode=cv2.RETR_TREE, inverse_mask=True)
+    class RegrRocksSolver(regr_solver_class):
+        def __init__(self, conf):
+            super(RegrRocksSolver, self).__init__(conf)
+
+        def post_predict(self, pr_result):
+            return np.clip(pr_result, 0, 1)
+
+        def get_contours(self, pr_mask_list):
+            debug = False
+            pr_mask = postprocess_prob_list(pr_mask_list, debug)
+            return utilites.get_contours((pr_mask * 255).astype(np.uint8), find_alg=cv2.CHAIN_APPROX_SIMPLE,
+                                         find_mode=cv2.RETR_TREE, inverse_mask=True)
+
+    return RegrRocksSolver

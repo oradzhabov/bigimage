@@ -2,12 +2,12 @@ import logging
 import os
 import cv2
 import numpy as np
-import keras
 from .kutils import get_tiled_bbox
 from sklearn.model_selection import train_test_split
 from osgeo import gdal
 import multiprocessing as mp
 from .parallel import SimpleProcessor
+from .. import get_submodules_from_kwargs
 
 
 def get_ids(root_folder, subfolder_list):
@@ -112,6 +112,7 @@ def get_cropped_ids(conf):
 
 
 def get_data(conf, test_size):
+    """
     def asd(y_list):
         class_frequencies = dict()
         stratify = list()
@@ -134,6 +135,7 @@ def get_data(conf, test_size):
             stratify.append(strat_item)
 
         return class_frequencies, np.array(stratify)
+    """
 
     # Crop source data(if necessary)
     data_dir, ids = get_cropped_ids(conf)
@@ -156,73 +158,78 @@ def dataloder_loader_per_process(ds, ind):
     return ds[ind]
 
 
-class Dataloder(keras.utils.Sequence):
-    @staticmethod
-    def get_cpu_units_nb():
-        return mp.cpu_count()
+def get_dataloader(**kwarguments):
+    _backend, _layers, _models, _keras_utils, _optimizers, _legacy, _callbacks = get_submodules_from_kwargs(kwarguments)
 
-    def __init__(self, dataset, batch_size=1, shuffle=False, cpu_units_nb=0):
-        self.dataset = dataset
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-        self.indexes = np.arange(len(dataset))
+    class Dataloder(_keras_utils.Sequence):
+        @staticmethod
+        def get_cpu_units_nb():
+            return mp.cpu_count()
 
-        self.pool = None
-        if cpu_units_nb > 0:
-            self.pool = mp.Pool(min(batch_size, cpu_units_nb))
+        def __init__(self, dataset, batch_size=1, shuffle=False, cpu_units_nb=0):
+            self.dataset = dataset
+            self.batch_size = batch_size
+            self.shuffle = shuffle
+            self.indexes = np.arange(len(dataset))
 
-            i = 0
-            start = i * self.batch_size
-            stop = (i + 1) * self.batch_size
+            self.pool = None
+            if cpu_units_nb > 0:
+                self.pool = mp.Pool(min(batch_size, cpu_units_nb))
 
-            self.loader = SimpleProcessor(dataloder_loader_per_process,
-                                          [(self.dataset, self.indexes[j % len(self.indexes)])
-                                           for j in range(start, stop)],
-                                          self.pool)
-            self.loader.start(self.batch_size)
+                i = 0
+                start = i * self.batch_size
+                stop = (i + 1) * self.batch_size
 
-        self.on_epoch_end()
+                self.loader = SimpleProcessor(dataloder_loader_per_process,
+                                              [(self.dataset, self.indexes[j % len(self.indexes)])
+                                               for j in range(start, stop)],
+                                              self.pool)
+                self.loader.start(self.batch_size)
 
-    def __del__(self):
-        if self.pool:
-            self.pool.close()
+            self.on_epoch_end()
 
-    def __getitem__(self, i):
-        # collect batch data
+        def __del__(self):
+            if self.pool:
+                self.pool.close()
 
-        data = []
-        if self.pool:
-            """
-            data = self.pool.starmap_async(dataloder_loader_per_process,
-                                           [(self.dataset, self.indexes[j % len(self.indexes)])
-                                            for j in range(start, stop)]).get()
-            """
-            data = [x for x in self.loader.get(timeout=3000)]
-            #
-            # Start preparing next batch in shadow processes
-            start = (i + 1) * self.batch_size
-            stop = (i + 2) * self.batch_size
-            self.loader = SimpleProcessor(dataloder_loader_per_process,
-                                          [(self.dataset, self.indexes[j % len(self.indexes)])
-                                           for j in range(start, stop)],
-                                          self.pool)
-            self.loader.start(self.batch_size)
-        else:
-            start = i * self.batch_size
-            stop = (i + 1) * self.batch_size
-            for j in range(start, stop):
-                data.append(self.dataset[self.indexes[j % len(self.indexes)]])
+        def __getitem__(self, i):
+            # collect batch data
 
-        # transpose list of lists
-        batch = [np.stack(samples, axis=0) for samples in zip(*data)]
+            data = []
+            if self.pool:
+                """
+                data = self.pool.starmap_async(dataloder_loader_per_process,
+                                               [(self.dataset, self.indexes[j % len(self.indexes)])
+                                                for j in range(start, stop)]).get()
+                """
+                data = [x for x in self.loader.get(timeout=3000)]
+                #
+                # Start preparing next batch in shadow processes
+                start = (i + 1) * self.batch_size
+                stop = (i + 2) * self.batch_size
+                self.loader = SimpleProcessor(dataloder_loader_per_process,
+                                              [(self.dataset, self.indexes[j % len(self.indexes)])
+                                               for j in range(start, stop)],
+                                              self.pool)
+                self.loader.start(self.batch_size)
+            else:
+                start = i * self.batch_size
+                stop = (i + 1) * self.batch_size
+                for j in range(start, stop):
+                    data.append(self.dataset[self.indexes[j % len(self.indexes)]])
 
-        return batch
+            # transpose list of lists
+            batch = [np.stack(samples, axis=0) for samples in zip(*data)]
 
-    def __len__(self):
-        """Denotes the number of batches per epoch"""
-        return len(self.indexes) // self.batch_size
+            return batch
 
-    def on_epoch_end(self):
-        """Callback function to shuffle indexes each epoch"""
-        if self.shuffle:
-            self.indexes = np.random.permutation(self.indexes)
+        def __len__(self):
+            """Denotes the number of batches per epoch"""
+            return len(self.indexes) // self.batch_size
+
+        def on_epoch_end(self):
+            """Callback function to shuffle indexes each epoch"""
+            if self.shuffle:
+                self.indexes = np.random.permutation(self.indexes)
+
+    return Dataloder

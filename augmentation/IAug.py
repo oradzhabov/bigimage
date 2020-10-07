@@ -1,7 +1,5 @@
 from abc import abstractmethod
-import sys
-sys.path.append(sys.path[0] + "/..")
-from kutils.JSONEncoder import JSONEncoder
+from ..kutils.JSONEncoder import JSONEncoder
 
 
 class IAug(JSONEncoder):

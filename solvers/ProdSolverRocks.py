@@ -1,10 +1,8 @@
-import sys
 import cv2
 import numpy as np
 from . import ISolver
 from .production import create_model_production_rock, get_preprocessing_production_rock, postprocessing_prod_rock
-sys.path.append(sys.path[0] + "/..")
-from kutils import utilites
+from ..kutils import utilites
 
 
 class ProdSolverRocks(ISolver):

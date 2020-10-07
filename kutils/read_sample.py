@@ -1,9 +1,7 @@
 import logging
 import numpy as np
 import cv2
-import sys
-sys.path.append(sys.path[0] + "/..")
-from kmodel.data import read_image
+from ..kmodel.data import read_image
 
 
 def read_sample(data_paths, mask_path, bbox=((0, 0), (None, None))):

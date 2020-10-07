@@ -1,10 +1,9 @@
-from definitions import BIM_ROOT_DIR
-from kutils.EasyDict import EasyDict
-from kutils.mask_to_dist import mask_to_dist
-from solvers import *
-from data_provider import *
-from augmentation import *
-import keras
+from .definitions import BIM_ROOT_DIR
+from .kutils.EasyDict import EasyDict
+from .kutils.mask_to_dist import mask_to_dist
+from . import bin_keras
+from .data_provider import *
+from .augmentation import *
 
 cfg = EasyDict()
 
@@ -33,7 +32,7 @@ cfg.img_wh = 256
 # Note: if crop with 1024 and img_wh 512, it will degrade validation metrics because in fact not all rocks labeled and
 # lot of non-labeled rocks will disturb ANN (data conflict)
 cfg.img_wh_crop = 512
-cfg.solver = RegrRocksSolver
+cfg.solver = bin_keras.RegrRocksSolver
 cfg.provider = RegressionSegmentationDataProvider
 cfg.provider_single = RegressionSegmentationSingleDataProvider
 cfg.aug = RocksAug
@@ -56,7 +55,8 @@ cfg.batch_size_multiplier = 1
 cfg.minimize_train_aug = False
 cfg.lr = 0.001  # start from 0.001
 cfg.epochs = 4000
-cfg.optimizer = keras.optimizers.Adam(cfg.lr)  # Adam() not good for warm restarts(in Ensembles or prev checkpoint)
+# Adam() not good for warm restarts(in Ensembles or prev checkpoint)
+cfg.optimizer = bin_keras.modules['optimizers'].Adam(cfg.lr)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,

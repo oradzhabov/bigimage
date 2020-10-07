@@ -1,15 +1,12 @@
 import logging
 import os
-import numpy as np
-import json
-from .data import get_data, Dataloder
-import sys
-sys.path.append(sys.path[0] + "/..")
-from solvers import ISolver
-from data_provider import IDataProvider
-from augmentation import IAug
-from kutils.read_sample import read_sample
-from kutils.JSONEncoder import json_def_encoder
+from .data import get_data
+from ..bin_keras import Dataloder
+from ..solvers import ISolver
+from ..data_provider import IDataProvider
+from ..augmentation import IAug
+from ..kutils.read_sample import read_sample
+# from ..kutils.JSONEncoder import json_def_encoder
 
 
 def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_random_items_nb=0, save_imgs=False):

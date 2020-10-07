@@ -1,12 +1,10 @@
 import logging
-import sys
-sys.path.append(sys.path[0] + "/..")
 import os
 import cv2
 import numpy as np
 from tqdm import tqdm
 from . import IDataProvider
-from kutils import utilites
+from ..kutils import utilites
 import random
 import albumentations as alb
 
@@ -188,7 +186,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         image, mask = self.__getitem__(i)
         logging.info('name: {}'.format(os.path.basename(self.get_fname(i))))
         logging.info('img shape {},dtype {},min {},max {}'.format(image.shape, image.dtype,
-                                                                   np.min(image), np.max(image)))
+                                                                  np.min(image), np.max(image)))
         logging.info('mask shape {},dtype {},min {},max {}, masked ratio {}'.
                      format(mask.shape, mask.dtype, np.min(mask), np.max(mask), np.count_nonzero(mask) / mask.size))
 
@@ -237,7 +235,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
         result_list = sorted(result_list, key=lambda it: it['metrics']['f1-score'])  # todo: why hardcoded f1-score ?
 
         img_storing_dir = os.path.join(self.conf.solution_dir, 'evaluate_imgs')
-        if not os.path.isdir(img_storing_dir):
+        if not os.path.isdir(img_storing_dir) and save_imgs:
             os.makedirs(img_storing_dir)
             logging.info('Folder {} has been created'.format(img_storing_dir))
 

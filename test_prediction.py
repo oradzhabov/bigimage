@@ -3,10 +3,10 @@ import gc
 import os
 import numpy as np
 import cv2
-from kutils import utilites
-from config_stockpile import cfg
-from kutils.VIAConverter import *
-from tools.predict_contours import predict_contours
+from .kutils import utilites
+from .config_stockpile import cfg
+from .kutils.VIAConverter import *
+from .bin_keras import predict_contours
 
 
 def test_prediction(src_proj_dir):

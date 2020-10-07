@@ -19,10 +19,8 @@ from tqdm import tqdm
 
 import gc
 
-import sys
 import cv2
-sys.path.append(sys.path[0] + "/..")
-from kutils.utilites import denormalize
+from ..kutils.utilites import denormalize
 
 
 if __name__ == '__main__':

@@ -143,7 +143,7 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
             # Pay attention - if objects are black which put on white background -
             # each objects will be a child, and main parent - image rectangle
             c1 = [contours[i] for i in range(len(contours)) if
-                  hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0]  # HAVE parents NO children
+                  hierarchy[0][i][2] < 0 <= hierarchy[0][i][3]]  # HAVE parents NO children
             # Collect objects which are not main parent(image rect) i.e. HAVE parents and HAVE children -
             # it could be big objects, on which the objects are smaller
             c2 = [contours[i] for i in range(len(contours)) if
@@ -158,7 +158,7 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
     return contours_list
 
 
-def write_text(img_rgb, text, bottom_left_corner_of_text, fontColor, font_scale=1):
+def write_text(img_rgb, text, bottom_left_corner_of_text, font_color, font_scale=1):
     font = cv2.FONT_HERSHEY_SIMPLEX
     line_type = 2
 
@@ -174,6 +174,6 @@ def write_text(img_rgb, text, bottom_left_corner_of_text, fontColor, font_scale=
                 bottom_left_corner_of_text,
                 font,
                 font_scale,
-                fontColor,
+                font_color,
                 thickness=1,
                 lineType=line_type)

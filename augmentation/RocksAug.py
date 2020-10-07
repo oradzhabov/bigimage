@@ -34,7 +34,7 @@ class RocksAug(IAug):
             # a single float value, the range will be (-shift_limit, shift_limit). Absolute values for lower and upper
             # bounds should lie in range [0, 1]. Default: (-0.0625, 0.0625).
             # alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=45, shift_limit=0.5, p=1, border_mode=0),
-            alb.ShiftScaleRotate(scale_limit=[-0.9, 0.1], rotate_limit=90, p=1, border_mode=cv2.BORDER_REFLECT_101,
+            alb.ShiftScaleRotate(scale_limit=(-0.9, 0.1), rotate_limit=90, p=1, border_mode=cv2.BORDER_REFLECT_101,
                                  interpolation=cv2.INTER_LINEAR),
 
             # Pad side of the image / max if side is less than desired number.

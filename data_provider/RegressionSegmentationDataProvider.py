@@ -3,9 +3,7 @@ import logging
 import numpy as np
 from tqdm import tqdm
 from . import SemanticSegmentationDataProvider
-import sys
-sys.path.append(sys.path[0] + "/..")
-from kutils import utilites
+from ..kutils import utilites
 
 
 class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
@@ -26,7 +24,8 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
             title=self.get_fname(i),
             img_fname=None,
             Image=image_rgb,
-            Masked_Image=((image_rgb.astype(np.float32) + np.dstack((mask, mask*0, mask*0)).astype(np.float32))//2).astype(np.uint8),
+            Masked_Image=((image_rgb.astype(np.float32) +
+                           np.dstack((mask, mask*0, mask*0)).astype(np.float32))//2).astype(np.uint8),
         )
 
     def show_predicted(self, solver, show_random_items_nb, save_imgs=False):
@@ -55,7 +54,7 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
         result_list = sorted(result_list, key=lambda it: it['metrics']['mae'])[::-1]  # todo: why hardcoded mae ?
 
         img_storing_dir = os.path.join(self.conf.solution_dir, 'evaluate_imgs')
-        if not os.path.isdir(img_storing_dir):
+        if not os.path.isdir(img_storing_dir) and save_imgs:
             os.makedirs(img_storing_dir)
             logging.info('Folder {} has been created'.format(img_storing_dir))
 
@@ -63,7 +62,7 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
             image = item['image']
             img_fname = self.get_fname(item['index'])
 
-            gt_mask = item['gt_mask']
+            # gt_mask = item['gt_mask']
             pr_mask = item['pr_mask']
 
             img_temp = (utilites.denormalize(image[..., :3]) * 255).astype(np.uint8)
@@ -74,7 +73,8 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
                 title='{}, MAE:{:.4f}'.format(img_fname, item['metrics']['mae']),
                 img_fname=os.path.join(img_storing_dir, img_fname) if save_imgs else None,
                 Image=img_temp,
-                Masked_Image=((img_temp.astype(np.float32) + np.dstack((pr_mask, pr_mask*0, pr_mask*0)).astype(np.float32))//2).astype(np.uint8),
+                Masked_Image=((img_temp.astype(np.float32) +
+                               np.dstack((pr_mask, pr_mask*0, pr_mask*0)).astype(np.float32))//2).astype(np.uint8),
                 Mask=pr_mask
             )
 

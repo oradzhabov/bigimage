@@ -1,9 +1,7 @@
-import sys
 import numpy as np
 from . import ISolver
 from .production import create_model_production, get_preprocessing_production
-sys.path.append(sys.path[0] + "/..")
-from kutils import utilites
+from ..kutils import utilites
 
 
 class ProdSolver_MP(ISolver):

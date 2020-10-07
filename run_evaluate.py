@@ -1,5 +1,5 @@
-from config_stockpile import cfg
-from kmodel import evaluate
+from .config_stockpile import cfg
+from .kmodel import evaluate
 
 
 if __name__ == "__main__":

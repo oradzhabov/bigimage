@@ -1,12 +1,9 @@
-import sys
 import os
-import cv2
 import numpy as np
 import random
 from abc import abstractmethod
-sys.path.append(sys.path[0] + "/..")
-from kmodel.data import read_image
-from kutils.JSONEncoder import JSONEncoder
+from ..kmodel.data import read_image
+from ..kutils.JSONEncoder import JSONEncoder
 
 
 class ISolver(JSONEncoder):

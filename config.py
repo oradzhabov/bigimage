@@ -1,9 +1,8 @@
-from definitions import BIM_ROOT_DIR
-from kutils.EasyDict import EasyDict
-from solvers import *
-from data_provider import *
-from augmentation import *
-import keras
+from .definitions import BIM_ROOT_DIR
+from .kutils.EasyDict import EasyDict
+from . import bin_keras
+from .data_provider import *
+from .augmentation import *
 
 cfg = EasyDict()
 
@@ -28,7 +27,7 @@ cfg.min_mask_ratio = 0.0
 cfg.thin_out_train_ratio = 1.0  # 0- drop out all samples, 1- don't drop samples
 cfg.img_wh = 512
 cfg.img_wh_crop = 1024
-cfg.solver = SegmSolver
+cfg.solver = bin_keras.SegmSolver
 cfg.provider = SemanticSegmentationDataProvider
 cfg.provider_single = SemanticSegmentationSingleDataProvider
 cfg.aug = BasicAug
@@ -51,7 +50,8 @@ cfg.batch_size_multiplier = 1
 cfg.minimize_train_aug = False
 cfg.lr = 0.0001
 cfg.epochs = 4000
-cfg.optimizer = keras.optimizers.Adam(cfg.lr)  # Adam() not good for warm restarts(in Ensembles or prev checkpoint)
+# Adam() not good for warm restarts(in Ensembles or prev checkpoint)
+cfg.optimizer = bin_keras.modules['optimizers'].Adam(cfg.lr)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,

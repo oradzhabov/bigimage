@@ -1,10 +1,8 @@
-from definitions import BIM_ROOT_DIR
-from kutils.EasyDict import EasyDict
-from solvers import *
-from data_provider import *
-from augmentation import *
-from lr_scheduler import learning_rate_schedulers as lr_sc
-import keras
+from .definitions import BIM_ROOT_DIR
+from .kutils.EasyDict import EasyDict
+from . import bin_keras
+from .data_provider import *
+from .augmentation import *
 
 cfg = EasyDict()
 
@@ -17,7 +15,7 @@ cfg.data_dir = 'F:/DATASET/Strayos/StockPileDatasets.Result/2020-09-10/mppx{:.2f
 cfg.data_subset = 'stockpiles_2_segm'  # best 2020.10.06
 # cfg.data_subset = 'stockpiles_3_segm'  # extra class "water" did not improve general accuracy
 # cfg.data_subset = 'stockpiles_2a_segm'  # train/val split 0.8/0.2 became worse accuracy that it was with 0.66/0.33
-# cfg.data_subset = 'stockpiles_4_segm'
+# cfg.data_subset = 'stockpiles_4_segm'  # add samples, min_data_ratio 0.25, train/val 0.66/0.33
 cfg.mask_postprocess = None
 # ==================================================================================================================== #
 #                                                Sample Space Block
@@ -35,7 +33,7 @@ cfg.min_mask_ratio = 0.0
 cfg.thin_out_train_ratio = 1.0  # 0- drop out all samples, 1- don't drop samples
 cfg.img_wh = 512
 cfg.img_wh_crop = 1024
-cfg.solver = SegmSolver
+cfg.solver = bin_keras.SegmSolver
 cfg.provider = SemanticSegmentationDataProvider
 cfg.provider_single = SemanticSegmentationSingleDataProvider
 cfg.aug = BasicAug
@@ -65,7 +63,7 @@ cfg.lr = 0.0001  # Initial LR
 # * SGD with proper LR/BS should provide smooth loss-function(accuracy metric could be not smooth). If loss looks not
 # smooth, LR/BS should be tweaked.
 # * Adam not good for warm restarts(in Snapshot Ensembles or restart from previous checkpoint).
-cfg.optimizer = keras.optimizers.Adam(cfg.lr)
+cfg.optimizer = bin_keras.modules['optimizers'].Adam(cfg.lr)
 cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_ROOT_DIR,
                                                                            cfg.data_subset,
                                                                            cfg.mppx,
@@ -74,6 +72,6 @@ cfg.solution_dir = '{}/solutions/{}/mppx{:.2f}/wh{}/{}/rgb{}/{}cls'.format(BIM_R
                                                                            'a' if cfg.use_heightmap else '',
                                                                            cfg.cls_nb)
 cfg.callbacks = [
-    # keras.callbacks.LearningRateScheduler(lr_sc.PolynomialDecay(cfg.epochs, cfg.lr, 1.0))
-    # lr_sc.SnapshotEnsemble(cfg.epochs, cfg.epochs // 40, cfg.lr, cfg.solution_dir)
+    # bin_keras.LR_PolynomialDecay(cfg.epochs, cfg.lr, 1.0)
+    # bin_keras.LR_SnapshotEnsembleDecay(cfg.epochs, cfg.epochs // 40, cfg.lr, cfg.solution_dir)
 ]

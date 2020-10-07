@@ -1,21 +1,17 @@
 import logging
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-import cv2
 import json
-import keras
 import numpy as np
 import matplotlib
 from joblib import Memory
-from .data import get_data, Dataloder
-from .PlotLosses import PlotLosses
-import sys
-sys.path.append(sys.path[0] + "/..")
-from solvers import ISolver
-from data_provider import IDataProvider
-from augmentation import IAug
-from kutils.read_sample import read_sample
-from kutils.JSONEncoder import json_def_encoder
+from .data import get_data
+from ..bin_keras import Dataloder, PlotLosses, modules
+from ..solvers import ISolver
+from ..data_provider import IDataProvider
+from ..augmentation import IAug
+from ..kutils.read_sample import read_sample
+from ..kutils.JSONEncoder import json_def_encoder
 
 
 TRIM_GPU = False
@@ -116,20 +112,20 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
     # Define callbacks for learning rate scheduling and best checkpoints saving
     callbacks = [
         # Save best result
-        keras.callbacks.ModelCheckpoint(weights_path,
-                                        monitor=monitoring_metric_name,
-                                        save_weights_only=True,
-                                        save_best_only=True,
-                                        mode=monitoring_metric_mode,
-                                        verbose=1),
+        modules['callbacks'].ModelCheckpoint(weights_path,
+                                             monitor=monitoring_metric_name,
+                                             save_weights_only=True,
+                                             save_best_only=True,
+                                             mode=monitoring_metric_mode,
+                                             verbose=1),
         # Save the latest result
-        keras.callbacks.ModelCheckpoint('{}_last.h5'.format(os.path.join(os.path.dirname(weights_path),
-                                                            os.path.splitext(os.path.basename(weights_path))[0])),
-                                        monitor=monitoring_metric_name,
-                                        save_weights_only=True,
-                                        save_best_only=False,
-                                        mode='auto',
-                                        verbose=0),
+        modules['callbacks'].ModelCheckpoint('{}_last.h5'.format(os.path.join(os.path.dirname(weights_path),
+                                             os.path.splitext(os.path.basename(weights_path))[0])),
+                                             monitor=monitoring_metric_name,
+                                             save_weights_only=True,
+                                             save_best_only=False,
+                                             mode='auto',
+                                             verbose=0),
 
         # Adam optimizer SHOULD not control LR
         # keras.callbacks.ReduceLROnPlateau(verbose=1, patience=10, factor=0.2)

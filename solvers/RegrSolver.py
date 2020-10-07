@@ -1,22 +1,31 @@
-from . import SegmSolver
+from .. import get_submodules_from_kwargs
 
 
-class RegrSolver(SegmSolver):
-    def __init__(self, conf):
-        super(RegrSolver, self).__init__(conf)
+def get_solver(**kwarguments):
+    _backend, _layers, _models, _keras_utils, _optimizers, _legacy, _callbacks = get_submodules_from_kwargs(kwarguments)
 
-        self.weights_path = 'runet.h5'
-        self.activation = 'linear'
+    from .SegmSolver import get_solver as get_segm_solver
 
-    def _create_metrics(self, **kwargs):
-        self.total_loss = 'mse'
-        self.metrics = ['mae']
+    SegmSolver = get_segm_solver(**kwarguments)
 
-    def post_predict(self, pr_result):
-        return pr_result
+    class RegrSolver(SegmSolver):
+        def __init__(self, conf):
+            super(RegrSolver, self).__init__(conf)
 
-    def get_contours(self, pr_mask_list):
-        raise NotImplemented
+            self.weights_path = 'runet.h5'
+            self.activation = 'linear'
 
-    def monitoring_metric(self):
-        return 'val_mean_absolute_error', 'min'
+        def _create_metrics(self, **kwargs):
+            self.total_loss = 'mse'
+            self.metrics = ['mae']
+
+        def post_predict(self, pr_result):
+            return pr_result
+
+        def get_contours(self, pr_mask_list):
+            raise NotImplemented
+
+        def monitoring_metric(self):
+            return 'val_mean_absolute_error', 'min'
+
+    return RegrSolver

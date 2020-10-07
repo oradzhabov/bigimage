@@ -1,5 +1,5 @@
-from config_stockpile import cfg
-from kmodel import train
+from .config_stockpile import cfg
+from .kmodel import train
 
 
 if __name__ == "__main__":
