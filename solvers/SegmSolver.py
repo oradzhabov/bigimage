@@ -2,9 +2,9 @@ import logging
 import os
 import numpy as np
 from . import ISolver
-from .optimizers.AccumOptimizer import get_accum_optimizer
 from ..kutils import utilites
 from .. import get_submodules_from_kwargs
+from ..bin_keras import AccumGradOptimizer
 
 
 def freeze_bn(obj, layers, models):
@@ -27,7 +27,6 @@ def mult_dropout_rate(obj, coeff, layers, models):
 
 def get_solver(**kwarguments):
     _backend, _layers, _models, _keras_utils, _optimizers, _legacy, _callbacks = get_submodules_from_kwargs(kwarguments)
-    AccumOptimizer = get_accum_optimizer(**kwarguments)
 
     # Setup framework for segmentation package
     sm_framework = 'keras' if _legacy is not None else 'tf.keras'
@@ -170,7 +169,7 @@ def get_solver(**kwarguments):
                 # define optimizer
                 optimizer = self.conf.optimizer
                 if self.conf.batch_size_multiplier > 1:
-                    optimizer = AccumOptimizer(optimizer, self.conf.batch_size_multiplier)
+                    optimizer = AccumGradOptimizer(optimizer, self.conf.batch_size_multiplier)
 
                 # compile model with defined optimizer, loss and metrics
                 self.model.compile(optimizer, self.total_loss, self.metrics)

@@ -1,5 +1,6 @@
 from .ISolver import ISolver
 from .. import get_submodules_from_kwargs  # needs to be able throw request from down-leveled modules
+from .optimizers import AccumOptimizer  # needs to simplify access
 """
 from .ProdSolver_MP import ProdSolver_MP
 from .ProdSolverRocks import ProdSolverRocks

@@ -18,6 +18,7 @@ if 'BIM_FRAMEWORK' in os.environ:
 
 if bim_framework == 'keras':
     init_keras_custom_objects()
+    AccumGradOptimizer = inject_keras_modules(AccumOptimizer.tf1)()
     PlotLosses = inject_keras_modules(get_plot_losses)()
     Dataloder = inject_keras_modules(get_dataloader)()
     SegmSolver = inject_keras_modules(get_segm_solver)()
@@ -31,6 +32,7 @@ if bim_framework == 'keras':
     modules = inject_keras_modules(_get_keras_modules)()
 else:
     init_tfkeras_custom_objects()
+    AccumGradOptimizer = inject_keras_modules(AccumOptimizer.tf2)()
     PlotLosses = inject_tfkeras_modules(get_plot_losses)()
     Dataloder = inject_tfkeras_modules(get_dataloader)()
     SegmSolver = inject_tfkeras_modules(get_segm_solver)()

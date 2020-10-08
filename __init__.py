@@ -60,7 +60,7 @@ def init_keras_custom_objects():
     from .solvers.optimizers import AccumOptimizer
 
     custom_objects = {
-        'AccumOptimizer': inject_keras_modules(AccumOptimizer.get_accum_optimizer)()
+        'AccumOptimizer': inject_keras_modules(AccumOptimizer.tf1)()
     }
 
     try:
@@ -74,7 +74,7 @@ def init_tfkeras_custom_objects():
     from .solvers.optimizers import AccumOptimizer
 
     custom_objects = {
-        'AccumOptimizer': inject_tfkeras_modules(AccumOptimizer.get_accum_optimizer)()
+        'AccumOptimizer': inject_tfkeras_modules(AccumOptimizer.tf2)()
     }
 
     tfkeras.utils.get_custom_objects().update(custom_objects)

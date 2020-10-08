@@ -1,7 +1,7 @@
 from .. import get_submodules_from_kwargs
 
 
-def get_accum_optimizer(**kwarguments):
+def tf1(**kwarguments):
     def dummy_dec(func):
         return func
 
@@ -82,3 +82,25 @@ def get_accum_optimizer(**kwarguments):
             return config
 
     return AccumOptimizer
+
+
+def tf2(**kwarguments):
+    backend, layers, models, keras_utils, optimizers, legacy, callbacks = get_submodules_from_kwargs(kwarguments)
+
+    # Whats new in tf2.optimizer:
+    # https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Optimizer
+    # How to design simple SGD for TF2:
+    # https://github.com/OverLordGoldDragon/keras-adamw/blob/a9c664ae9bc804b3e5058d6bcfa6e68825592d80/keras_adamw/optimizers_v2.py#L583
+    # Original tf2.SGD:
+    # https://github.com/tensorflow/tensorflow/blob/fcc4b966f1265f466e82617020af93670141b009/tensorflow/python/keras/optimizer_v2/gradient_descent.py#L30
+    # Tweaks for AccumOptimizer:
+    # https://www.kaggle.com/kentaronakanishi/tf2-0-way-to-accumulate-gradients-in-custom-loop#Model
+    class AccumOptimizer(optimizers.Optimizer):
+        def __init__(self, optimizer, steps_per_update=1, name='AccumOptimizer', **kwargs):
+            super(AccumOptimizer, self).__init__(name, **kwargs)
+            # self._set_hyper('learning_rate', kwargs.get('lr', learning_rate))
+            self.optimizer = optimizer
+            self.updates = []
+            self.accum_grads = []
+
+    object  # Not implemented
