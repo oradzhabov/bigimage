@@ -144,7 +144,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
 
     matplotlib.use('Agg')  # Disable TclTk because it sometime crash training!
     # train model
-    model.fit_generator(
+    model.fit(
         train_dataloader,
         steps_per_epoch=len(train_dataloader),
         epochs=cfg.epochs,

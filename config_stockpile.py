@@ -12,10 +12,10 @@ cfg = EasyDict()
 cfg.root_projects_dir = 'F:/DATASET/Strayos/StockPileDatasets'
 cfg.mppx = 0.1
 cfg.data_dir = 'F:/DATASET/Strayos/StockPileDatasets.Result/2020-09-10/mppx{:.2f}'.format(cfg.mppx)
-cfg.data_subset = 'stockpiles_2_segm'  # best 2020.10.06
+# cfg.data_subset = 'stockpiles_2_segm'  # best 2020.10.06
 # cfg.data_subset = 'stockpiles_3_segm'  # extra class "water" did not improve general accuracy
 # cfg.data_subset = 'stockpiles_2a_segm'  # train/val split 0.8/0.2 became worse accuracy that it was with 0.66/0.33
-# cfg.data_subset = 'stockpiles_4_segm'  # add samples, min_data_ratio 0.25, train/val 0.66/0.33
+cfg.data_subset = 'stockpiles_4_segm'  # add samples, min_data_ratio 0.25, train/val 0.66/0.33
 cfg.mask_postprocess = None
 # ==================================================================================================================== #
 #                                                Sample Space Block
@@ -28,7 +28,7 @@ cfg.class_names = {'class': ['stockpile']}
 cfg.cls_nb = len(cfg.class_names['class']) + 1 if cfg.class_names is not None else 1
 #
 cfg.apply_class_weights = True
-cfg.min_data_ratio = 0.5
+cfg.min_data_ratio = 0.25
 cfg.min_mask_ratio = 0.0
 cfg.thin_out_train_ratio = 1.0  # 0- drop out all samples, 1- don't drop samples
 cfg.img_wh = 512

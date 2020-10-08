@@ -27,7 +27,6 @@ def get_accum_optimizer(**kwarguments):
         """
         def __init__(self, optimizer, steps_per_update=1, **kwargs):
             super(AccumOptimizer, self).__init__(**kwargs)
-            # super(AccumOptimizer, self).init(name='AccumOptimizer', **kwargs)
             self.optimizer = optimizer
             self.updates = []
             self.accum_grads = []

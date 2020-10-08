@@ -21,7 +21,7 @@ def get_plot_losses(**kwarguments):
     _backend, _layers, _models, _keras_utils, _optimizers, _legacy, _callbacks = get_submodules_from_kwargs(kwarguments)
 
     # Actually it could crash training. To avoid crash add 'matplotlib.use('Agg')' at the start
-    class PlotLosses(_callbacks.Callback):
+    class PlotLosses(_callbacks.History):
         def __init__(self, imgfile, figsize=None):
             super(PlotLosses, self).__init__()
             self.figsize = figsize
@@ -30,11 +30,13 @@ def get_plot_losses(**kwarguments):
             self.logs = []
 
         def on_train_begin(self, logs=None):
-            self.base_metrics = [metric for metric in self.params['metrics'] if not metric.startswith('val_')]
             self.logs = []
 
         def on_epoch_end(self, epoch, logs=None):
             self.logs.append(logs.copy())
+
+            if len(self.base_metrics) == 0:
+                self.base_metrics = [metric for metric in logs.keys() if not metric.startswith('val_')]
 
             clear_output(wait=True)
             fig = plt.figure(figsize=self.figsize)
@@ -42,17 +44,17 @@ def get_plot_losses(**kwarguments):
             for metric_id, metric in enumerate(self.base_metrics):
                 plt.subplot(len(self.base_metrics), 1, metric_id + 1)
 
-                metric_extr_val_value = None
                 plt.plot(range(1, len(self.logs) + 1),
                          [log[metric] for log in self.logs],
                          label="training")
-                if self.params['do_validation']:
-                    val_log_list = [log['val_' + metric] for log in self.logs]
-                    plt.plot(range(1, len(self.logs) + 1),
-                             val_log_list,
-                             label="validation")
-                    metric_extr_val_value = ' (val_min {:.3f})'.format(min(val_log_list)) if metric == 'loss' else \
-                        ' (val_max {:.3f})'.format(max(val_log_list))
+
+                val_log_list = [log['val_' + metric] for log in self.logs]
+                plt.plot(range(1, len(self.logs) + 1),
+                         val_log_list,
+                         label="validation")
+                metric_extr_val_value = ' (val_min {:.3f})'.format(min(val_log_list)) if metric == 'loss' else \
+                    ' (val_max {:.3f})'.format(max(val_log_list))
+
                 plt.title(translate_metric(metric) + metric_extr_val_value)
                 plt.xlabel('epoch')
                 plt.legend(loc='center left')

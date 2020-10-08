@@ -28,7 +28,7 @@ if bim_framework == 'keras':
     LR_SnapshotEnsembleDecay = inject_keras_modules(lr_sch.get_snapshot_ensemble_decay)()
     #
     predict_contours = inject_keras_modules(_predict_contours)()
-    modules = inject_tfkeras_modules(_get_keras_modules)()
+    modules = inject_keras_modules(_get_keras_modules)()
 else:
     init_tfkeras_custom_objects()
     PlotLosses = inject_tfkeras_modules(get_plot_losses)()
