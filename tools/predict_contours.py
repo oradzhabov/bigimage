@@ -4,6 +4,7 @@ import os
 import numpy as np
 import cv2
 import gc
+from ..solvers.ISolver import ISolver
 from ..kutils import PrepareData
 from ..kutils.read_sample import read_sample
 from ..kutils.PrepareData import get_raster_info
@@ -95,15 +96,21 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
             # cv2.imwrite(os.path.join(src_proj_dir, sc_png), img_temp.astype(np.uint8))
 
             # IMPORTANT:
-            # * Do not use size bigger than actual image size because blending(with generated border)
-            # will suppress actual prediction result.
+            # * Do not use size bigger than actual image size because blending(with generated reflected border)
+            # could suppress actual prediction result. Accuracy will be degraded.
+            # * In theory, as bigger window size as bigger data content will be processed by one iteration, and expected
+            # accuracy will be better. todo: maybe max value should be controled? What if GPU supports window size 2048?
+            # * Bigger window size speed up the processing time.
             window_size = int(find_nearest([64, 128, 256, 512, 1024], min(image.shape[0], image.shape[1])))
             logging.info('Window size in smoothing predicting: {}'.format(window_size))
 
             pr_mask = predict_img_with_smooth_windowing(
                 image,
                 window_size=window_size,
-                subdivisions=2,  # Minimal amount of overlap for windowing. Must be an even number.
+                # Minimal amount of overlap for windowing.
+                # Must be an even number.
+                # Algorithm supports good boundary for half overlap. So preferable value is 2.
+                subdivisions=2,
                 nb_classes=cfg.cls_nb,
                 pred_func=(
                     lambda img_batch_subdiv: solver.model.predict(img_batch_subdiv)
@@ -182,7 +189,10 @@ def predict_contours(**kwarguments):
         :return:
         """
 
-        solver = cfg.solver(cfg)
+        # Check is solver has not been instanced before
+        if not isinstance(cfg.solver, ISolver):
+            cfg.solver = cfg.solver(cfg)
+        solver = cfg.solver
         provider = cfg.provider_single
 
         dest_img_fname = os.path.join(src_proj_dir,

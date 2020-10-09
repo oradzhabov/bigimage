@@ -9,7 +9,7 @@ from .kutils.VIAConverter import *
 from .bin_keras import predict_contours
 
 
-def test_prediction(src_proj_dir):
+def test_prediction(src_proj_dir, show_results=False, store_contours=False):
     # If enable following flag it will avoid long prediction and will try to read already created result.
     # Useful for debugging
     skip_prediction = False
@@ -34,19 +34,21 @@ def test_prediction(src_proj_dir):
     result_png = 'classes_' + solver.signature() + '.png'
     cv2.imwrite(os.path.join(src_proj_dir, result_png), image[..., ::-1])
 
-    utilites.visualize(
-        title='{}'.format(src_proj_dir),
-        img_fname=None,
-        result=image
-    )
+    if show_results:
+        utilites.visualize(
+            title='{}'.format(src_proj_dir),
+            img_fname=None,
+            result=image
+        )
     del image
     gc.collect()
 
-    logging.info('Creating VIA-json...')
-    via_item = create_json_item(image_fname, pr_cntrs_list, cfg.classes)
-    output_filename = 'via_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.json'
-    with open(os.path.join(src_proj_dir, output_filename), 'w', newline=os.linesep) as f:
-        json.dump(via_item, f)
+    if store_contours:
+        logging.info('Creating VIA-json...')
+        via_item = create_json_item(image_fname, pr_cntrs_list, cfg.classes)
+        output_filename = 'via_' + os.path.splitext(os.path.basename(solver.weights_path))[0] + '.json'
+        with open(os.path.join(src_proj_dir, output_filename), 'w', newline=os.linesep) as f:
+            json.dump(via_item, f)
 
     return 0
 
@@ -77,6 +79,7 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17042'  # ROCKS DETECTION/COLORING DEATH
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/17115'  # DEATH IN ROCKS POSTPROC EVEN ON SERVER
     ## proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/18618'  # 2020.08.13 Not well big rocks prediction
+    # -proj_dir = 'F:/DATASET/Strayos/MuckPileDatasets.unseen/airzaar/20938'  # Too many muckpiles WITHOUT rocks
     #
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/8336'  #
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/9027'  # HUGE(split by 100m
