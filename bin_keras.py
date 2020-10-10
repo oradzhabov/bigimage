@@ -3,6 +3,7 @@ from . import inject_keras_modules, inject_tfkeras_modules
 from . import init_keras_custom_objects, init_tfkeras_custom_objects
 from .solvers import *
 from .lr_scheduler import learning_rate_schedulers as lr_sch
+from .lr_finder import LRFinder
 from .kmodel.data import get_dataloader
 from .kmodel.PlotLosses import get_plot_losses  # todo: actually inherit pipeline SHOULD NOT use this
 from .tools.predict_contours import predict_contours as _predict_contours
@@ -19,6 +20,7 @@ if 'BIM_FRAMEWORK' in os.environ:
 if bim_framework == 'keras':
     init_keras_custom_objects()
     AccumGradOptimizer = inject_keras_modules(AccumOptimizer.tf1)()
+    LRFinder = inject_keras_modules(LRFinder.tf1)()
     PlotLosses = inject_keras_modules(get_plot_losses)()
     Dataloder = inject_keras_modules(get_dataloader)()
     SegmSolver = inject_keras_modules(get_segm_solver)()
@@ -32,7 +34,8 @@ if bim_framework == 'keras':
     modules = inject_keras_modules(_get_keras_modules)()
 else:
     init_tfkeras_custom_objects()
-    AccumGradOptimizer = inject_keras_modules(AccumOptimizer.tf2)()
+    AccumGradOptimizer = inject_tfkeras_modules(AccumOptimizer.tf2)()
+    LRFinder = inject_tfkeras_modules(LRFinder.tf2)()
     PlotLosses = inject_tfkeras_modules(get_plot_losses)()
     Dataloder = inject_tfkeras_modules(get_dataloader)()
     SegmSolver = inject_tfkeras_modules(get_segm_solver)()

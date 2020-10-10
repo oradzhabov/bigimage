@@ -23,6 +23,11 @@ if TRIM_GPU:
     session = tf.Session(config=config)
 
 
+# * It is important to not interrupt process before training started because during data preparation algorithm crops
+# images to patches and stored them into intermediate folder. Second run checks if this folder exist and skip cropping.
+# If process has been interrupted during cropping, dataset will be not full and training process will be performed by
+# not full dataset. If cropping process has been interrupted by some reason, you need delete intermediate folder with
+# cropped patches manually to recreate it automatically during next training preparation process.
 def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_augmented_sample=False, review_train=True):
     # Check folder path
     if not os.path.exists(cfg.data_dir):
