@@ -2,7 +2,7 @@ from .config_stockpile import cfg
 from .kmodel import evaluate
 
 
-if __name__ == "__main__":
+def run_evaluate():
     solver = cfg.solver(cfg)
     provider = cfg.provider
     aug = cfg.aug()

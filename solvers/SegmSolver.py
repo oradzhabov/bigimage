@@ -97,6 +97,36 @@ def get_solver(**kwarguments):
                             sm.metrics.FScore(beta=1, threshold=threshold, name='f1-score'),
                             sm.metrics.FScore(beta=2, threshold=threshold, name='f2-score')]
 
+        def _create_model(self, **kwargs):
+            weights_init_path = kwargs.get('weights_init_path')
+
+            base_model = sm.Unet(self.conf.backbone,
+                                 input_shape=(None, None, 3),
+                                 classes=self.conf.cls_nb,
+                                 activation=self.activation,
+                                 encoder_weights=self.conf.encoder_weights if weights_init_path is None else None,
+                                 encoder_freeze=self.conf.encoder_freeze,
+                                 # pyramid_block_filters=conf.pyramid_block_filters,  # default 256
+                                 weights=None,
+                                 # pyramid_dropout=0.25
+                                 )
+
+            if self.conf.use_heightmap:
+                # Add extra input layer to map custom-channel number to 3-channels
+                # input model which can use pre-trained weights
+                inp = _layers.Input(shape=(None, None, 4))
+                l1 = _layers.Conv2D(32, (1, 1), use_bias=False)(inp)
+                l1 = _layers.BatchNormalization()(l1)
+                l1 = _layers.Conv2D(3, (1, 1), use_bias=False)(l1)
+                l1 = _layers.BatchNormalization()(l1)
+                out = base_model(l1)
+
+                model = _models.Model(inp, out, name=base_model.name)
+            else:
+                model = base_model
+
+            return model
+
         def _create(self, compile_model=True, **kwargs):
             solution_path = os.path.normpath(os.path.abspath(self.conf.solution_dir))
             if not os.path.isdir(solution_path):
@@ -106,6 +136,8 @@ def get_solver(**kwarguments):
             logging.info('Trying to find model\'s weight by path \"{}\"'.format(self.weights_path))
             weights_init_path = self.weights_path if os.path.isfile(self.weights_path) else None
 
+            self.model = self._create_model(weights_init_path=weights_init_path)
+            """
             base_model = sm.Unet(self.conf.backbone,
                                  input_shape=(None, None, 3),
                                  classes=self.conf.cls_nb,
@@ -130,6 +162,7 @@ def get_solver(**kwarguments):
                 self.model = _models.Model(inp, out, name=base_model.name)
             else:
                 self.model = base_model
+            """
 
             # Multiply dropout layer rates
             if hasattr(self.conf, 'dropout_rate_mult'):

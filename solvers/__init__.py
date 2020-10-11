@@ -10,6 +10,11 @@ from .RegrRocksSolver import RegrRocksSolver
 """
 
 
+def get_native_unet(**kwargs):
+    from .NativeUnet import get_solver
+    return get_solver(**kwargs)
+
+
 def get_segm_solver(**kwargs):
     from .SegmSolver import get_solver
     return get_solver(**kwargs)

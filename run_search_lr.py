@@ -12,4 +12,4 @@ def run_searching_learning_rate():
     cfg.provider = provider
     cfg.aug = aug
 
-    find_lr.run(cfg, solver, provider, aug, start_lr=0.00001, end_lr=1, no_epochs=20, moving_average=20)
+    find_lr.run(cfg, solver, provider, aug, start_lr=0.00001, end_lr=1, no_epochs=2, moving_average=20)
