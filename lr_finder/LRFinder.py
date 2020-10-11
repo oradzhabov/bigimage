@@ -1,10 +1,12 @@
 from matplotlib import pyplot as plt
 import math
+import logging
 # from keras.callbacks import LambdaCallback
 # import keras.backend as K
 import numpy as np
 
 from .. import get_submodules_from_kwargs
+from .. import bin_keras
 
 
 # https://www.machinecurve.com/index.php/2020/02/20/finding-optimal-learning-rates-with-the-learning-rate-range-test/
@@ -24,18 +26,32 @@ def tf1(**kwarguments):
             self.lrs = []
             self.best_loss = 1e9
             self.lr_mult = None
+            self.steps_per_update = 1
+            if isinstance(model.optimizer, bin_keras.AccumGradOptimizer):
+                self.steps_per_update = model.optimizer.steps_per_update
 
         def on_batch_end(self, batch, logs):
+            # Log the loss
+            loss = logs['loss']
+
+            # Process case when optimizer assumes accumulating gradients
+            if batch % self.steps_per_update != 0:
+                self.losses[-1] += loss
+                return
+
+            # Average previous results
+            if len(self.losses) > 0:
+                self.losses[-1] /= float(self.steps_per_update)
+
             # Log the learning rate
             lr = backend.get_value(self.model.optimizer.lr)
             self.lrs.append(lr)
 
-            # Log the loss
-            loss = logs['loss']
             self.losses.append(loss)
 
             # Check whether the loss got too large or NaN
-            if batch > 5 and (math.isnan(loss) or loss > self.best_loss * 4):
+            if batch > 5 and (math.isnan(loss) or loss > self.best_loss * 400):
+                logging.info('Process interrupted with loss {}'.format(loss))
                 self.model.stop_training = True
                 return
 
@@ -86,19 +102,19 @@ def tf1(**kwarguments):
                             '`keras.utils.Sequence`'
                             ' class. Please specify `steps_per_epoch` '
                             'or use the `keras.utils.Sequence` class.')
-            self.lr_mult = (float(end_lr) / float(start_lr)) ** (float(1) / float(epochs * steps_per_epoch))
+            self.lr_mult = (float(end_lr) / float(start_lr)) ** (
+                        float(1) / float(epochs * steps_per_epoch / self.steps_per_update))
 
             # Save weights into a file
-            initial_weights = self.model.get_weights()
+            # initial_weights = self.model.get_weights()
 
             # Remember the original learning rate
-            original_lr = backend.get_value(self.model.optimizer.lr)
+            # original_lr = backend.get_value(self.model.optimizer.lr)
 
             # Set the initial learning rate
             backend.set_value(self.model.optimizer.lr, start_lr)
 
-            callback = callbacks.LambdaCallback(on_batch_end=lambda batch,
-                                                logs: self.on_batch_end(batch, logs))
+            callback = callbacks.LambdaCallback(on_batch_end=lambda batch, logs: self.on_batch_end(batch, logs))
 
             self.model.fit_generator(generator=generator,
                                      epochs=epochs,
@@ -107,10 +123,10 @@ def tf1(**kwarguments):
                                      **kw_fit)
 
             # Restore the weights to the state before model fitting
-            self.model.set_weights(initial_weights)
+            # self.model.set_weights(initial_weights)
 
             # Restore the original learning rate
-            backend.set_value(self.model.optimizer.lr, original_lr)
+            # backend.set_value(self.model.optimizer.lr, original_lr)
 
         def plot_loss(self, n_skip_beginning=10, n_skip_end=5, x_scale='log'):
             """
@@ -175,18 +191,32 @@ def tf2(**kwarguments):
             self.lrs = []
             self.best_loss = 1e9
             self.lr_mult = None
+            self.steps_per_update = 1
+            if isinstance(model.optimizer, bin_keras.AccumGradOptimizer):
+                self.steps_per_update = model.optimizer.steps_per_update
 
         def on_batch_end(self, batch, logs):
+            # Log the loss
+            loss = logs['loss']
+
+            # Process case when optimizer assumes accumulating gradients
+            if batch % self.steps_per_update != 0:
+                self.losses[-1] += loss
+                return
+
+            # Average previous results
+            if len(self.losses) > 0:
+                self.losses[-1] /= float(self.steps_per_update)
+
             # Log the learning rate
             lr = backend.get_value(self.model.optimizer.learning_rate)
             self.lrs.append(lr)
 
-            # Log the loss
-            loss = logs['loss']
             self.losses.append(loss)
 
             # Check whether the loss got too large or NaN
-            if batch > 5 and (math.isnan(loss) or loss > self.best_loss * 4):
+            if batch > 5 and (math.isnan(loss) or loss > self.best_loss * 400):
+                logging.info('Process interrupted with loss {}'.format(loss))
                 self.model.stop_training = True
                 return
 
@@ -236,7 +266,8 @@ def tf2(**kwarguments):
                             '`keras.utils.Sequence`'
                             ' class. Please specify `steps_per_epoch` '
                             'or use the `keras.utils.Sequence` class.')
-            self.lr_mult = (float(end_lr) / float(start_lr)) ** (float(1) / float(epochs * steps_per_epoch))
+            self.lr_mult = (float(end_lr) / float(start_lr)) ** (
+                    float(1) / float(epochs * steps_per_epoch / self.steps_per_update))
 
             # Save weights into a file
             self.model.save_weights('tmp.h5')

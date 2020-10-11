@@ -2,7 +2,7 @@ from .config_stockpile import cfg
 from .kmodel import train
 
 
-if __name__ == "__main__":
+def run_train():
     solver = cfg.solver(cfg)
     provider = cfg.provider
     aug = cfg.aug()
