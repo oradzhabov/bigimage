@@ -76,9 +76,8 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug,
     plt.ylabel('loss delta')
     plt.xlabel('learning rate (log scale)')
     plt.title('Results for Learning Rate Range Test / Loss Deltas for Learning Rate')
-    plt.show()
     plt.savefig(os.path.join(cfg.solution_dir, 'Loss_Deltas_for_Learning_Rate.png'))
-
+    plt.show()
 
     # Generate plot for Loss Values
     plt.plot(learning_rates, losses)
@@ -87,5 +86,5 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug,
     plt.ylabel('loss')
     plt.xlabel('learning rate (log scale)')
     plt.title('Results for Learning Rate Range Test / Loss Values for Learning Rate')
-    plt.show()
     plt.savefig(os.path.join(cfg.solution_dir, 'Loss_Values_for_Learning_Rate.png'))
+    plt.show()
