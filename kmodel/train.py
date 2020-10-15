@@ -149,7 +149,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, review_aug
 
     matplotlib.use('Agg')  # Disable TclTk because it sometime crash training!
     # train model
-    model.fit(
+    model.fit_generator(  # todo: new keras (2.3.1+) suggest to use model.fit() instead of model.fit_generator()
         train_dataloader,
         steps_per_epoch=len(train_dataloader),
         epochs=cfg.epochs,

@@ -21,6 +21,16 @@ def find_nearest(array, value):
     return array[idx]
 
 
+def store_predicted_result(pr_mask, fpath):
+    if len(pr_mask.shape) > 2 and pr_mask.shape[2] == 2:
+        # Operate with 2-channels output
+        # Add extra channel and save
+        cv2.imwrite(fpath, ((np.pad(pr_mask, ((0, 0),) * 2 + ((0, 1),),
+                                    'constant', constant_values=0)) * 255).astype(np.uint8))
+    else:
+        cv2.imwrite(fpath, (pr_mask * 255).astype(np.uint8))
+
+
 def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
                           skip_prediction=False, memmap_batch_size=0, predict_img_with_group_d4=True,
                           bbox=((0, 0), (None, None))):
@@ -37,7 +47,9 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
 
     for sc_factor in cfg.pred_scale_factors:
         predict_sc_png = 'probability_' + solver.signature() + '_' + bbox_str + '_' + str(sc_factor) + '.png'
+        predict_raw_png = 'probability_raw_' + solver.signature() + '_' + bbox_str + '_' + str(sc_factor) + '.png'
         fpath = os.path.join(src_proj_dir, predict_sc_png)
+        fpath_raw = os.path.join(src_proj_dir, predict_raw_png)
 
         # Define predicted result structure
         pr_item = dict({'scale': sc_factor})
@@ -101,7 +113,8 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
             # * In theory, as bigger window size as bigger data content will be processed by one iteration, and expected
             # accuracy will be better. todo: maybe max value should be controled? What if GPU supports window size 2048?
             # * Bigger window size speed up the processing time.
-            window_size = int(find_nearest([64, 128, 256, 512, 1024], min(image.shape[0], image.shape[1])))
+            window_size = int(find_nearest(np.power(2, np.arange(6, 1 + int(cfg.window_size_2pow_max))),
+                                           min(image.shape[0], image.shape[1])))
             logging.info('Window size in smoothing predicting: {}'.format(window_size))
 
             pr_mask = predict_img_with_smooth_windowing(
@@ -135,19 +148,16 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
                 if len(pr_mask.shape) < len(pr_mask_shape):
                     pr_mask = pr_mask[..., np.newaxis]
 
-            pr_mask = solver.post_predict(pr_mask)
+            logging.info('Store predicted results...')
 
+            # Store raw result with unique(per scale) name
+            store_predicted_result(pr_mask, fpath_raw)
+
+            pr_mask = solver.post_predict(pr_mask)
             pr_item['img_dtype'] = pr_mask.dtype
 
-            # Store result with unique(per scale) name
-            logging.info('Store predicted result to file {}'.format(predict_sc_png))
-            if len(pr_mask.shape) > 2 and pr_mask.shape[2] == 2:
-                # Operate with 2-channels output
-                # Add extra channel and save
-                cv2.imwrite(fpath, ((np.pad(pr_mask, ((0, 0),)*2 + ((0, 1),),
-                                            'constant', constant_values=0)) * 255).astype(np.uint8))
-            else:
-                cv2.imwrite(fpath, (pr_mask * 255).astype(np.uint8))
+            # Store post-processed result with unique(per scale) name
+            store_predicted_result(pr_mask, fpath)
 
             if store_predicted_result_to_ram:
                 pr_result_descriptor = pr_mask

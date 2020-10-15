@@ -36,8 +36,9 @@ cfg.img_wh_crop = 1024
 cfg.solver = bin_keras.SegmSolver
 cfg.provider = SemanticSegmentationDataProvider
 cfg.provider_single = SemanticSegmentationSingleDataProvider
-cfg.aug = BasicAug
+cfg.aug = BasicAug2
 cfg.pred_scale_factors = [1.0]  # List of scale factors. Each item should be less(or eq) to zero, order - descent
+cfg.window_size_2pow_max = 11  # Power of 2 maximum window size during inference
 # ==================================================================================================================== #
 #                                                   Network Block
 # ==================================================================================================================== #

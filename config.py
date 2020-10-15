@@ -32,6 +32,7 @@ cfg.provider = SemanticSegmentationDataProvider
 cfg.provider_single = SemanticSegmentationSingleDataProvider
 cfg.aug = BasicAug
 cfg.pred_scale_factors = [1.0]  # List of scale factors. Each item should be less(or eq) to zero, order - descent
+cfg.window_size_2pow_max = 10  # Power of 2 maximum window size during inference
 # ==================================================================================================================== #
 #                                                   Network Block
 # ==================================================================================================================== #

@@ -98,6 +98,8 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/19110'  # small. VARIANCE ROCKS SIZE. IS IT STOCKPILE ?
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/19945'  # middle
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/20147'  # middle
-    proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/20160'  # middle. BAD BOUNDARIES
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/20160'  # middle. BAD BOUNDARIES
+    proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/21051'  # middle.
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/21069'  # middle.
 
     exit(test_prediction(proj_dir))
