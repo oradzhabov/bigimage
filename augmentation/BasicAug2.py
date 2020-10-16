@@ -16,13 +16,12 @@ class BasicAug2(IAug):
             # apply shadow augmentation before any color augmentation
             RandomShadow2(shadow_roi=(0, 0, 1, 1), shadow_dimension=3, always_apply=True),
             #
-            alb.GaussNoise(var_limit=20, mean=0, p=1),
             alb.OneOf(
                 [
-                    alb.Blur(blur_limit=3, p=1),
-                    alb.MotionBlur(blur_limit=3, p=1),
+                    alb.Blur(blur_limit=[3, 5], p=1),
+                    alb.GaussNoise(var_limit=20, mean=0, p=1),
                 ],
-                p=0.9,
+                p=0.9,  # remain possibility to not apply these filters
             ),
             #
             # scale_limit ((float, float) or float) – scaling factor range. If scale_limit is a single float value,
@@ -32,46 +31,33 @@ class BasicAug2(IAug):
             # shift_limit ((float, float) or float) – shift factor range for both height and width. If shift_limit is
             # a single float value, the range will be (-shift_limit, shift_limit). Absolute values for lower and upper
             # bounds should lie in range [0, 1]. Default: (-0.0625, 0.0625).
-            # alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=45, shift_limit=0.5, p=1, border_mode=0),
-            alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=90, p=1, border_mode=0,
-                                 interpolation=cv2.INTER_LANCZOS4),
+            # * Remain shifting to guaranty that aug will operate shifting even if random crop will not help when crop-
+            # size will be equal to window size.
+            # * Rotation 45 will guaranty covering all possible rotations if group-d4 has been implemented before
+            alb.ShiftScaleRotate(scale_limit=0.1, rotate_limit=45, border_mode=0, shift_limit=0.0625,
+                                 interpolation=cv2.INTER_AREA, p=1),
 
             # Pad side of the image / max if side is less than desired number.
             alb.PadIfNeeded(min_height=conf.img_wh, min_width=conf.img_wh, always_apply=True, border_mode=0),
 
-            RandomBrightnessContrast2(brightness_limit=(-0.2, 0.2), contrast_limit=0.2, p=1),
+            # Apply one of Brightness or Contrast filter to avoid very low/high performing and remain quite big ranges
+            # of each filter
+            alb.OneOf(
+                [
+                    RandomBrightnessContrast2(brightness_limit=0.2, contrast_limit=0.0, p=1),
+                    RandomBrightnessContrast2(brightness_limit=0.0, contrast_limit=0.2, p=1),
+                ],
+                p=1
+            ),
+
             RandomGamma2(p=1),
 
-
-
-            # alb.OneOf(
-            #    [
-            #        alb.CLAHE(p=1),
-            #        alb.RandomBrightness(p=1),
-            #        alb.RandomGamma(p=1),
-            #    ],
-            #    p=0.9,
-            # ),
-
-            # alb.OneOf(
-            #    [
-            #        alb.IAASharpen(p=1),
-            #        alb.Blur(blur_limit=3, p=1),
-            #        alb.MotionBlur(blur_limit=3, p=1),
-            #    ],
-            #    p=0.9,
-            # ),
             HueSaturationValue2(hue_shift_limit=15, sat_shift_limit=(-20, 10), val_shift_limit=0, p=1.0),
-            ## HueSaturationValue2(hue_shift_limit=90, sat_shift_limit=(-180, 10), val_shift_limit=0, p=1.0),
-            # alb.OneOf(
-            #    [
-            #        alb.RandomContrast(p=1),
-            #        alb.HueSaturationValue(p=1),
-            #    ],
-            #    p=0.9,
-            # ),
-            # alb.Lambda(mask=round_clip_0_1),
-            # Crop a random part of the input.
+
+            # * Orthographic images could be stitched with distortions. Apply some distortions to be able recognize
+            # mask by distorted source sample.
+            alb.GridDistortion(p=1, interpolation=cv2.INTER_AREA, border_mode=0),
+            # * Crop a random part of the input.
             alb.RandomCrop(height=conf.img_wh, width=conf.img_wh, always_apply=True),
         ]
         if is_stub:
