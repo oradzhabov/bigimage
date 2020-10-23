@@ -1,0 +1,39 @@
+# Create and activate new environment
+conda create --name fragm python=3.5
+conda activate fragm
+
+conda install -c anaconda gdal
+
+# Specify required version of TF
+# TF2
+# conda install -y tensorflow-gpu=2.2.0
+# TF1; CUDA 10
+# conda install -y tensorflow-gpu=1.15
+# TF1; CUDA 9, Py36
+# conda install -y tensorflow-gpu=1.12
+# TF1; CUDA 9, Py35
+conda install -y tensorflow-gpu=1.9
+
+
+# Specify required version of KERAS
+# Each line below was tested. Choose required one
+# For TF2
+# pip install keras==2.4.3
+# For TF 1.15
+# pip install keras==2.3.1
+# For TF 1.12, 1.9
+pip install keras==2.2.4
+
+
+pip install pyproj==2.4.1
+pip install scikit-learn==0.21.3
+pip install tqdm
+pip install opencv-python==4.1.1.26
+pip install albumentations==0.4.5
+conda install -y affine
+pip install segmentation-models
+pip install matplotlib==3.0.2
+conda install -y h5py=2.8.0
+conda install -c anaconda -y ipython
+pip uninstall parso
+pip install parso
