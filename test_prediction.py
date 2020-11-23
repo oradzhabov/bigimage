@@ -99,7 +99,10 @@ if __name__ == "__main__":
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/19945'  # middle
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/20147'  # middle
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/20160'  # middle. BAD BOUNDARIES
-    proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/21051'  # middle.
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/21051'  # middle.
     # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets/airzaar/21069'  # middle.
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets.unseen/airzaar/21618'  # SQARED STOCKPILES. 0-ACCURACY
+    # proj_dir = 'F:/DATASET/Strayos/StockPileDatasets.unseen/airzaar/21671'  # MERGED BOUNDARIES.
+    proj_dir = 'F:/DATASET/Strayos/StockPileDatasets.unseen/airzaar/20318'  # BAD BOUNDARIES, TOO MUCH FALSE POSITIVES(like muckpile)
 
     exit(test_prediction(proj_dir))
