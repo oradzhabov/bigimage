@@ -131,7 +131,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
             mask = np.concatenate((mask, background), axis=-1)
         return mask
 
-    def __getitem__(self, i):
+    def _get_item(self, i):
         i = i % len(self)
 
         data_paths = [self.src_data[k][i] if i < len(self.src_data[k]) else None for k in self.src_folders]
@@ -167,6 +167,22 @@ class SemanticSegmentationDataProvider(IDataProvider):
                 mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
 
         return image, mask
+
+    def __getitem__(self, i):
+        if isinstance(i, (int, np.integer)):
+            return self._get_item(i)
+        if isinstance(i, slice):
+            if_none = lambda a, b: b if a is None else a
+            da = list()
+            ma = list()
+            for ind in range(if_none(i.start, 0), if_none(i.stop, len(self)), if_none(i.step, 1)):
+                d, m = self._get_item(ind)
+                da.append(d)
+                ma.append(m)
+            da = np.array(da)
+            ma = np.array(ma)
+            return da, ma
+        raise NotImplementedError
 
     def __len__(self):
         return self._length

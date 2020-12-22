@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 import time
 from .color2height import color2height
-from .mapLoc2EPSG import map_epsg2loc
+from .mapLoc2EPSG import map_epsg_to_px
 from osgeo import gdal, osr, ogr
 import affine
 
@@ -346,7 +346,6 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
                 # Get mapdata
                 with open(mapdata_fname, 'r') as f:
                     mapdata = json.load(f)
-                x0_m, y0_m, x1_m, y1_m = get_geoloc_gata(gdalinfo, mapdata)
 
                 # Get last modification date of contours
                 mod_timesince_epoc = os.path.getmtime(contour_fname)
@@ -364,8 +363,8 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
 
                     for json_contour in json_contours:
                         pts_wmerc = json_contour['pts_m']
-                        pts_m = map_epsg2loc(mapdata, np.array(pts_wmerc), 3857)
-                        pts_px = map_contour_meter_pix(dst_img_shape, [pts_m], x0_m, y0_m, x1_m, y1_m)
+                        raster_path = os.path.join(dataset_path, 'orthophoto/orthophoto_export.tif')
+                        pts_px = map_epsg_to_px(3857, np.array(pts_wmerc), raster_path)
                         pts_px = np.asarray(pts_px)
                         cv2.fillPoly(mask, [pts_px], color=(255,))
 

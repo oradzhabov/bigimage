@@ -158,6 +158,45 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
     return contours_list
 
 
+def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape):
+    # Filter and approximate contours
+    contours_filtered = []
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area > min_area_px:
+            # Parameter specifying the approximation accuracy.
+            # This is the maximum distance between the original curve and its approximation.
+            epsilon = max_tol_dist_px
+            approx = cv2.approxPolyDP(cnt, epsilon, True)
+            if cv2.contourArea(approx) > min_area_px:
+                contours_filtered.append(approx)
+
+    # To remove artifacts after approximation(contour can intersect themselves) reconstruct it
+    imgTemp = np.zeros(shape=(img_shape[0], img_shape[1], 1), dtype=np.uint8)
+    cv2.fillPoly(imgTemp, pts=contours_filtered, color=255)
+    if cv2.__version__.startswith("3"):
+        im, contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    else:
+        contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    contours_filtered.clear()
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area > min_area_px:
+            # Parameter specifying the approximation accuracy.
+            # This is the maximum distance between the original curve and its approximation.
+            epsilon = max_tol_dist_px
+            approx = cv2.approxPolyDP(cnt, epsilon, True)
+            if cv2.contourArea(approx) > min_area_px:
+                contours_filtered.append(approx)
+
+    # Sort contours by decreasing area
+    if len(contours_filtered) > 1:
+        contours_area = [cv2.contourArea(c) for c in contours_filtered]
+        contours_area, contours_filtered = zip(*sorted(zip(contours_area, contours_filtered), reverse=True))
+
+    return contours_filtered
+
+
 def write_text(img_rgb, text, bottom_left_corner_of_text, font_color, font_scale=1):
     font = cv2.FONT_HERSHEY_SIMPLEX
     line_type = 2

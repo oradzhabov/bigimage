@@ -5,8 +5,8 @@ import numpy as np
 from .kutils import get_tiled_bbox
 from sklearn.model_selection import train_test_split
 from osgeo import gdal
-import multiprocessing as mp
-from .parallel import SimpleProcessor
+import queue
+import threading
 from .. import get_submodules_from_kwargs
 
 
@@ -162,56 +162,60 @@ def get_dataloader(**kwarguments):
     _backend, _layers, _models, _keras_utils, _optimizers, _legacy, _callbacks = get_submodules_from_kwargs(kwarguments)
 
     class Dataloder(_keras_utils.Sequence):
-        @staticmethod
-        def get_cpu_units_nb():
-            return mp.cpu_count()
+        def __init__(self, dataset, batch_size=1, shuffle=False, use_multithreading=True):
+            logging.info('Dataloder instance created with batch_size:{}, shuffle:{}, use_multithreading:{}'.
+                         format(batch_size, shuffle, use_multithreading))
 
-        def __init__(self, dataset, batch_size=1, shuffle=False, cpu_units_nb=0):
             self.dataset = dataset
             self.batch_size = batch_size
             self.shuffle = shuffle
             self.indexes = np.arange(len(dataset))
+            self.use_multithreading = use_multithreading
 
-            self.pool = None
-            if cpu_units_nb > 0:
-                self.pool = mp.Pool(min(batch_size, cpu_units_nb))
+            if self.use_multithreading:
+                self.locker = threading.Lock()  # indices content locker
+            self.on_epoch_end()  # Permute data
+            #
+            # Prepare and start threads for speed up data preparation
+            if self.use_multithreading:
+                self.queue = queue.Queue()
+                self.life_queue = queue.Queue()
 
-                i = 0
-                start = i * self.batch_size
-                stop = (i + 1) * self.batch_size
+                def do_life():
+                    def data_access(index):
+                        self.queue.put(self.dataset[index])
 
-                self.loader = SimpleProcessor(dataloder_loader_per_process,
-                                              [(self.dataset, self.indexes[j % len(self.indexes)])
-                                               for j in range(start, stop)],
-                                              self.pool)
-                self.loader.start(self.batch_size)
+                    while True:
+                        # Wait for the new batch's request
+                        batch_index = self.life_queue.get()
+                        #
+                        start = batch_index * self.batch_size
+                        stop = (batch_index + 1) * self.batch_size
 
-            self.on_epoch_end()
+                        self.locker.acquire()
+                        try:
+                            for j in range(start, stop):
+                                t = threading.Thread(target=data_access, args=(self.indexes[j % len(self.indexes)],))
+                                t.daemon = True
+                                t.start()
+                        finally:
+                            self.locker.release()
 
-        def __del__(self):
-            if self.pool:
-                self.pool.close()
+                self.life = threading.Thread(target=do_life)
+
+                self.life.daemon = True
+                self.life.start()
+                self.life_queue.put(0)  # start gathering data for batch_index = 0
 
         def __getitem__(self, i):
             # collect batch data
-
             data = []
-            if self.pool:
-                """
-                data = self.pool.starmap_async(dataloder_loader_per_process,
-                                               [(self.dataset, self.indexes[j % len(self.indexes)])
-                                                for j in range(start, stop)]).get()
-                """
-                data = [x for x in self.loader.get(timeout=3000)]
-                #
-                # Start preparing next batch in shadow processes
-                start = (i + 1) * self.batch_size
-                stop = (i + 2) * self.batch_size
-                self.loader = SimpleProcessor(dataloder_loader_per_process,
-                                              [(self.dataset, self.indexes[j % len(self.indexes)])
-                                               for j in range(start, stop)],
-                                              self.pool)
-                self.loader.start(self.batch_size)
+
+            if self.use_multithreading:
+                for j in range(self.batch_size):
+                    data.append(self.queue.get())
+
+                self.life_queue.put(i + 1)  # start gathering data for next access
             else:
                 start = i * self.batch_size
                 stop = (i + 1) * self.batch_size
@@ -230,6 +234,13 @@ def get_dataloader(**kwarguments):
         def on_epoch_end(self):
             """Callback function to shuffle indexes each epoch"""
             if self.shuffle:
-                self.indexes = np.random.permutation(self.indexes)
+                if self.use_multithreading:
+                    self.locker.acquire()
+                    try:
+                        self.indexes = np.random.permutation(self.indexes)
+                    finally:
+                        self.locker.release()
+                else:
+                    self.indexes = np.random.permutation(self.indexes)
 
     return Dataloder
