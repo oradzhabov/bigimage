@@ -12,4 +12,4 @@ def run_train():
     cfg.provider = provider
     cfg.aug = aug
 
-    train.run(cfg, solver, provider, aug, review_augmented_sample=False)
+    train.run(cfg, solver, provider, aug, review_augmented_sample=False, review_train=True)
