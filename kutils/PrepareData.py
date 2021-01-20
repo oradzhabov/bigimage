@@ -82,6 +82,12 @@ def get_via_item(proj_dir, mppx, src_shp_fname='shp.shp', src_epsg=4326):
     out_spat_ref = osr.SpatialReference()
     out_spat_ref.ImportFromEPSG(ds_epsg)
 
+    # with recent versions of GDAL the axis order (x,y vs y,x) depends
+    # on the projection. Force "x,y" with:
+    gdal_ver = gdal.__version__
+    if int(gdal_ver.split('.')[0]) >= 3:
+        in_spat_ref.SetAxisMappingStrategy(gdal.osr.OAMS_TRADITIONAL_GIS_ORDER)
+
     # create the CoordinateTransformation
     coord_trans = osr.CoordinateTransformation(in_spat_ref, out_spat_ref)
 
