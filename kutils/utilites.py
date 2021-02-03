@@ -158,7 +158,40 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
     return contours_list
 
 
+def filter_thin_bands(contours, img_shape, max_band_radius_px, debug=True):
+    imgTemp = np.zeros(shape=(img_shape[0], img_shape[1], 1), dtype=np.uint8)
+    cv2.fillPoly(imgTemp, pts=contours, color=255)
+    if debug:
+        cv2.imwrite('filter_thin_bands_contours.png', imgTemp)
+
+    dist = cv2.distanceTransform(imgTemp, cv2.DIST_L2, 3)
+    if debug:
+        cv2.imwrite('filter_thin_bands_dist1.png', dist / np.max(dist) * 255)
+
+    dist = cv2.distanceTransform((dist < max_band_radius_px).astype(np.uint8), cv2.DIST_L2, 3)
+    dist[imgTemp[..., 0] == 0] = 0
+    if debug:
+        cv2.imwrite('filter_thin_bands_dist2.png', dist / np.max(dist) * 255)
+
+    if debug:
+        imgTemp2 = imgTemp.copy()
+        imgTemp2[(imgTemp2[..., 0] > 0) & (dist < max_band_radius_px)] = 127
+        cv2.imwrite('filter_thin_bands_result_masked.png', imgTemp2)
+
+    imgTemp[dist > max_band_radius_px] = 0
+    if debug:
+        cv2.imwrite('filter_thin_bands_result.png', imgTemp)
+    if cv2.__version__.startswith("3"):
+        im, contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    else:
+        contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+
+    return contours
+
+
 def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape):
+    contours = filter_thin_bands(contours, img_shape, np.sqrt(min_area_px / np.pi))
+
     # Filter and approximate contours
     contours_filtered = []
     for cnt in contours:
