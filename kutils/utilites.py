@@ -2,6 +2,7 @@ import gc
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+from kmodel import kutils
 
 
 def nms(image, k=13, remove_plateaus_delta=-1.0):
@@ -102,7 +103,81 @@ def visualize(title, img_fname, **images):
     plt.close(fig)
 
 
-def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR_EXTERNAL, inverse_mask=False):
+def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR_EXTERNAL, inverse_mask=False,
+                 crop_size_px=None):
+    src_img_shape = mask_u8cn.shape
+    overlap_px = 0
+
+    if crop_size_px:
+        overlap_px = min(200, min(src_img_shape[0], src_img_shape[1]) // 2)
+        # Collect bounding boxes
+        bbox_list = list()
+        offset_size_px = (max(crop_size_px[0] - overlap_px, crop_size_px[0] // 2),
+                          max(crop_size_px[1] - overlap_px, crop_size_px[1] // 2))
+        w0, w1, h0, h1 = kutils.get_tiled_bbox(src_img_shape, crop_size_px, offset_size_px)
+        for i in range(len(w0)):
+            cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
+            cr_x2, extr_x2 = (w1[i], 0) if w1[i] < src_img_shape[1] else (src_img_shape[1], w1[i] - src_img_shape[1])
+
+            cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
+            cr_y2, extr_y2 = (h1[i], 0) if h1[i] < src_img_shape[0] else (src_img_shape[0], h1[i] - src_img_shape[0])
+
+            bbox = ((cr_x, cr_y), (cr_x2 - cr_x, cr_y2 - cr_y))
+            bbox_list.append(bbox)
+    else:
+        bbox_list = list([((0, 0), (src_img_shape[1], src_img_shape[0]))])
+
+    def filter_left_contours(contour):
+        maxx = np.max(contour[:, 0, 0])
+        return maxx > overlap_px
+
+    def filter_top_contours(contour):
+        maxy = np.max(contour[:, 0, 1])
+        return maxy > overlap_px
+
+    pr_cntrs_list_px = None
+    for bbox in bbox_list:
+        xy, wh = bbox
+        patch = mask_u8cn[xy[1]:xy[1]+wh[1], xy[0]:xy[0]+wh[0]]
+        bbox_contours = _get_contours(patch, find_alg=find_alg, find_mode=find_mode, inverse_mask=inverse_mask)
+
+        # Filter out contours repeated in overlapped areas
+        if overlap_px > 0:
+            if xy[0] > 0:  # drop contours which fully included into overlapped part
+                bbox_contours = [list(filter(filter_left_contours, class_contours)) for class_contours in bbox_contours]
+            if xy[1] > 0:  # drop contours which fully included into overlapped part
+                bbox_contours = [list(filter(filter_top_contours, class_contours)) for class_contours in bbox_contours]
+
+        """
+        image = np.zeros([patch.shape[0], patch.shape[1], 1], dtype=np.uint8)
+        for class_ind, class_ctrs in enumerate(bbox_contours):
+            cv2.drawContours(image, class_ctrs, -1, (255), 0)
+        cv2.imwrite('image.png', image)
+        """
+
+        # Map contours to base CS
+        bbox_contours = [[cntr + bbox[0] for cntr in cntrs] for cntrs in bbox_contours]
+
+        # Store contours
+        if pr_cntrs_list_px is None:
+            pr_cntrs_list_px = bbox_contours
+        else:
+            # For each particular class
+            for class_ind in range(len(pr_cntrs_list_px)):
+                pr_cntrs_list_px[class_ind] = pr_cntrs_list_px[class_ind] + bbox_contours[class_ind]
+
+    """
+    image = np.zeros([src_img_shape[0], src_img_shape[1], 1], dtype=np.uint8)
+    for class_ind, class_ctrs in enumerate(pr_cntrs_list_px):
+        cv2.drawContours(image, class_ctrs, -1, (255), 0)
+    cv2.imwrite('image.png', image)
+    exit(0)
+    """
+
+    return pr_cntrs_list_px
+
+
+def _get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR_EXTERNAL, inverse_mask=False):
     if len(mask_u8cn.shape) < 3:
         mask_u8cn = mask_u8cn[..., np.newaxis]
     if inverse_mask:
@@ -115,6 +190,7 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
     for i in range(class_nb):
         ret, thresh = cv2.threshold(mask_u8cn[..., i], 127, 255, cv2.THRESH_BINARY)
 
+        # todo: seems OpenCV implements method cv2.findContours() in 1-core environment. Very slow.
         if cv2.__version__.startswith("3"):
             im, contours, hierarchy = cv2.findContours(thresh, find_mode, find_alg)
         else:
@@ -140,14 +216,22 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
                         (hierarchy[0][i][0] >= 0 or hierarchy[0][i][1] >= 0) ] # HAVE parents NO childs HAVE SIBLINGS
             logging.info('len(siblings): {}'.format(len(siblings)))
             """
-            # Pay attention - if objects are black which put on white background -
-            # each objects will be a child, and main parent - image rectangle
-            c1 = [contours[i] for i in range(len(contours)) if
-                  hierarchy[0][i][2] < 0 <= hierarchy[0][i][3]]  # HAVE parents NO children
-            # Collect objects which are not main parent(image rect) i.e. HAVE parents and HAVE children -
-            # it could be big objects, on which the objects are smaller
-            c2 = [contours[i] for i in range(len(contours)) if
-                  hierarchy[0][i][2] >= 0 and hierarchy[0][i][3] >= 0]  # HAVE parents HAVE children
+            use_optimize = True
+            if use_optimize:
+                i = np.arange(len(contours))
+                cci = np.where((hierarchy[0, i, 2] < 0) & (hierarchy[0, i, 3] >= 0))
+                c1 = np.array(contours)[cci[0]].tolist()
+                cci = np.where((hierarchy[0, i, 2] >= 0) & (hierarchy[0, i, 3] >= 0))
+                c2 = np.array(contours)[cci[0]].tolist()
+            else:
+                # Pay attention - if objects are black which put on white background -
+                # each objects will be a child, and main parent - image rectangle
+                c1 = [contours[i] for i in range(len(contours)) if
+                      hierarchy[0][i][2] < 0 and hierarchy[0][i][3] >= 0]  # HAVE parents NO children
+                # Collect objects which are not main parent(image rect) i.e. HAVE parents and HAVE children -
+                # it could be big objects, on which the objects are smaller
+                c2 = [contours[i] for i in range(len(contours)) if
+                      hierarchy[0][i][2] >= 0 and hierarchy[0][i][3] >= 0]  # HAVE parents HAVE children
             contours = c1 + c2
 
         # Filter out non-manifold contours
@@ -158,7 +242,17 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
     return contours_list
 
 
-def filter_thin_bands(contours, img_shape, max_band_radius_px, debug=True):
+def filter_thin_bands(contours, img_shape, max_band_radius_px, debug=False):
+    # Since filtering could take too much RAM, work in scaled space
+    scaled_size = 2048
+    scale = min(1, scaled_size / min(img_shape[0], img_shape[1]))
+    scale = max(scale, 2 / max_band_radius_px)  # to prevent unacceptable value of scaled radius
+
+    # Map data to scaled space
+    img_shape = (int(img_shape[0]*scale), int(img_shape[1]*scale))
+    max_band_radius_px = max_band_radius_px*scale
+    contours = [(cntr*scale).astype(np.int32) for cntr in contours]
+    #
     imgTemp = np.zeros(shape=(img_shape[0], img_shape[1], 1), dtype=np.uint8)
     cv2.fillPoly(imgTemp, pts=contours, color=255)
     if debug:
@@ -186,11 +280,14 @@ def filter_thin_bands(contours, img_shape, max_band_radius_px, debug=True):
     else:
         contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
 
+    # Map contours back to original scale
+    contours = [(cntr / scale).astype(np.int32) for cntr in contours]
+
     return contours
 
 
-def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape):
-    contours = filter_thin_bands(contours, img_shape, np.sqrt(min_area_px / np.pi))
+def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape, debug=False):
+    contours = filter_thin_bands(contours, img_shape, np.sqrt(min_area_px / np.pi), debug=debug)
 
     # Filter and approximate contours
     contours_filtered = []

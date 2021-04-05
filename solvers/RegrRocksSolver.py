@@ -1,9 +1,12 @@
 import gc
+import os
 import numpy as np
 import cv2
+import logging
 from ..kutils import utilites
 from ..kmodel.data import read_image
 from .. import get_submodules_from_kwargs
+from kmodel import kutils
 
 
 def find_rock_masks(prob_field, prob_glue_th=0.25, debug=False):
@@ -120,12 +123,66 @@ def collect_statistics(contours):
     return geometry_px
 
 
-def postprocess_prob_list(prob_list, debug=False):
+def postprocess_prob_u8_list(prob_list, debug=False):
+    storage_dir = os.path.dirname(prob_list[0]['img'])
+    skip_prediction = prob_list[0]['skip_prediction'] if 'skip_prediction' in prob_list[0] else False
+    bbox_predictions_img_fname = os.path.join(storage_dir, 'postprocess_prob_list.png')
+    if not os.path.isfile(bbox_predictions_img_fname) or not skip_prediction:
+        src_img_shape = prob_list[0]['shape']
+        crop_size_px = (16384, 16384)
+
+        bbox_list = list()
+        overlap = 50
+        offset_size_px = (crop_size_px[0] - overlap, crop_size_px[1] - overlap)
+        w0, w1, h0, h1 = kutils.get_tiled_bbox(src_img_shape, crop_size_px, offset_size_px)
+        for i in range(len(w0)):
+            cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
+            cr_x2, extr_x2 = (w1[i], 0) if w1[i] < src_img_shape[1] else (src_img_shape[1], w1[i] - src_img_shape[1])
+
+            cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
+            cr_y2, extr_y2 = (h1[i], 0) if h1[i] < src_img_shape[0] else (src_img_shape[0], h1[i] - src_img_shape[0])
+
+            bbox = ((cr_x, cr_y), (cr_x2 - cr_x, cr_y2 - cr_y))
+            bbox_list.append(bbox)
+
+        bbox_predictions_fname = os.path.join(storage_dir, 'postprocess_prob_list.tmp')
+        bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=np.uint8, mode='w+', shape=src_img_shape)
+        bbox_predictions_result.fill(0)
+        del bbox_predictions_result
+        one_row_size_bytes = src_img_shape[1] * src_img_shape[2] * np.dtype(np.uint8).itemsize
+        gc.collect()
+
+        for bbox in bbox_list:
+            patch = _postprocess_prob_list(prob_list, bbox, debug=debug) * 255
+            if len(patch.shape) == 2:
+                patch = patch[..., np.newaxis]
+
+            xy, wh = bbox
+            shape_new = (wh[1], src_img_shape[1], src_img_shape[2])
+            offset = xy[1] * one_row_size_bytes
+            bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=np.uint8,
+                                                mode='r+', shape=shape_new, offset=offset)
+            bbox_predictions_result[0:patch.shape[0], xy[0]:xy[0] + patch.shape[1]] = \
+                np.max([bbox_predictions_result[0:patch.shape[0], xy[0]:xy[0] + patch.shape[1]], patch], axis=0)
+            del bbox_predictions_result
+
+        bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=np.uint8, mode='r', shape=src_img_shape)
+        cv2.imwrite(bbox_predictions_img_fname, bbox_predictions_result)
+        del bbox_predictions_result  # close memmap
+        logging.info('Probability postprocessing stored into {}'.format(bbox_predictions_img_fname))
+    else:
+        logging.info('Probability postprocessing skipped. Result restored from file {}'.format(bbox_predictions_img_fname))
+    mask = read_image(bbox_predictions_img_fname)
+
+    return mask
+
+
+def _postprocess_prob_list(prob_list, bbox=((0, 0), (None, None)), debug=False):
     prob_th = 0.05 * 255  # 0.05
 
     # Process the first scale
     img_descriptor = list(filter(lambda x: x['scale'] == 1.0, prob_list))[0]['img']
-    pr_field_sc1 = read_image(img_descriptor) if isinstance(img_descriptor, str) else img_descriptor
+    pr_field_sc1 = read_image(img_descriptor, bbox) if isinstance(img_descriptor, str) else img_descriptor
     pr_field_sc1 = pr_field_sc1.squeeze()
     # Set proper type to guaranty that pipeline will be processed
     if pr_field_sc1.dtype != np.uint8:
@@ -134,16 +191,15 @@ def postprocess_prob_list(prob_list, debug=False):
     # Store shape
     prob_field_shape = pr_field_sc1.shape
 
+    little_rocks_mask, big_rocks_mask_sc1 = find_rock_masks(pr_field_sc1, prob_glue_th=0.25, debug=debug)
     # Update by the first scale result
     prob_field_greate_prob_th = pr_field_sc1 > prob_th
-
-    little_rocks_mask, big_rocks_mask_sc1 = find_rock_masks(pr_field_sc1, prob_glue_th=0.25, debug=debug)
     del pr_field_sc1
     gc.collect()
 
     # Process the next scale
     img_descriptor = list(filter(lambda x: x['scale'] != 1.0, prob_list))[0]['img']
-    pr_field_sc025 = read_image(img_descriptor) if isinstance(img_descriptor, str) else img_descriptor
+    pr_field_sc025 = read_image(img_descriptor, bbox) if isinstance(img_descriptor, str) else img_descriptor
     pr_field_sc025 = pr_field_sc025.squeeze()
     # Set proper type to guaranty that pipeline will be processed
     if pr_field_sc025.dtype != np.uint8:
@@ -224,8 +280,9 @@ def get_solver(**kwarguments):
 
         def get_contours(self, pr_mask_list):
             debug = False
-            pr_mask = postprocess_prob_list(pr_mask_list, debug)
-            return utilites.get_contours((pr_mask * 255).astype(np.uint8), find_alg=cv2.CHAIN_APPROX_SIMPLE,
-                                         find_mode=cv2.RETR_TREE, inverse_mask=True)
+            pr_mask_u8 = postprocess_prob_u8_list(pr_mask_list, debug)
+            return utilites.get_contours(pr_mask_u8, find_alg=cv2.CHAIN_APPROX_SIMPLE,
+                                         find_mode=cv2.RETR_TREE, inverse_mask=True,
+                                         crop_size_px=(10000, 10000))
 
     return RegrRocksSolver

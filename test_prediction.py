@@ -5,6 +5,8 @@ import numpy as np
 import cv2
 from .kutils import utilites
 from .config_stockpile import cfg
+# from .config_rocks import cfg
+# from .config import cfg
 from .kutils.VIAConverter import *
 from .bin_keras import predict_contours
 
@@ -13,11 +15,22 @@ def test_prediction(src_proj_dir, show_results=False, store_contours=False):
     # If enable following flag it will avoid long prediction and will try to read already created result.
     # Useful for debugging
     skip_prediction = False
-    memmap_batch_size = 1  # 4 for config_rocks, 1 for config_stockpile
+    memmap_batch_size = 1  # 4 for config_rocks or config, 1 for config_stockpile
     predict_img_with_group_d4 = False  # REALLY HELPS, BUT 8+ TIMES SLOWER
+    debug = False
 
-    err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
-                                             predict_img_with_group_d4)
+    if cfg.solver.__name__ == 'RegrRocksSolver':
+        err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
+                                                 predict_img_with_group_d4,
+                                                 crop_size_px=(10000, 10000),  # 100 m x 100 m
+                                                 overlap_px=200,
+                                                 merging_fname_head='merged_pred_rocks',
+                                                 debug=debug)
+    else:
+        err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
+                                                 predict_img_with_group_d4,
+                                                 merging_fname_head='merged_pred_unknown',
+                                                 debug=debug)
     if err_code != 0:
         return -1
 

@@ -31,9 +31,9 @@ def store_predicted_result(pr_mask, fpath):
         cv2.imwrite(fpath, (pr_mask * 255).astype(np.uint8))
 
 
-def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
-                          skip_prediction=False, memmap_batch_size=0, predict_img_with_group_d4=True,
-                          bbox=((0, 0), (None, None))):
+def predict_on_bbox(cfg, solver, dataset, src_proj_dir,
+                    skip_prediction=False, memmap_batch_size=0, predict_img_with_group_d4=True,
+                    bbox=((0, 0), (None, None)), debug=False):
 
     bbox_str = 'bb{}-{}-{}-{}'.format(bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
 
@@ -150,8 +150,9 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
 
             logging.info('Store predicted results...')
 
-            # Store raw result with unique(per scale) name
-            store_predicted_result(pr_mask, fpath_raw)
+            # Store raw result with unique(per scale) name before post-predict
+            if debug:
+                store_predicted_result(pr_mask, fpath_raw)
 
             pr_mask = solver.post_predict(pr_mask)
             pr_item['img_dtype'] = pr_mask.dtype
@@ -175,17 +176,15 @@ def predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
         pr_item['img'] = pr_result_descriptor
         pr_mask_list.append(pr_item)
 
-    pr_cntrs_list_px = solver.get_contours(pr_mask_list)
-    gc.collect()
-
-    return 0, dict({'contours_px': pr_cntrs_list_px})
+    return 0, pr_mask_list
 
 
 def predict_contours(**kwarguments):
     _backend, _layers, _models, _keras_utils, _optimizers, _legacy, _callbacks = get_submodules_from_kwargs(kwarguments)
 
     def predict_contours_(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size=0, predict_img_with_group_d4=True,
-                          crop_size_px=(10000, 10000)):
+                          crop_size_px=(10000, 10000), overlap_px=0, merging_fname_head='merged_predictions',
+                          debug=False):
         """
         :param cfg:
         :param src_proj_dir:
@@ -196,6 +195,9 @@ def predict_contours(**kwarguments):
         :param predict_img_with_group_d4: If False, it will take 8 times faster and 2-times less CPU RAM, but will not
         use D4-group augmentation for prediction smoothing.
         :param crop_size_px:
+        :param overlap_px: > 0
+        :param merging_fname_head: head of filename used for storing temporary files
+        :param debug: Default: False
         :return:
         """
 
@@ -228,7 +230,9 @@ def predict_contours(**kwarguments):
 
             # Collect bounding boxes
             bbox_list = list()
-            w0, w1, h0, h1 = kutils.get_tiled_bbox(src_img_shape, crop_size_px, crop_size_px)
+            offset_size_px = (max(crop_size_px[0] - overlap_px, crop_size_px[0] // 2),
+                              max(crop_size_px[1] - overlap_px, crop_size_px[1] // 2))
+            w0, w1, h0, h1 = kutils.get_tiled_bbox(src_img_shape, crop_size_px, offset_size_px)
             for i in range(len(w0)):
                 cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
                 cr_x2, extr_x2 = (w1[i], 0) if w1[i] < src_img_shape[1] else (src_img_shape[1],
@@ -244,6 +248,7 @@ def predict_contours(**kwarguments):
                                                                                            crop_size_px))
 
             # Process each bound box
+            bbox_predictions = list()
             for bbox_ind, bbox in enumerate(bbox_list):
                 logging.info('Patch #{} (from {}) in processing...'.format(bbox_ind+1, len(bbox_list)))
                 dataset = provider(read_sample,
@@ -253,28 +258,98 @@ def predict_contours(**kwarguments):
                                    cfg,
                                    prep_getter=solver.get_prep_getter())
 
-                err, result_dict = predict_contours_bbox(cfg, solver, dataset, src_proj_dir,
-                                                         skip_prediction=skip_prediction,
-                                                         memmap_batch_size=memmap_batch_size,
-                                                         predict_img_with_group_d4=predict_img_with_group_d4,
-                                                         bbox=bbox)
-                # Map contours to base CS
-                bbox_contours = result_dict['contours_px']
-                bbox_contours = [[cntr + bbox[0] for cntr in cntrs] for cntrs in bbox_contours]
-
-                # Store contours
-                if pr_cntrs_list_px is None:
-                    pr_cntrs_list_px = bbox_contours
-                else:
-                    # For each particular lass
-                    for class_ind in range(len(pr_cntrs_list_px)):
-                        pr_cntrs_list_px[class_ind] = pr_cntrs_list_px[class_ind] + bbox_contours[class_ind]
+                err, pr_mask_list = predict_on_bbox(cfg, solver, dataset, src_proj_dir,
+                                                    skip_prediction=skip_prediction,
+                                                    memmap_batch_size=memmap_batch_size,
+                                                    predict_img_with_group_d4=predict_img_with_group_d4,
+                                                    bbox=bbox,
+                                                    debug=debug)
+                bbox_predictions.append(dict({'bbox': bbox, 'pr_mask_list': pr_mask_list}))
 
             # Release memory
             if solver.model is not None:
                 del solver.model
                 solver.model = None
             _backend.clear_session()
+            gc.collect()
+
+            # Merge data
+            merged_pr_mask_list = list()
+            used_scales = len(bbox_predictions[0]['pr_mask_list'])
+            tmp_img = cv2.imread(bbox_predictions[0]['pr_mask_list'][0]['img'],
+                                 cv2.IMREAD_UNCHANGED)  # todo: is there is no other way to get channels nb?
+            used_dtype = np.uint8  # bbox_predictions[0]['pr_mask_list'][0]['img_dtype']
+            used_shape = (src_img_shape[0], src_img_shape[1], tmp_img.shape[2] if len(tmp_img.shape) > 2 else 1)
+            del tmp_img
+            gc.collect()
+            one_row_size_bytes = used_shape[1] * used_shape[2] * np.dtype(used_dtype).itemsize
+            dstep = 1.0 / (overlap_px - 1)
+            mask_template = np.arange(0.0, 1.0 + dstep / 2, dstep)[np.newaxis, :]
+            for scale_ind in range(used_scales):
+                merged_pr_mask_list_item = dict()
+                bbox_predictions_fname_woext = '{}-sc{}'.format(merging_fname_head, scale_ind)
+                merged_pr_mask_list_item['img'] = os.path.join(src_proj_dir,
+                                                               '{}.png'.format(bbox_predictions_fname_woext))
+                merged_pr_mask_list_item['img_dtype'] = bbox_predictions[0]['pr_mask_list'][scale_ind]['img_dtype']
+                merged_pr_mask_list_item['scale'] = bbox_predictions[0]['pr_mask_list'][scale_ind]['scale']
+                merged_pr_mask_list_item['shape'] = used_shape
+                merged_pr_mask_list_item['skip_prediction'] = skip_prediction
+                if os.path.isfile(merged_pr_mask_list_item['img']) and skip_prediction:
+                    merged_pr_mask_list.append(merged_pr_mask_list_item)
+                    logging.info('Merging skipped. Result has been restored from file {}'.format(
+                        merged_pr_mask_list_item['img']))
+                    continue
+                bbox_predictions_fname = os.path.join(src_proj_dir, '{}.tmp'.format(bbox_predictions_fname_woext))
+                bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=used_dtype, mode='w+',
+                                                    shape=used_shape)
+                bbox_predictions_result.fill(0)
+                del bbox_predictions_result  # close file
+                for bbox_predictions_item in bbox_predictions:
+                    xy, wh = bbox_predictions_item['bbox']
+                    pr_mask_list = bbox_predictions_item['pr_mask_list']
+                    pr_mask = pr_mask_list[scale_ind]
+                    #
+                    # merged_pr_mask_list_item['img_dtype'] = pr_mask['img_dtype']
+                    # merged_pr_mask_list_item['scale'] = pr_mask['scale']
+                    #
+                    patch = cv2.imread(pr_mask['img'], cv2.IMREAD_UNCHANGED)
+                    if len(patch.shape) == 2:
+                        patch = patch[:, :, np.newaxis]
+
+                    shape_new = (wh[1], used_shape[1], used_shape[2])
+                    offset = xy[1] * one_row_size_bytes
+                    bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=used_dtype,
+                                                        mode='r+', shape=shape_new, offset=offset)
+                    if xy[0] > 0:  # blend left side
+                        mask = np.repeat(mask_template, patch.shape[0], 0)[:, :, np.newaxis]
+                        patch[:, 0:overlap_px] = np.multiply(patch[:, 0:overlap_px], mask).astype(patch.dtype)
+                    if xy[1] > 0:  # blend top side
+                        mask = np.repeat(mask_template.T, patch.shape[1], 1)[:, :, np.newaxis]
+                        patch[0:overlap_px, :] = np.multiply(patch[0:overlap_px, :], mask).astype(patch.dtype)
+                    if xy[0] + wh[0] < used_shape[1]:  # blend right side
+                        mask = np.repeat(mask_template, patch.shape[0], 0)[:, :, np.newaxis]
+                        patch = np.flip(patch, 1)
+                        patch[:, 0:overlap_px] = np.multiply(patch[:, 0:overlap_px], mask).astype(patch.dtype)
+                        patch = np.flip(patch, 1)
+                    if xy[1] + wh[1] < used_shape[0]:  # blend bottom side
+                        mask = np.repeat(mask_template.T, patch.shape[1], 1)[:, :, np.newaxis]
+                        patch = np.flip(patch, 0)
+                        patch[0:overlap_px, :] = np.multiply(patch[0:overlap_px, :], mask).astype(patch.dtype)
+                        patch = np.flip(patch, 0)
+
+                    bbox_predictions_result[0:patch.shape[0], xy[0]:xy[0] + patch.shape[1]] += patch
+
+                    del bbox_predictions_result
+
+                # Save result merged image
+                result = np.memmap(bbox_predictions_fname, dtype=used_dtype, mode='r', shape=used_shape)
+                cv2.imwrite(merged_pr_mask_list_item['img'], result)
+                del result  # close memmap
+                logging.info('Merged results stored into {}'.format(merged_pr_mask_list_item['img']))
+                #
+                merged_pr_mask_list.append(merged_pr_mask_list_item)
+
+            pr_cntrs_list_px = solver.get_contours(merged_pr_mask_list)
             gc.collect()
 
             # Store results for debug purposes
