@@ -242,52 +242,66 @@ def _get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RET
     return contours_list
 
 
-def filter_thin_bands(contours, img_shape, max_band_radius_px, debug=False):
+def filter_thin_bands(contours, img_shape, debug=False):
     # Since filtering could take too much RAM, work in scaled space
     scaled_size = 2048
     scale = min(1, scaled_size / min(img_shape[0], img_shape[1]))
-    scale = max(scale, 2 / max_band_radius_px)  # to prevent unacceptable value of scaled radius
 
     # Map data to scaled space
     img_shape = (int(img_shape[0]*scale), int(img_shape[1]*scale))
-    max_band_radius_px = max_band_radius_px*scale
-    contours = [(cntr*scale).astype(np.int32) for cntr in contours]
+    contours_sc = [(cntr*scale).astype(np.int32) for cntr in contours]
     #
-    imgTemp = np.zeros(shape=(img_shape[0], img_shape[1], 1), dtype=np.uint8)
-    cv2.fillPoly(imgTemp, pts=contours, color=255)
-    if debug:
-        cv2.imwrite('filter_thin_bands_contours.png', imgTemp)
+    contours_sc_flt = list()
+    for contour in contours_sc:
+        if len(contour) < 3:
+            continue
+        # Get boundaries WITH extra 1-pixel to obtain proper distance for all cases
+        minx = np.min(contour[:, 0, 0]) - 1
+        miny = np.min(contour[:, 0, 1]) - 1
+        maxx = np.max(contour[:, 0, 0]) + 2
+        maxy = np.max(contour[:, 0, 1]) + 2
+        imgTemp = np.zeros(shape=(maxy-miny, maxx-minx, 1), dtype=np.uint8)
+        contour = contour - [minx, miny]
 
-    dist = cv2.distanceTransform(imgTemp, cv2.DIST_L2, 3)
-    if debug:
-        cv2.imwrite('filter_thin_bands_dist1.png', dist / np.max(dist) * 255)
+        cv2.fillPoly(imgTemp, pts=[contour], color=255)
+        if debug:
+            cv2.imwrite('filter_thin_bands_contours.png', imgTemp)
 
-    dist = cv2.distanceTransform((dist < max_band_radius_px).astype(np.uint8), cv2.DIST_L2, 3)
-    dist[imgTemp[..., 0] == 0] = 0
-    if debug:
-        cv2.imwrite('filter_thin_bands_dist2.png', dist / np.max(dist) * 255)
+        dist = cv2.distanceTransform(imgTemp, cv2.DIST_L2, 3)
+        if debug:
+            cv2.imwrite('filter_thin_bands_dist1.png', dist / np.max(dist) * 255)
+        max_band_radius_px = np.mean(dist[dist > 0]) + np.std(dist[dist > 0]) * 1
 
-    if debug:
-        imgTemp2 = imgTemp.copy()
-        imgTemp2[(imgTemp2[..., 0] > 0) & (dist < max_band_radius_px)] = 127
-        cv2.imwrite('filter_thin_bands_result_masked.png', imgTemp2)
+        dist = cv2.distanceTransform((dist < max_band_radius_px).astype(np.uint8), cv2.DIST_L2, 3)
+        dist[imgTemp[..., 0] == 0] = 0
+        if debug:
+            cv2.imwrite('filter_thin_bands_dist2.png', dist / np.max(dist) * 255)
 
-    imgTemp[dist > max_band_radius_px] = 0
-    if debug:
-        cv2.imwrite('filter_thin_bands_result.png', imgTemp)
-    if cv2.__version__.startswith("3"):
-        im, contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
-    else:
-        contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+        if debug:
+            imgTemp2 = imgTemp.copy()
+            imgTemp2[(imgTemp2[..., 0] > 0) & (dist < max_band_radius_px)] = 127
+            cv2.imwrite('filter_thin_bands_result_masked.png', imgTemp2)
+
+        imgTemp[dist > max_band_radius_px] = 0
+        if debug:
+            cv2.imwrite('filter_thin_bands_result.png', imgTemp)
+        if cv2.__version__.startswith("3"):
+            im, contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+        else:
+            contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+
+        if len(contours) > 0:
+            contours = [cntr + [minx, miny] for cntr in contours]
+            contours_sc_flt = contours_sc_flt + contours
 
     # Map contours back to original scale
-    contours = [(cntr / scale).astype(np.int32) for cntr in contours]
+    contours = [(cntr / scale).astype(np.int32) for cntr in contours_sc_flt]
 
     return contours
 
 
 def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape, debug=False):
-    contours = filter_thin_bands(contours, img_shape, np.sqrt(min_area_px / np.pi), debug=debug)
+    contours = filter_thin_bands(contours, img_shape, debug=debug)
 
     # Filter and approximate contours
     contours_filtered = []
