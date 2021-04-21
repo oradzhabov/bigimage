@@ -17,6 +17,29 @@ bim_framework = 'keras'
 if 'BIM_FRAMEWORK' in os.environ:
     bim_framework = os.environ['BIM_FRAMEWORK']
 
+if True:  # Automatic environment setup
+    import logging
+    from distutils.sysconfig import get_python_lib
+
+    # Setup projections environment
+    site_packages_path = get_python_lib()
+    python_env_root = '\\'.join(site_packages_path.split('\\')[:-2])
+    proj_lib_path = os.path.join(python_env_root, 'Library\\share\\proj')
+    if not os.path.isdir(proj_lib_path):
+        # Try to find installed separately by pip
+        proj_lib_path = os.path.join(site_packages_path, 'pyproj\\proj_dir\\share\\proj')
+    if os.path.isdir(proj_lib_path):
+        logging.info('Required data folder has been found: \"{}\"'.format(proj_lib_path))
+        os.environ['PROJ_LIB'] = proj_lib_path
+    else:
+        logging.warning('There is no required installed package PYPROJ. You need install the latest GDAL package')
+    gdal_lib_path = os.path.join(python_env_root, 'Library\\share\\gdal')
+    if os.path.isdir(gdal_lib_path):
+        logging.info('Required data folder has been found: \"{}\"'.format(gdal_lib_path))
+        os.environ['GDAL_DATA'] = gdal_lib_path
+    else:
+        logging.warning('There is no required installed package GDAL')
+
 if bim_framework == 'keras':
     init_keras_custom_objects()
     AccumGradOptimizer = inject_keras_modules(AccumOptimizer.tf1)()

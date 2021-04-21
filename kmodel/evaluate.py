@@ -41,6 +41,7 @@ def run(cfg, solver: ISolver, dataprovider: IDataProvider, aug: IAug, show_rando
 
     # Provide evaluation report
     logging.info('*** EVALUATION REPORT ***')
+    logging.info('env.BIM_FRAMEWORK: {}'.format(os.environ['BIM_FRAMEWORK']))
     logging.info('Data dir: {}'.format(cfg.data_dir))
     logging.info('Data subset: {}'.format(cfg.data_subset))
     logging.info('Testing data aspect: {}'.format(cfg.test_aspect))

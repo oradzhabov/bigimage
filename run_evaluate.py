@@ -3,6 +3,10 @@ from .kmodel import evaluate
 
 
 def run_evaluate():
+    # Suppress AccumGradOptimizer which used when "batch_size_multiplier" > 1 and does not supported by TF2.
+    # Anyway it has no affect to evaluation result.
+    cfg.batch_size_multiplier = 1
+    #
     solver = cfg.solver(cfg)
     provider = cfg.provider
     aug = cfg.aug()

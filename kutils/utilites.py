@@ -220,9 +220,9 @@ def _get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RET
             if use_optimize:
                 i = np.arange(len(contours))
                 cci = np.where((hierarchy[0, i, 2] < 0) & (hierarchy[0, i, 3] >= 0))
-                c1 = np.array(contours)[cci[0]].tolist()
+                c1 = list(map(contours.__getitem__, cci[0]))
                 cci = np.where((hierarchy[0, i, 2] >= 0) & (hierarchy[0, i, 3] >= 0))
-                c2 = np.array(contours)[cci[0]].tolist()
+                c2 = list(map(contours.__getitem__, cci[0]))
             else:
                 # Pay attention - if objects are black which put on white background -
                 # each objects will be a child, and main parent - image rectangle

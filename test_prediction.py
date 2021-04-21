@@ -4,9 +4,9 @@ import os
 import numpy as np
 import cv2
 from .kutils import utilites
-from .config_stockpile import cfg
+# from .config_stockpile import cfg
 # from .config_rocks import cfg
-# from .config import cfg
+from .config import cfg
 from .kutils.VIAConverter import *
 from .bin_keras import predict_contours
 
@@ -15,7 +15,7 @@ def test_prediction(src_proj_dir, show_results=False, store_contours=False):
     # If enable following flag it will avoid long prediction and will try to read already created result.
     # Useful for debugging
     skip_prediction = False
-    memmap_batch_size = 1  # 4 for config_rocks or config, 1 for config_stockpile
+    memmap_batch_size = 4  # 4 for config_rocks or config, 1 for config_stockpile
     predict_img_with_group_d4 = False  # REALLY HELPS, BUT 8+ TIMES SLOWER
     debug = False
 

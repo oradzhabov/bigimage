@@ -6,9 +6,8 @@ import numpy as np
 import cv2
 import time
 from .color2height import color2height
-from .mapLoc2EPSG import map_epsg_to_px
+# from .mapLoc2EPSG import map_epsg_to_px
 from osgeo import gdal, osr, ogr
-import affine
 
 
 DATETIME_FORMAT = '%Y-%m-%d'  # '%Y-%m-%d_%H-%M-%S'
@@ -41,19 +40,21 @@ def map_contour_meter_pix(img_shape, contours_m, x0_m, y0_m, x1_m, y1_m):
     return contours_px
 
 
-def retrieve_pixel_value(geo_coords, data_source):
-    """ Map points from CRS to image space """
+def retrieve_pixel_value(geo_coord, gt):
+    if not isinstance(geo_coord, np.ndarray):
+        geo_coord = np.array(geo_coord, np.float32)
 
-    # Get matrix to transform from CRS to image/pixel space
-    forward_transform = affine.Affine.from_gdal(*data_source.GetGeoTransform())
-    reverse_transform = ~forward_transform
+    a, b, c, d, e, f = gt
+    forward_transform = np.array([[b, c, a], [e, f, d], [0, 0, 1]])
+    reverse_transform = np.linalg.inv(forward_transform)
+    reverse_transform = reverse_transform[:2, :3].T
 
-    result = []
-    for p in geo_coords:
-        ppx = reverse_transform * p
-        result.append((int(ppx[0] + 0.5), int(ppx[1] + 0.5)))
+    geo_coord = np.hstack((geo_coord, np.ones((geo_coord.shape[0], 1), dtype=geo_coord.dtype)))
 
-    return result
+    px_coords = np.dot(geo_coord, reverse_transform)
+    px_coords = (px_coords + 0.5).astype(np.int32)
+
+    return px_coords
 
 
 def get_via_item(proj_dir, mppx, src_shp_fname='shp.shp', src_epsg=4326):
@@ -115,7 +116,7 @@ def get_via_item(proj_dir, mppx, src_shp_fname='shp.shp', src_epsg=4326):
         pts = geom.GetGeometryRef(0).GetPoints()
 
         # Map points from geotiff space into pixel space
-        contour_px = retrieve_pixel_value(pts, ds)
+        contour_px = retrieve_pixel_value(pts, ds.GetGeoTransform())
 
         # Store results to VIA sub-structure
         shape_attributes = dict()
@@ -339,6 +340,7 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
             if not is_success:
                 continue
 
+            """
             contour_fname = os.path.join(dataset_path, 'orthophoto/user_muckpile.json')
             if os.path.isfile(contour_fname):
                 gdalinfo = os.path.join(dataset_path, 'orthophoto/tiles/gdalinfo.txt')
@@ -378,6 +380,8 @@ def prepare_dataset(rootdir, destdir, dst_mppx, data_subset, img_fnames=None):
                     cv2.imwrite(dest_mask_fname, mask)
                     #
                     dataset_strings_collection.append(customer + '/' + dataset + ',' + mod_time)
+            """
+
             img_fname_list.append('../imgs/{}'.format(os.path.basename(dest_img_fname)))  # todo: /imgs ?
     with open(os.path.join(destdir, 'dataset_list.txt'), 'w') as f:
         for item in dataset_strings_collection:

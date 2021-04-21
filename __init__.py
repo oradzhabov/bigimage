@@ -1,4 +1,5 @@
 import functools
+import logging
 
 _KERAS_BACKEND = None
 _KERAS_LAYERS = None
@@ -34,7 +35,13 @@ def inject_keras_modules(func):
         kwargs['optimizers'] = keras.optimizers
         kwargs['legacy'] = keras.legacy
         kwargs['callbacks'] = keras.callbacks
-        return func(*args, **kwargs)
+
+        try:
+            # Cross-pipeline strategy allows to not crash if not required packages was not installed
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.warning(e)
+            return None
 
     return wrapper
 
@@ -50,7 +57,13 @@ def inject_tfkeras_modules(func):
         kwargs['optimizers'] = tfkeras.optimizers
         kwargs['legacy'] = None  # tf.keras has no module legacy
         kwargs['callbacks'] = tfkeras.callbacks
-        return func(*args, **kwargs)
+
+        try:
+            # Cross-pipeline strategy allows to not crash if not required packages was not installed
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.warning(e)
+            return None
 
     return wrapper
 
