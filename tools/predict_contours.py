@@ -80,12 +80,10 @@ def predict_on_bbox(cfg, solver, dataset, src_proj_dir,
 
                 pr_result_descriptor = pr_mask
         else:
-            image, _ = dataset[0]
+            src_image_shape, image = dataset.get_scaled_image(0, sc_factor)
             # map input space to float16
             image = image.astype(working_dtype)
             gc.collect()
-            # Save original image params
-            src_image_shape = image.shape
 
             # Prepare the model if it necessary
             if solver.model is None:
@@ -94,13 +92,6 @@ def predict_on_bbox(cfg, solver, dataset, src_proj_dir,
                 if model is None:
                     logging.error('Cannot create the model')
                     return -1, dict({})
-
-            # Scale image if it necessary
-            if sc_factor != 1.0:
-                # For downscale the best interpolation INTER_AREA
-                image = cv2.resize(image.astype(np.float32), (0, 0),
-                                   fx=sc_factor, fy=sc_factor, interpolation=cv2.INTER_AREA).astype(working_dtype)
-                gc.collect()
 
             # Store result with unique(scaled) name
             # sc_png = 'image_scaled_' + solver.signature() + '_' + bbox_str + '_' + str(sc_factor) + '.png'
@@ -130,7 +121,7 @@ def predict_on_bbox(cfg, solver, dataset, src_proj_dir,
                 ),
                 memmap_batch_size=memmap_batch_size,
                 temp_dir=src_proj_dir,
-                use_group_d4=predict_img_with_group_d4
+                use_group_d4=(True if sc_factor < 1.0 else predict_img_with_group_d4)  # todo: it should be controlled from config
             )
             gc.collect()
 
@@ -349,6 +340,7 @@ def predict_contours(**kwarguments):
                 #
                 merged_pr_mask_list.append(merged_pr_mask_list_item)
 
+            logging.info('Getting contours...')
             pr_cntrs_list_px = solver.get_contours(merged_pr_mask_list)
             gc.collect()
 

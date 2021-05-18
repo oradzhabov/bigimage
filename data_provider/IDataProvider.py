@@ -12,6 +12,10 @@ class IDataProvider(JSONEncoder):
         raise NotImplementedError
 
     @abstractmethod
+    def get_scaled_image(self, i, sc_factor):
+        raise NotImplementedError
+
+    @abstractmethod
     def __len__(self):
         raise NotImplementedError
 

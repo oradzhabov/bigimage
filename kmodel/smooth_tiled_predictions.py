@@ -82,7 +82,12 @@ def _pad_img(img, window_size, subdivisions):
     Image is an np array of shape (x, y, nb_channels).
     """
     aug = int(round(window_size * (1 - 1.0/subdivisions)))
-    more_borders = ((aug, aug), (aug, aug), (0, 0))
+    # Ensure that padded size will have integer count of aug.
+    # It guaranty that all patches will be smoothed on the boundaries
+    extra_h = (aug - (img.shape[0] + aug * 2) % aug) % aug
+    extra_w = (aug - (img.shape[1] + aug * 2) % aug) % aug
+    more_borders = ((aug, aug + extra_h), (aug, aug + extra_w), (0, 0))
+
     ret = np.pad(img, pad_width=more_borders, mode='reflect')
     # gc.collect()
     logging.info('Padding aug size: {}. Img size changed from {} to {}'.format(aug, img.shape[:2], ret.shape[:2]))
@@ -93,53 +98,21 @@ def _pad_img(img, window_size, subdivisions):
         plt.title("Padded Image for Using Tiled Prediction Patches\n"
                   "(notice the reflection effect on the padded borders)")
         plt.show()
-    return ret
+    return ret, more_borders
 
 
-def _unpad_img(padded_img, window_size, subdivisions):
+def _unpad_img(padded_img, padded_borders, subdivisions):
     """
     Undo what's done in the `_pad_img` function.
     Image is an np array of shape (x, y, nb_channels).
     """
-    aug = int(round(window_size * (1 - 1.0/subdivisions)))
     ret = padded_img[
-        aug:-aug,
-        aug:-aug,
+        padded_borders[0][0]:-padded_borders[0][1],
+        padded_borders[1][0]:-padded_borders[1][1],
         :
     ]
     # gc.collect()
     return ret
-
-
-def _create_ovelap05_mask(x_nb, y_nb):
-    """
-    To be able analyse the boundary of overlapped areas (which should be merged in special way), this method creates
-    the list of masks for detecting boundaries. Result masks will have codes: 1 for corner, 2 for edge, 4-inside
-    :param x_nb:
-    :param y_nb:
-    :return:
-    """
-    # Fill overlapping mask. Assumes that overlap is 0.5.
-    # Each patch represented by square 2x2, so mask with params x_nb=3, y_nb=2 will have next content
-    # 1,2,2,1
-    # 2,4,4,2
-    # 1,2,2,1
-    mask = np.zeros(shape=(y_nb + 1, x_nb + 1), dtype=np.uint8)
-    for y in range(y_nb):
-        for x in range(x_nb):
-            mask[y:y+2, x:x+2] += 1
-
-    # Stack the doubled rows. Since result will use entire loop instead of loop in loop(by x_nb and y_nb),
-    # make flat array for each patch. So mask created with params x_nb=3, y_nb=2 will have next content
-    # 1,2, 2,2, 2,1, 2,4, 4,4, 4,2
-    # 2,4, 4,4, 4,2, 1,2, 2,2, 2,1
-    result = np.zeros(shape=(2, x_nb*y_nb*2), dtype=np.uint8)
-    for y in range(y_nb):
-        for x in range(x_nb):
-            ind = (y * x_nb + x) * 2
-            result[:, ind:ind+2] = mask[y:y+2, x:x+2]
-
-    return result
 
 
 def _rotate_mirror_do(im):
@@ -214,7 +187,6 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     x_range = np.arange(0, padx_len-window_size+1, step)
     shape = (len(y_range), len(x_range), window_size, window_size, padded_img.shape[2])
     subdivs0 = np.memmap(subdivs_fname, dtype=dtype, mode='w+', shape=shape)
-    overlap05_mask = _create_ovelap05_mask(shape[1], shape[0]) if subdivisions == 2 else None
 
     # Store subdivisions to file
     one_row_size_bytes = subdivs0.shape[1] * subdivs0.shape[2] * subdivs0.shape[3] * subdivs0.shape[4] * np.dtype(dtype).itemsize
@@ -261,6 +233,15 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
             # Predict results of opened subdivisions
             pred_1 = pred_func(subdivs[0:memmap_batch_size_it])
 
+            if False:
+                import cv2
+                for ii in range(memmap_batch_size_it):
+                    fname_pred = 'pred_{}_{}.png'.format(i, ii)
+                    fname_src = 'src_{}_{}.png'.format(i, ii)
+                    cv2.imwrite(fname_pred, pred_1[ii] * 255)
+                    cv2.imwrite(fname_src, ((subdivs[ii] + 3) / 6 * 255).astype(np.uint8))
+                print(123)
+
             # for aa in range(memmap_batch_size_it):
             #     sc_png = 'output_' + str(aa) + '.png'
             #     pred_1[aa] = np.clip(pred_1[aa], 0, 1)
@@ -288,33 +269,7 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
 
     WINDOW_SPLINE_2D = WINDOW_SPLINE_2D.astype(dtype)
     # Update results on the disk. Thats why here is loop instead of direct operation(which lost ref to memmap)
-    for i in range(len(subdivs)):
-        w = WINDOW_SPLINE_2D.copy()
-
-        if overlap05_mask is not None:
-            m = overlap05_mask[:, i*2: (i+1)*2]
-
-            if np.max(m[0, :]) < 4:
-                w = np.flip(w, axis=0)
-                w = np.vstack([w[:w.shape[0] // 2, :],
-                               np.repeat(w[w.shape[0] // 2, :][np.newaxis, :],
-                                         w.shape[0] - w.shape[0] // 2, axis=0)])
-                w = np.flip(w, axis=0)
-            if np.max(m[1, :]) < 4:
-                w = np.vstack([w[:w.shape[0] // 2, :],
-                               np.repeat(w[w.shape[0] // 2, :][np.newaxis, :],
-                                         w.shape[0] - w.shape[0] // 2, axis=0)])
-            if np.max(m[:, 1]) < 4:
-                w = np.hstack([w[:, :w.shape[1] // 2],
-                               np.repeat(w[:, w.shape[1] // 2][:, np.newaxis],
-                                         w.shape[1] - w.shape[1] // 2, axis=1)])
-            if np.max(m[:, 0]) < 4:
-                w = np.flip(w, axis=1)
-                w = np.hstack([w[:, :w.shape[1] // 2],
-                               np.repeat(w[:, w.shape[1] // 2][:, np.newaxis],
-                                         w.shape[1] - w.shape[1] // 2, axis=1)])
-                w = np.flip(w, axis=1)
-        subdivs[i] = subdivs[i] * w
+    subdivs *= WINDOW_SPLINE_2D
 
     # Such 5D array:
     subdivs = subdivs.reshape(a, b, c, d, nb_classes)
@@ -387,7 +342,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     If subdivisions is 2, boundary will be processed by special logic and will not be suppressed by smoothing mask
     """
     input_img_shape = input_img.shape
-    pad = _pad_img(input_img, window_size, subdivisions)
+    pad, padded_borders = _pad_img(input_img, window_size, subdivisions)
     del input_img
     gc.collect()
 
@@ -449,7 +404,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     # Merge after rotations:
     padded_results /= pads_num
 
-    prd = _unpad_img(padded_results, window_size, subdivisions)
+    prd = _unpad_img(padded_results, padded_borders, subdivisions)
 
     prd = prd[:input_img_shape[0], :input_img_shape[1], :]
 

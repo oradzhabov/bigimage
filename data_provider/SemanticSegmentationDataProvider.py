@@ -1,5 +1,6 @@
 import logging
 import os
+import gc
 import cv2
 import numpy as np
 from tqdm import tqdm
@@ -131,7 +132,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
             mask = np.concatenate((mask, background), axis=-1)
         return mask
 
-    def _get_item(self, i):
+    def _get_src_item(self, i):
         i = i % len(self)
 
         data_paths = [self.src_data[k][i] if i < len(self.src_data[k]) else None for k in self.src_folders]
@@ -142,6 +143,9 @@ class SemanticSegmentationDataProvider(IDataProvider):
         if mask is not None:
             mask = self._preprocess_mask(mask)
 
+        return image, mask
+
+    def _apply_prepproc(self, image, mask):
         # apply augmentations
         if self.augmentation:
             sample = self.augmentation(image=image, mask=mask)
@@ -170,19 +174,41 @@ class SemanticSegmentationDataProvider(IDataProvider):
 
     def __getitem__(self, i):
         if isinstance(i, (int, np.integer)):
-            return self._get_item(i)
+            image, mask = self._get_src_item(i)
+            return self._apply_prepproc(image, mask)
         if isinstance(i, slice):
             if_none = lambda a, b: b if a is None else a
             da = list()
             ma = list()
             for ind in range(if_none(i.start, 0), if_none(i.stop, len(self)), if_none(i.step, 1)):
-                d, m = self._get_item(ind)
+                d, m = self._get_src_item(ind)
+                d, m = self._apply_prepproc(d, m)
                 da.append(d)
                 ma.append(m)
             da = np.array(da)
             ma = np.array(ma)
             return da, ma
         raise NotImplementedError
+
+    def get_scaled_image(self, i, sc_factor):
+        image, _ = self._get_src_item(i)
+
+        # Save original image params
+        src_image_shape = image.shape
+
+        # Scale image(and mask) if it necessary
+        if sc_factor != 1.0:
+            # For downscale the best interpolation - INTER_AREA, for upscale - INTER_CUBIC
+            img_interp = cv2.INTER_CUBIC if sc_factor > 1.0 else cv2.INTER_AREA
+
+            # For downscale the best interpolation INTER_AREA
+            image = cv2.resize(image.astype(np.float32), (0, 0),
+                               fx=sc_factor, fy=sc_factor, interpolation=img_interp).astype(image.dtype)
+            gc.collect()
+
+        image, _ = self._apply_prepproc(image, None)
+
+        return src_image_shape, image
 
     def __len__(self):
         return self._length

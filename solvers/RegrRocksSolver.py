@@ -19,12 +19,12 @@ def find_rock_masks(prob_field, prob_glue_th=0.25, debug=False):
 
     # Find gradient vector field
     g, dx, dy = utilites.grad_magn(prob_field, ddepth=cv2.CV_16S)
-    g_less_01 = g < 0.1 * 255  # 0.015??  # 0.1
-    g_less_05 = g < 0.01 * 255
+    g_less_10 = g < 0.1 * 255
+    g_less_01 = g < 0.02 * 255
     del g
     gc.collect()
-    prob_field_greate_025 = prob_field > prob_glue_th * 255  # 0.25
-    prob_field_greate_005 = prob_field > 0.02 * 255  # 0.05
+    prob_field_greate_th = prob_field > prob_glue_th * 255  # 0.25
+    prob_field_greate_002 = prob_field > 0.01 * 255  # 0.05
     if not debug:
         del prob_field
         gc.collect()
@@ -34,22 +34,27 @@ def find_rock_masks(prob_field, prob_glue_th=0.25, debug=False):
     del dx
     del dy
     gc.collect()
-    pdiv = cv2.addWeighted(divx, 0.5, divy, 0.5, 0)
+    # Function cv2.max(), instead of cv2.addWeighted() will guaranty than further condition (pdiv < 0) will satisfy
+    # only when both components (divx and divy) have negative values.
+    pdiv = cv2.max(divx, divy)  # cv2.addWeighted(divx, 0.5, divy, 0.5, 0)
     del divx
     del divy
     gc.collect()
 
-    mask1 = pdiv <= -0.001 * 255  # good for little rocks(with noise as well) but not enough to cover big rocks
+    # If the second derivative is less than zero, we have a "convex in the increasing probability direction "
+    # projection section. This is a necessary (but not sufficient) condition for determining the found object.
+    # Good for little rocks (with noise as well) but not enough to cover big rocks
+    mask1 = pdiv < 0
     del pdiv
     gc.collect()
 
-    mask2 = np.logical_and(g_less_01, prob_field_greate_025)  # glue for big rocks
-    mask3 = np.logical_and(mask1, np.logical_and(prob_field_greate_005, g_less_05))  # filter out noise
+    mask2 = np.logical_and(g_less_10, prob_field_greate_th)  # glue for big rocks
+    mask3 = np.logical_and(mask1, np.logical_and(prob_field_greate_002, g_less_01))  # filter out noise
 
     if debug:
         bgr = np.dstack((prob_field, prob_field, prob_field))
         bgr[mask1] = [255, 0, 0]
-        bgr[prob_field_greate_025] = [255, 255, 0]
+        bgr[prob_field_greate_th] = [255, 255, 0]
         bgr[mask2] = [0, 255, 0]
         bgr[mask3] = [0, 0, 255]
         # bgr[g2_less_01] = [0, 255, 255]
@@ -123,6 +128,7 @@ def collect_statistics(contours):
     return geometry_px
 
 
+"""
 def postprocess_prob_u8_list(prob_list, debug=False):
     storage_dir = os.path.dirname(prob_list[0]['img'])
     skip_prediction = prob_list[0]['skip_prediction'] if 'skip_prediction' in prob_list[0] else False
@@ -175,10 +181,14 @@ def postprocess_prob_u8_list(prob_list, debug=False):
     mask = read_image(bbox_predictions_img_fname)
 
     return mask
+"""
 
 
 def _postprocess_prob_list(prob_list, bbox=((0, 0), (None, None)), debug=False):
-    prob_th = 0.05 * 255  # 0.05
+    # 0.01..0.05. 0.01 fills all gaps between rocks.
+    # Since source data was pre-processed by CLAHE and median filter, gaps between rocks increased. To suppress this
+    # issue and return fulfilled results, decrease background threshold from 5% to 2%.
+    prob_th = 0.02 * 255
 
     # Process the first scale
     img_descriptor = list(filter(lambda x: x['scale'] == 1.0, prob_list))[0]['img']
@@ -211,6 +221,16 @@ def _postprocess_prob_list(prob_list, bbox=((0, 0), (None, None)), debug=False):
     # Suppress little rocks on the bound of big rocks
     little_rocks_mask[pr_field_sc025 > 0.02 * 255] = 0
 
+    # suppress thin area around little rocks to not grow rocks around them
+    little_rocks_mask_u8 = little_rocks_mask.astype(np.uint8) * 255
+    little_rocks_mask_u8 = cv2.dilate(little_rocks_mask_u8, np.ones((3, 3), np.uint8)) - little_rocks_mask_u8
+    prob_field_greate_prob_th[little_rocks_mask_u8 > 0] = 0
+
+    # Up-scaled rocks should have bigger threshold to not merge little rocks: prob_glue_th=0.40
+    # But 0.4 (with all other original conditions) do not cover whole area of big rocks and make them smaller.
+    # So to resolve this situation, we left 0.25, but apply cv2.medianBlur(gray, 3) for sc_factor < 1.0, and use
+    # d4-group for such scale to predict better big rocks and their boundaries to resolve main problem - not merging
+    # little rocks.
     little_rocks_mask_sc025, big_rocks_mask_sc025 = find_rock_masks(pr_field_sc025, prob_glue_th=0.25, debug=debug)
     del little_rocks_mask_sc025
     del pr_field_sc025
@@ -247,6 +267,7 @@ def _postprocess_prob_list(prob_list, bbox=((0, 0), (None, None)), debug=False):
 
     if debug:
         cv2.imwrite('prob_field_th.png', img)
+        cv2.imwrite('markers.png', (markers > 1) * 255)
 
     instances = cv2.watershed(np.dstack((img, img, img)), markers)
     del img
@@ -279,10 +300,36 @@ def get_solver(**kwarguments):
             return np.clip(pr_result, 0, 1)
 
         def get_contours(self, pr_mask_list):
+            class _Array2DDelegate(object):
+                def __init__(self, prob_list, debug=False):
+                    self.prob_list = prob_list
+                    self.debug = debug
+
+                @property
+                def shape(self):
+                    src_img_shape = self.prob_list[0]['shape']
+                    return src_img_shape
+
+                def __getitem__(self, key):
+                    if isinstance(key, tuple):
+                        # Get the start, stop, and step from the slices
+                        key_h = key[0].start, key[0].stop, key[0].step
+                        key_w = key[1].start, key[1].stop, key[1].step
+
+                        bbox = ((key_w[0], key_h[0]), (key_w[1] - key_w[0], key_h[1] - key_h[0]))
+
+                        patch = _postprocess_prob_list(self.prob_list, bbox, debug=self.debug) * 255
+                        if len(patch.shape) == 2:
+                            patch = patch[..., np.newaxis]
+                        return patch
+                    else:
+                        raise NotImplementedError()
+
             debug = False
-            pr_mask_u8 = postprocess_prob_u8_list(pr_mask_list, debug)
+            pr_mask_u8 = _Array2DDelegate(pr_mask_list, debug)
+
             return utilites.get_contours(pr_mask_u8, find_alg=cv2.CHAIN_APPROX_SIMPLE,
                                          find_mode=cv2.RETR_TREE, inverse_mask=True,
-                                         crop_size_px=(10000, 10000))
+                                         crop_size_px=(16384, 16384))
 
     return RegrRocksSolver

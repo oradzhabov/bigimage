@@ -1,12 +1,97 @@
 import os
 import logging
 import numpy as np
+import cv2
+import gc
 from tqdm import tqdm
 from . import SemanticSegmentationDataProvider
 from ..kutils import utilites
 
 
 class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
+    def get_scaled_image(self, i, sc_factor):
+        image, _ = self._get_src_item(i)
+
+        # Save original image params
+        src_image_shape = image.shape
+
+        # Scale image(and mask) if it necessary
+        if sc_factor != 1.0:
+            # For downscale the best interpolation - INTER_AREA, for upscale - INTER_CUBIC
+            img_interp = cv2.INTER_CUBIC if sc_factor > 1.0 else cv2.INTER_AREA
+
+            # For downscale the best interpolation INTER_AREA
+            image = cv2.resize(image.astype(np.float32), (0, 0),
+                               fx=sc_factor, fy=sc_factor, interpolation=img_interp).astype(image.dtype)
+            gc.collect()
+
+        # This filter has been added after training process to obtain better accuracy on high-contrast areas
+        # and predict over-bright rocks. Tests proved that this filter grows the accuracy as for little rocks as
+        # for big rocks. Should be noticed that at the end, filter for big rocks could damage results by merging piles
+        # of little rocks. To fix this issue bigger threshold value should be used for big rocks.
+        apply_clahe = True  # (sc_factor >= 1.0)
+        if apply_clahe:
+            if image.shape[2] > 1:
+                gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+                # It will be better to blur scaled down images with lower kernel size
+                gray = cv2.medianBlur(gray, 3 if sc_factor < 1.0 else 5)
+
+            if False:  # play
+                # https://stackoverflow.com/questions/44047819/increase-image-brightness-without-overflow/44054699#44054699
+
+                # Dilate the image, in order to get rid of the text. This step somewhat helps to preserve the bar code.
+                dilated_img = cv2.dilate(gray, np.ones((7, 7), np.uint8))
+                cv2.imwrite('dilated_img.png', dilated_img)
+
+                # Median blur the result with a decent sized kernel to further suppress any text.
+                # This should get us a fairly good background image that contains all the shadows and/or discoloration.
+                bg_img = cv2.medianBlur(dilated_img, 21)
+                cv2.imwrite('bg_img.png', bg_img)
+
+                # Calculate the difference between the original and the background we just obtained.
+                # The bits that are identical will be black (close to 0 difference), the text will be white
+                # (large difference). Since we want black on white, we invert the result
+                diff_img = 255 - cv2.absdiff(gray, bg_img)
+                cv2.imwrite('diff_img.png', diff_img)
+
+                # Normalize the image, so that we use the full dynamic range.
+                norm_img = diff_img.copy()  # Needed for 3.x compatibility
+                cv2.normalize(diff_img, norm_img, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+                cv2.imwrite('norm_img.png', norm_img)
+
+                gray = norm_img
+
+            # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+            # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))  # 1
+            # clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8, 8))  # 2
+            # clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))  # 3
+            # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(16, 16))  # 4
+            # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))  # 5
+            # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(64, 64))  # 6
+            # clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(64, 64))  # 7 +
+            # clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(128, 128))  # 8
+            # clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(256, 256))  # 9
+            # clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(512, 512))  # 10  less contrast
+            # clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(512, 512))  # 11  the same like 9
+            # clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(256, 256))  # 12  almost like 9 but a little bit +
+            # clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(128, 128))  # 13  # as + as - w.r.t 9
+            # clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(1024, 1024))  # 14 very bad
+            # clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(64, 64))  # 15  # as + as - w.r.t 9
+            # clahe = cv2.createCLAHE(clipLimit=128.0, tileGridSize=(256, 256))  # 16  idea - better than 12. BEST
+            # clahe = cv2.createCLAHE(clipLimit=192.0, tileGridSize=(256, 256))  # 17 - copy of 16
+            # clahe = cv2.createCLAHE(clipLimit=16.0, tileGridSize=(256, 256))  # 18. a little bit better than 16.
+            # clahe = cv2.createCLAHE(clipLimit=8.0, tileGridSize=(256, 256))  # 19 +/i w.r.t 18
+            clahe = cv2.createCLAHE(clipLimit=16.0, tileGridSize=(int(256*sc_factor), int(256*sc_factor)))  # 18s. GOOD but Big predicted rocks merge little rocks to one rock.
+            gray = clahe.apply(gray)
+            del clahe
+            gc.collect()
+
+            image = np.dstack([gray, gray, gray])
+
+        image, _ = self._apply_prepproc(image, None)
+
+        return src_image_shape, image
+
     def _preprocess_mask(self, mask):
         mask = mask.astype(np.float32) / 255.0
         if len(mask.shape) == 2:
