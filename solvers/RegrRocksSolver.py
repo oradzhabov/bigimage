@@ -188,7 +188,8 @@ def _postprocess_prob_list(prob_list, bbox=((0, 0), (None, None)), debug=False):
     # 0.01..0.05. 0.01 fills all gaps between rocks.
     # Since source data was pre-processed by CLAHE and median filter, gaps between rocks increased. To suppress this
     # issue and return fulfilled results, decrease background threshold from 5% to 2%.
-    prob_th = 0.02 * 255
+    # In fact, 5% remain as better precised rock's boundaries.
+    prob_th = 0.05 * 255
 
     # Process the first scale
     img_descriptor = list(filter(lambda x: x['scale'] == 1.0, prob_list))[0]['img']

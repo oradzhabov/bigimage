@@ -33,8 +33,13 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
         if apply_clahe:
             if image.shape[2] > 1:
                 gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-                # It will be better to blur scaled down images with lower kernel size
-                gray = cv2.medianBlur(gray, 3 if sc_factor < 1.0 else 5)
+                # Median-3 definitely good for scale 0.25 aspecially with d4-group.
+                # But for scale 1.0 it is uncertain - some projects like
+                # "MuckPileDatasets.unseen\airzaar\13007.qa7966" predicts little rocks good(best) without any filter
+                # before, but have "left-edge-bright" artifact(which partially solved by smoothing between patches),
+                # but some other "2021.04.06\3GSM.comparison\dev-oktai\7223" predicts better when median kernel 3 or
+                # even 5. So remain it here for both scales with kernel 3 as compromise between NO-filter and Median-5.
+                gray = cv2.medianBlur(gray, 3)
 
             if False:  # play
                 # https://stackoverflow.com/questions/44047819/increase-image-brightness-without-overflow/44054699#44054699
