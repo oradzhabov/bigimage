@@ -15,6 +15,7 @@ import logging
 import os
 import numpy as np
 import scipy.signal
+from skimage.transform import resize
 from tqdm import tqdm
 
 import gc
@@ -31,7 +32,7 @@ else:
     PLOT_PROGRESS = False
 
 
-def _spline_window(window_size, power=2):
+def _spline_window(window_size, step, power=2):
     """
     Squared spline (power=2) window function:
     https://www.wolframalpha.com/input/?i=y%3Dx**2,+y%3D-(x-2)**2+%2B2,+y%3D(x-4)**2,+from+y+%3D+0+to+2
@@ -45,12 +46,22 @@ def _spline_window(window_size, power=2):
     wind_inner[-intersection:] = 0
 
     wind = wind_inner + wind_outer
+
+    # Stretch flat area to match moved overlapped regions
+    delta = step - int(window_size/2)
+    if delta != 0:
+        scale_dx = 1 - 2 * delta / window_size
+        wind_scaled = resize(wind, (int(window_size * scale_dx), ))
+        wind = np.ones_like(wind) * np.max(wind)
+        wind[0:len(wind_scaled)//2] = wind_scaled[0:len(wind_scaled)//2]
+        wind[-len(wind_scaled)//2:] = wind_scaled[-len(wind_scaled)//2:]
+
     wind = wind / np.average(wind)
     return wind
 
 
 cached_2d_windows = dict()
-def _window_2D(window_size, power=2):
+def _window_2D(window_size, step, power=2):
     """
     Make a 1D window function, then infer and return a 2D window function.
     Done with an augmentation, and self multiplication with its transpose.
@@ -58,11 +69,11 @@ def _window_2D(window_size, power=2):
     """
     # Memoization
     global cached_2d_windows
-    key = "{}_{}".format(window_size, power)
+    key = "{}_{}_{}".format(window_size, step, power)
     if key in cached_2d_windows:
         wind = cached_2d_windows[key]
     else:
-        wind = _spline_window(window_size, power)
+        wind = _spline_window(window_size, step, power)
         wind = np.expand_dims(np.expand_dims(wind, 1), 2)
         wind = wind * wind.transpose(1, 0, 2)
         if PLOT_PROGRESS:
@@ -82,11 +93,18 @@ def _pad_img(img, window_size, subdivisions):
     Image is an np array of shape (x, y, nb_channels).
     """
     aug = int(round(window_size * (1 - 1.0/subdivisions)))
-    # Ensure that padded size will have integer count of aug.
+    # Ensure that padded size will have integer count of step.
     # It guaranty that all patches will be smoothed on the boundaries
-    extra_h = (aug - (img.shape[0] + aug * 2) % aug) % aug
-    extra_w = (aug - (img.shape[1] + aug * 2) % aug) % aug
-    more_borders = ((aug, aug + extra_h), (aug, aug + extra_w), (0, 0))
+    step = int(window_size/subdivisions)
+    aug_lr = np.ceil(img.shape[1] / step) * step + 2 * aug - img.shape[1]
+    aug_tb = np.ceil(img.shape[0] / step) * step + 2 * aug - img.shape[0]
+    # Border should have the same size(left-right, bottom-top) to be able PROPERLY utilize
+    # d4-group without "dark" borders. Take in account that aug could be ODD
+    aug_l = int(aug_lr / 2)
+    aug_r = int(aug_lr - aug_l)
+    aug_t = int(aug_tb / 2)
+    aug_b = int(aug_tb - aug_t)
+    more_borders = ((aug_t, aug_b), (aug_l, aug_r), (0, 0))
 
     ret = np.pad(img, pad_width=more_borders, mode='reflect')
     # gc.collect()
@@ -156,7 +174,7 @@ def _rotate_mirror_undo(im_mirrs):
     return np.mean(origs, axis=0)
 
 
-def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir):
+def _windowed_subdivs(padded_img, window_size, padded_borders, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir):
     """
     @param memmap_batch_size: Note unet(efficientb3) could process 6 x 1024_wh by 4GB GPU
     If subdivisions is 2, boundary will be processed by special logic and will not be suppressed by smoothing mask
@@ -172,9 +190,9 @@ def _windowed_subdivs(padded_img, window_size, subdivisions, nb_classes, pred_fu
     Note:
         patches_resolution_along_X == patches_resolution_along_Y == window_size
     """
-    WINDOW_SPLINE_2D = _window_2D(window_size=window_size, power=2)
-
     step = int(window_size/subdivisions)
+    WINDOW_SPLINE_2D = _window_2D(window_size=window_size, step=step, power=2)
+
     pady_len = padded_img.shape[0]
     padx_len = padded_img.shape[1]
 
@@ -339,7 +357,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     the predictions to merge them smoothly.
     See 6th, 7th and 8th idea here:
     http://blog.kaggle.com/2017/05/09/dstl-satellite-imagery-competition-3rd-place-winners-interview-vladimir-sergey/
-    If subdivisions is 2, boundary will be processed by special logic and will not be suppressed by smoothing mask
+    subdivisions: 1/0.875, 1/0.75, 1/0.5
     """
     input_img_shape = input_img.shape
     pad, padded_borders = _pad_img(input_img, window_size, subdivisions)
@@ -375,7 +393,7 @@ def predict_img_with_smooth_windowing(input_img, window_size, subdivisions, nb_c
     y = np.memmap(y_fname, dtype=pad.dtype, mode='w+', shape=tuple(list(pad.shape[:-1])+[nb_classes]))
     for pad in tqdm(gen(pad), total=pads_num):
         # For every rotation:
-        sd = _windowed_subdivs(pad, window_size, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir)
+        sd = _windowed_subdivs(pad, window_size, padded_borders, subdivisions, nb_classes, pred_func, memmap_batch_size, temp_dir)
         one_padded_result = _recreate_from_subdivs(
             y, sd, window_size, subdivisions,
             padded_out_shape=list(pad.shape[:-1])+[nb_classes])

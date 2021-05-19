@@ -112,9 +112,7 @@ def predict_on_bbox(cfg, solver, dataset, src_proj_dir,
                 image,
                 window_size=window_size,
                 # Minimal amount of overlap for windowing.
-                # Must be an even number.
-                # Algorithm supports good boundary for half overlap. So preferable value is 2.
-                subdivisions=2,
+                subdivisions=1/0.875,  # 1/0.5
                 nb_classes=cfg.cls_nb,
                 pred_func=(
                     lambda img_batch_subdiv: solver.model.predict(img_batch_subdiv)
