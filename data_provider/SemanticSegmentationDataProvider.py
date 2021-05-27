@@ -12,7 +12,7 @@ import albumentations as alb
 
 class SemanticSegmentationDataProvider(IDataProvider):
     @staticmethod
-    def _initializer(obj, data_reader, augmentation, bbox, configure, prep_getter):
+    def _initializer(obj: IDataProvider, data_reader, augmentation, bbox, configure, prep_getter):
         def random_color():
             levels = range(32, 256, 32)
             return [random.choice(levels) for _ in range(3)]
@@ -213,13 +213,19 @@ class SemanticSegmentationDataProvider(IDataProvider):
     def __len__(self):
         return self._length
 
-    def get_fname(self, i):
-        keys = self.src_folders
-        if len(keys) == 0:
+    def get_src_data(self):
+        return [self.src_data[k] for k in self.src_folders]
+
+    def get_fname(self, i, j=0):
+        i = i % len(self)
+        src_data = self.get_src_data()
+
+        if j >= len(src_data):
+            return 0
+        if i >= len(src_data[j]):
             return 0
 
-        i = i % len(self)
-        return os.path.basename(self.src_data[keys[0]][i])
+        return src_data[j][i]
 
     def get_color(self, class_ind):
         return self.class_colors[class_ind]
@@ -246,7 +252,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
                 utilites.write_text(image_rgb, class_name, (x, y), self.get_color(class_index), fsc)
 
         utilites.visualize(
-            title=self.get_fname(i),
+            title=os.path.basename(self.get_fname(i)),
             img_fname=None,
             Image=image_rgb,
             Height=image[..., 3] if image.shape[-1] > 3 else None,
@@ -283,7 +289,7 @@ class SemanticSegmentationDataProvider(IDataProvider):
 
         for item_ind, item in enumerate(result_list):
             image = item['image']
-            img_fname = self.get_fname(item['index'])
+            img_fname = os.path.basename(self.get_fname(item['index']))
 
             gt_cntrs = item['gt_cntrs']
             pr_cntrs = item['pr_cntrs']

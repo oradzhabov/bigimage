@@ -111,7 +111,7 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
         mask = (mask*255).astype(np.uint8)
 
         utilites.visualize(
-            title=self.get_fname(i),
+            title=os.path.basename(self.get_fname(i)),
             img_fname=None,
             Image=image_rgb,
             Masked_Image=((image_rgb.astype(np.float32) +
@@ -150,7 +150,7 @@ class RegressionSegmentationDataProvider(SemanticSegmentationDataProvider):
 
         for item in result_list:
             image = item['image']
-            img_fname = self.get_fname(item['index'])
+            img_fname = os.path.basename(self.get_fname(item['index']))
 
             # gt_mask = item['gt_mask']
             pr_mask = item['pr_mask']

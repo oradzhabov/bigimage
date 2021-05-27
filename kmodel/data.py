@@ -45,8 +45,11 @@ def read_image(geotiff_path, bbox=((0, 0), (None, None))):
     if im.dtype != np.uint8:
         im = im.astype(np.uint8)
 
-    # RGB->BGR
-    im[..., [0, 1, 2]] = im[..., [2, 1, 0]]  # todo: take too much RAM (temporary)
+    # todo: take too much RAM (temporary)
+    # RGB(A)->BGR(A)
+    if im.ndim == 3:
+        if im.shape[2] > 2:  # It could be RGB->BGR or RGBA->BGRA
+            im[..., [0, 1, 2]] = im[..., [2, 1, 0]]
 
     return im
 

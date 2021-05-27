@@ -7,6 +7,7 @@ from ..kutils import utilites
 from ..kmodel.data import read_image
 from .. import get_submodules_from_kwargs
 from kmodel import kutils
+from joblib import Parallel, delayed
 
 
 def find_rock_masks(prob_field, prob_glue_th=0.25, debug=False):
@@ -109,79 +110,38 @@ def instance_segmentation_old(prob_field, debug=False):
 
 
 def collect_statistics(contours):
-    geometry_px = []
+    def job(contours_chunk, chunk_ind):
+        chunk_px = list()
+        for cnt in contours_chunk:
+            #
+            # Collect geometry
+            #
+            # Rotated Rectangle
+            rect = cv2.minAreaRect(cnt)  # output is: ((x, y), (w, h), angle)
+            # Pay attention that even 0-size means 1-pixel, hence min available diameters eq 1
+            min_diameter = max(np.min(rect[1]), 1)
+            max_diameter = max(np.max(rect[1]), 1)
 
-    for cnt in contours:
-        #
-        # Collect geometry
-        #
-        # Rotated Rectangle
-        rect = cv2.minAreaRect(cnt)  # output is: ((x, y), (w, h), angle)
-        # Pay attention that even 0-size means 1-pixel, hence min available diameters eq 1
-        min_diameter = max(np.min(rect[1]), 1)
-        max_diameter = max(np.max(rect[1]), 1)
+            # CenterX, CenterY, MinD, MaxD
+            descr = [int(rect[0][0]), int(rect[0][1]), min_diameter, max_diameter, cnt.tolist()]
+            chunk_px.append(descr)
+        return dict({'ind': chunk_ind, 'geometry_px': chunk_px})
 
-        # CenterX, CenterY, MinD, MaxD
-        item = [int(rect[0][0]), int(rect[0][1]), min_diameter, max_diameter, cnt.tolist()]
-        geometry_px.append(item)
+    contours_list = np.array_split(contours, len(contours) // 10000)
+    del contours
+    with Parallel(n_jobs=min(os.cpu_count(), len(contours_list)), backend='threading') as executor:
+        tasks = (delayed(job)(chunk, chunk_ind) for chunk_ind, chunk in enumerate(contours_list))
+        geometry_px_arr = executor(tasks)
+    del contours_list
+    gc.collect()
+
+    # Sort result array by index. It is guaranteed that result array remains the same items order after parallel work.
+    geometry_px_arr.sort(key=lambda x: x['ind'])
+    geometry_px = list()
+    for item in geometry_px_arr:
+        geometry_px += item['geometry_px']
 
     return geometry_px
-
-
-"""
-def postprocess_prob_u8_list(prob_list, debug=False):
-    storage_dir = os.path.dirname(prob_list[0]['img'])
-    skip_prediction = prob_list[0]['skip_prediction'] if 'skip_prediction' in prob_list[0] else False
-    bbox_predictions_img_fname = os.path.join(storage_dir, 'postprocess_prob_list.png')
-    if not os.path.isfile(bbox_predictions_img_fname) or not skip_prediction:
-        src_img_shape = prob_list[0]['shape']
-        crop_size_px = (16384, 16384)
-
-        bbox_list = list()
-        overlap = 50
-        offset_size_px = (crop_size_px[0] - overlap, crop_size_px[1] - overlap)
-        w0, w1, h0, h1 = kutils.get_tiled_bbox(src_img_shape, crop_size_px, offset_size_px)
-        for i in range(len(w0)):
-            cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
-            cr_x2, extr_x2 = (w1[i], 0) if w1[i] < src_img_shape[1] else (src_img_shape[1], w1[i] - src_img_shape[1])
-
-            cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
-            cr_y2, extr_y2 = (h1[i], 0) if h1[i] < src_img_shape[0] else (src_img_shape[0], h1[i] - src_img_shape[0])
-
-            bbox = ((cr_x, cr_y), (cr_x2 - cr_x, cr_y2 - cr_y))
-            bbox_list.append(bbox)
-
-        bbox_predictions_fname = os.path.join(storage_dir, 'postprocess_prob_list.tmp')
-        bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=np.uint8, mode='w+', shape=src_img_shape)
-        bbox_predictions_result.fill(0)
-        del bbox_predictions_result
-        one_row_size_bytes = src_img_shape[1] * src_img_shape[2] * np.dtype(np.uint8).itemsize
-        gc.collect()
-
-        for bbox in bbox_list:
-            patch = _postprocess_prob_list(prob_list, bbox, debug=debug) * 255
-            if len(patch.shape) == 2:
-                patch = patch[..., np.newaxis]
-
-            xy, wh = bbox
-            shape_new = (wh[1], src_img_shape[1], src_img_shape[2])
-            offset = xy[1] * one_row_size_bytes
-            bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=np.uint8,
-                                                mode='r+', shape=shape_new, offset=offset)
-            bbox_predictions_result[0:patch.shape[0], xy[0]:xy[0] + patch.shape[1]] = \
-                np.max([bbox_predictions_result[0:patch.shape[0], xy[0]:xy[0] + patch.shape[1]], patch], axis=0)
-            del bbox_predictions_result
-
-        bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=np.uint8, mode='r', shape=src_img_shape)
-        cv2.imwrite(bbox_predictions_img_fname, bbox_predictions_result)
-        del bbox_predictions_result  # close memmap
-        logging.info('Probability postprocessing stored into {}'.format(bbox_predictions_img_fname))
-    else:
-        logging.info('Probability postprocessing skipped. Result restored from file {}'.format(bbox_predictions_img_fname))
-    mask = read_image(bbox_predictions_img_fname)
-
-    return mask
-"""
 
 
 def _postprocess_prob_list(prob_list, bbox=((0, 0), (None, None)), debug=False):
@@ -329,8 +289,10 @@ def get_solver(**kwarguments):
             debug = False
             pr_mask_u8 = _Array2DDelegate(pr_mask_list, debug)
 
+            # Since count ot rocks could be huge, and getting contours allows to parallelize process, with aim to
+            # improve speed use low-value of cropping size. It drastically improve the speed for huge amount of rocks.
             return utilites.get_contours(pr_mask_u8, find_alg=cv2.CHAIN_APPROX_SIMPLE,
                                          find_mode=cv2.RETR_TREE, inverse_mask=True,
-                                         crop_size_px=(16384, 16384))
+                                         crop_size_px=(4096, 4096))
 
     return RegrRocksSolver

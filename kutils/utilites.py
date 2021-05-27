@@ -1,9 +1,11 @@
 import gc
+import os
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from kmodel import kutils
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 
 def nms(image, k=13, remove_plateaus_delta=-1.0):
@@ -110,7 +112,7 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
     overlap_px = 0
 
     if crop_size_px:
-        overlap_px = min(200, min(src_img_shape[0], src_img_shape[1]) // 2)
+        overlap_px = min(500, min(src_img_shape[0], src_img_shape[1]) // 2)
         # Collect bounding boxes
         bbox_list = list()
         offset_size_px = (max(crop_size_px[0] - overlap_px, crop_size_px[0] // 2),
@@ -128,70 +130,72 @@ def get_contours(mask_u8cn, find_alg=cv2.CHAIN_APPROX_SIMPLE, find_mode=cv2.RETR
     else:
         bbox_list = list([((0, 0), (src_img_shape[1], src_img_shape[0]))])
 
-    pr_cntrs_list_px = None
-    for bbox in tqdm(bbox_list):
+    def _get_contours_job(bbox):
         xy, wh = bbox
 
+        # Separator functions make division by middle of overlap-gap to maximize the probability that matched content
+        # have similarity, and assumed as the same in the overlapped-area but could have differences on the
+        # boundaries.
         def filter_left_contours(contour):
             maxx = np.max(contour[:, 0, 0])
-            return maxx > overlap_px  # should have pixel outside overlapped area
+            return maxx + 1 >= overlap_px // 2
 
         def filter_right_contours(contour):
             maxx = np.max(contour[:, 0, 0])
-            return maxx < wh[0] - 1  # should not touch right boundary
+            return maxx + 1 < wh[0] - overlap_px // 2
 
         def filter_top_contours(contour):
             maxy = np.max(contour[:, 0, 1])
-            return maxy > overlap_px  # should have pixel outside overlapped area
+            return maxy + 1 >= overlap_px // 2
 
         def filter_btm_contours(contour):
             maxy = np.max(contour[:, 0, 1])
-            return maxy < wh[1] - 1  # should not touch bottom boundary
+            return maxy + 1 < wh[1] - overlap_px // 2
 
         patch = mask_u8cn[xy[1]:xy[1]+wh[1], xy[0]:xy[0]+wh[0]]
 
-        bbox_contours = _get_contours(patch, find_alg=find_alg, find_mode=find_mode, inverse_mask=inverse_mask)
+        patch_cntrs = _get_contours(patch, find_alg=find_alg, find_mode=find_mode, inverse_mask=inverse_mask)
 
         # Filter out contours repeated in overlapped areas
         if overlap_px > 0:
             if xy[0] > 0:
-                bbox_contours = [list(filter(filter_left_contours, class_contours)) for class_contours in bbox_contours]
+                patch_cntrs = [list(filter(filter_left_contours, class_contours)) for class_contours in patch_cntrs]
             if xy[0] + wh[0] < src_img_shape[1]:
-                bbox_contours = [list(filter(filter_right_contours, class_contours)) for class_contours in bbox_contours]
+                patch_cntrs = [list(filter(filter_right_contours, class_contours)) for class_contours in patch_cntrs]
             if xy[1] > 0:
-                bbox_contours = [list(filter(filter_top_contours, class_contours)) for class_contours in bbox_contours]
+                patch_cntrs = [list(filter(filter_top_contours, class_contours)) for class_contours in patch_cntrs]
             if xy[1] + wh[1] < src_img_shape[0]:
-                bbox_contours = [list(filter(filter_btm_contours, class_contours)) for class_contours in bbox_contours]
+                patch_cntrs = [list(filter(filter_btm_contours, class_contours)) for class_contours in patch_cntrs]
 
-        """
-        if len(bbox_contours) > 0:
-            if len(bbox_contours[0]) > 0:
-                cv2.imwrite('patch.png', patch)
-                image = np.zeros([patch.shape[0], patch.shape[1], 1], dtype=np.uint8)
-                for class_ind, class_ctrs in enumerate(bbox_contours):
-                    cv2.drawContours(image, class_ctrs, -1, (255), 0)
-                cv2.imwrite('patch_contours.png', image)
-        """
+        if False:
+            if len(patch_cntrs) > 0:
+                if len(patch_cntrs[0]) > 0:
+                    cv2.imwrite('patch.png', patch)
+                    image = np.zeros([patch.shape[0], patch.shape[1], 1], dtype=np.uint8)
+                    for class_ind, class_ctrs in enumerate(patch_cntrs):
+                        cv2.drawContours(image, class_ctrs, -1, (255), 0)
+                    cv2.imwrite('patch_cntrs.png', image)
 
         # Map contours to base CS
-        bbox_contours = [[cntr + bbox[0] for cntr in cntrs] for cntrs in bbox_contours]
+        patch_cntrs = [[cntr + bbox[0] for cntr in cntrs] for cntrs in patch_cntrs]
 
-        # Store contours
-        if pr_cntrs_list_px is None:
-            pr_cntrs_list_px = bbox_contours
-        else:
-            # For each particular class
-            for class_ind in range(len(pr_cntrs_list_px)):
-                pr_cntrs_list_px[class_ind] = pr_cntrs_list_px[class_ind] + bbox_contours[class_ind]
+        return patch_cntrs
 
-        """
-        if len(bbox_contours) > 0:
-            if len(bbox_contours[0]) > 0:
-                image = np.zeros([src_img_shape[0], src_img_shape[1], 1], dtype=np.uint8)
-                for class_ind, class_ctrs in enumerate(pr_cntrs_list_px):
-                    cv2.drawContours(image, class_ctrs, -1, (255), 0)
-                cv2.imwrite('image_contours.png', image)
-        """
+    use_parallel = True
+    if use_parallel:
+        with Parallel(n_jobs=min(os.cpu_count(), len(bbox_list)), backend='threading') as executor:
+            tasks = (delayed(_get_contours_job)(bbox) for bbox in bbox_list)
+            bbox_contours_arr = executor(tasks)
+    else:
+        bbox_contours_arr = list()
+        for bbox in bbox_list:
+            bbox_contours_arr.append(_get_contours_job(bbox))
+
+    pr_cntrs_list_px = bbox_contours_arr[0]
+    for bbox_contours in bbox_contours_arr[1:]:
+        # For each particular class
+        for class_ind in range(len(pr_cntrs_list_px)):
+            pr_cntrs_list_px[class_ind] = pr_cntrs_list_px[class_ind] + bbox_contours[class_ind]
 
     return pr_cntrs_list_px
 

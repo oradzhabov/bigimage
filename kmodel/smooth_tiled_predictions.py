@@ -20,8 +20,8 @@ from tqdm import tqdm
 
 import gc
 
-import cv2
-from ..kutils.utilites import denormalize
+# import cv2
+# from ..kutils.utilites import denormalize
 
 
 if __name__ == '__main__':

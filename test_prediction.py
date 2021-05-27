@@ -8,7 +8,7 @@ from .kutils import utilites
 from .config_rocks import cfg
 # from .config import cfg
 from .kutils.VIAConverter import *
-from .bin_keras import predict_contours
+from .kutils.predict_contours import predict_contours
 
 
 def test_prediction(src_proj_dir, show_results=False, store_contours=False):
@@ -36,7 +36,7 @@ def test_prediction(src_proj_dir, show_results=False, store_contours=False):
 
     pr_cntrs_list, dataset, solver = result_dict['contours_px'], result_dict['dataset'], result_dict['solver']
     image, _ = dataset[0]
-    image_fname = dataset.get_fname(0)
+    image_fname = os.path.basename(dataset.get_fname(0))
 
     # Make sure that we will drop out Alpha channel
     image = image[..., :3].copy()

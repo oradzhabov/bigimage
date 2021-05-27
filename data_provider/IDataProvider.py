@@ -5,7 +5,7 @@ from ..kutils.JSONEncoder import JSONEncoder
 class IDataProvider(JSONEncoder):
 
     def __init__(self):
-        pass
+        self.conf = None
 
     @abstractmethod
     def __getitem__(self, i):
@@ -17,6 +17,10 @@ class IDataProvider(JSONEncoder):
 
     @abstractmethod
     def __len__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_src_data(self):
         raise NotImplementedError
 
     @abstractmethod
