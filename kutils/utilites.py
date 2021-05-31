@@ -323,8 +323,16 @@ def filter_thin_bands(contours, img_shape, debug=False):
     return contours
 
 
-def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape, debug=False):
-    contours = filter_thin_bands(contours, img_shape, debug=debug)
+def filter_small_contours(contours, min_area_px, max_tol_dist_px, img_shape, debug=False):
+    # Since filtering could take too much RAM, work in scaled space
+    scaled_size = 2048
+    scale = min(1, scaled_size / min(img_shape[0], img_shape[1]))
+
+    # Map data to scaled space
+    img_shape = (int(img_shape[0]*scale), int(img_shape[1]*scale))
+    contours = [(cntr*scale).astype(np.int32) for cntr in contours]
+    min_area_px = min_area_px * (scale**2)
+    max_tol_dist_px = max_tol_dist_px * scale
 
     # Filter and approximate contours
     contours_filtered = []
@@ -345,6 +353,7 @@ def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape, debug=Fal
         im, contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     else:
         contours, hierarchy = cv2.findContours(imgTemp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    gc.collect()
     contours_filtered.clear()
     for cnt in contours:
         area = cv2.contourArea(cnt)
@@ -359,8 +368,20 @@ def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape, debug=Fal
     # Sort contours by decreasing area
     if len(contours_filtered) > 1:
         contours_area = [cv2.contourArea(c) for c in contours_filtered]
-        contours_area, contours_filtered = zip(*sorted(zip(contours_area, contours_filtered), reverse=True))
+        # Do not forget "key"-parameter to properly operate with contours which have equal area
+        contours_area, contours_filtered = zip(*sorted(zip(contours_area, contours_filtered),
+                                                       key=lambda x: x[0], reverse=True))
 
+    # Map contours back to original scale
+    contours = [(cntr / scale).astype(np.int32) for cntr in contours_filtered]
+
+    return contours
+
+
+def filter_contours(contours, min_area_px, max_tol_dist_px, img_shape, debug=False):
+    contours = filter_thin_bands(contours, img_shape, debug=debug)
+
+    contours_filtered = filter_small_contours(contours, min_area_px, max_tol_dist_px, img_shape, debug=debug)
     return contours_filtered
 
 
