@@ -17,6 +17,7 @@ def test_prediction(src_proj_dir, show_results=False, store_contours=False):
     skip_prediction = True
     memmap_batch_size = 4  # 4 for config_rocks or config, 1 for config_stockpile
     predict_img_with_group_d4 = False  # REALLY HELPS, BUT 8+ TIMES SLOWER
+    apply_contours_filter = True
     debug = False
 
     if cfg.solver.__name__ == 'RegrRocksSolver':
@@ -31,6 +32,7 @@ def test_prediction(src_proj_dir, show_results=False, store_contours=False):
                                                  predict_img_with_group_d4,
                                                  merging_fname_head='merged_pred_unknown',
                                                  debug=debug)
+
     if err_code != 0:
         return -1
 
@@ -40,6 +42,19 @@ def test_prediction(src_proj_dir, show_results=False, store_contours=False):
 
     # Make sure that we will drop out Alpha channel
     image = image[..., :3].copy()
+
+    if apply_contours_filter and cfg.solver.__class__.__name__ == 'SegmSolver':
+        from .kutils.utilites import filter_contours
+
+        min_area_m = 100.0
+        min_area_px = min_area_m / (cfg.mppx ** 2)
+        max_tol_dist_px = 0.5 / cfg.mppx
+        #
+        class_named = list(cfg.class_names['class'])
+        muckpile_class_index = class_named.index('muckpile')
+        pr_cntrs_muckpile = pr_cntrs_list[muckpile_class_index]
+        pr_cntrs_list[muckpile_class_index] = filter_contours(pr_cntrs_muckpile, min_area_px, max_tol_dist_px,
+                                                              image.shape, debug=debug)
 
     for class_ind, class_ctrs in enumerate(pr_cntrs_list):
         cv2.drawContours(image, class_ctrs, -1, dataset.get_color(class_ind), 0)
