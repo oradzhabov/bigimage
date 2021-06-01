@@ -24,13 +24,15 @@ def test_prediction(src_proj_dir, show_results=False, store_contours=False):
         err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
                                                  predict_img_with_group_d4,
                                                  crop_size_px=(10000, 10000),  # 100 m x 100 m
-                                                 overlap_px=200,
+                                                 overlap_px=500,
                                                  merging_fname_head='merged_pred_rocks',
+                                                 roi_bbox_array=None,
                                                  debug=debug)
     else:
         err_code, result_dict = predict_contours(cfg, src_proj_dir, skip_prediction, memmap_batch_size,
                                                  predict_img_with_group_d4,
                                                  merging_fname_head='merged_pred_unknown',
+                                                 roi_bbox_array=None,
                                                  debug=debug)
 
     if err_code != 0:

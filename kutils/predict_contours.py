@@ -9,7 +9,7 @@ from .read_sample import read_sample
 
 def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size=0, predict_img_with_group_d4=True,
                      crop_size_px=(10000, 10000), overlap_px=0, merging_fname_head='merged_predictions',
-                     debug=False):
+                     roi_bbox_array=None, debug=False):
     """
     :param cfg:
     :param src_proj_dir:
@@ -22,6 +22,7 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     :param crop_size_px:
     :param overlap_px: > 0
     :param merging_fname_head: head of filename used for storing temporary files
+    :param roi_bbox_array: If not None, use items as mask for selective prediction searching
     :param debug: Default: False
     :return:
     """
@@ -56,7 +57,7 @@ def predict_contours(cfg, src_proj_dir, skip_prediction=False, memmap_batch_size
     if pr_cntrs_list_px is None:
         merged_pr_mask_list = predict_field(dataset, src_proj_dir, skip_prediction, memmap_batch_size,
                                             predict_img_with_group_d4, crop_size_px, overlap_px,
-                                            merging_fname_head, debug)
+                                            merging_fname_head, roi_bbox_array, debug)
 
         if merged_pr_mask_list is None:
             return -1, dict()

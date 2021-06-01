@@ -1,6 +1,13 @@
 import math
 
 
+def is_bbox_intersected(bbox1, bbox2):
+    xy1, wh1 = bbox1
+    xy2, wh2 = bbox2
+    return not (xy1[0] + wh1[0] < xy2[0] or xy1[0] > xy2[0] + wh2[0] or
+                xy1[1] + wh1[1] < xy2[1] or xy1[1] > xy2[1] + wh2[1])
+
+
 def get_tiled_bbox(img_shape, tile_size, offset):
     aw0 = []
     aw1 = []

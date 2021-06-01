@@ -155,9 +155,7 @@ def predict_on_bbox(cfg, solver, dataset, src_proj_dir, pred_scale_factors,
 
                 # Release memory
                 del image
-
-        # Release memory between scale-iterations
-        gc.collect()
+                gc.collect()
 
         pr_item['img'] = pr_result_descriptor
         pr_mask_list.append(pr_item)
@@ -169,7 +167,8 @@ def predict_field(**kwarguments):
     _backend, _layers, _models, _keras_utils, _optimizers, _legacy, _callbacks = get_submodules_from_kwargs(kwarguments)
 
     def predict_field_(dataset: IDataProvider, src_proj_dir, skip_prediction, memmap_batch_size,
-                       predict_img_with_group_d4, crop_size_px, overlap_px, merging_fname_head, debug):
+                       predict_img_with_group_d4, crop_size_px, overlap_px, merging_fname_head, roi_bbox_array=None,
+                       debug=False):
 
         # Collect source data
         src_data = dataset.get_src_data()
@@ -203,6 +202,14 @@ def predict_field(**kwarguments):
                                                                           h1[i] - src_img_shape[0])
 
             bbox = ((cr_x, cr_y), (cr_x2 - cr_x, cr_y2 - cr_y))
+
+            # Check ROIs if they exist
+            if roi_bbox_array is not None:
+                intersect = [kutils.is_bbox_intersected(roi_bbox, bbox) for roi_bbox in roi_bbox_array]
+                # Skip candidate if there is no intersections
+                if not (True in intersect):
+                    continue
+
             bbox_list.append(bbox)
         logging.info('Source data represented by {} patches(in scale-space dimension {}) with cropping size {}'.
                      format(len(bbox_list)*used_scales, used_scales, crop_size_px))
@@ -249,8 +256,17 @@ def predict_field(**kwarguments):
             bbox_predictions_fname = os.path.join(src_proj_dir, '{}.tmp'.format(bbox_predictions_fname_woext))
             bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=used_dtype, mode='w+',
                                                 shape=used_shape)
-            bbox_predictions_result.fill(0)
             del bbox_predictions_result  # close file
+            init_merged_accumulator = True
+            if init_merged_accumulator:
+                temp_h = 4096
+                for temp_y in range(0, used_shape[0], temp_h):
+                    shape_new = (min(temp_h, used_shape[0] - temp_y), used_shape[1], used_shape[2])
+                    offset = temp_y * one_row_size_bytes
+                    bbox_predictions_result = np.memmap(bbox_predictions_fname, dtype=used_dtype,
+                                                        mode='w+', shape=shape_new, offset=offset)
+                    bbox_predictions_result.fill(0)
+                    del bbox_predictions_result
             for bbox_ind, bbox_predictions_item in enumerate(bbox_predictions):
                 xy, wh = bbox_predictions_item['bbox']
                 pr_mask_list = bbox_predictions_item['pr_mask_list']
@@ -280,7 +296,7 @@ def predict_field(**kwarguments):
                     if err != 0:
                         return None
 
-                patch = cv2.imread(pr_mask.get('img'), cv2.IMREAD_UNCHANGED)
+                patch = cv2.imread(pr_mask.get('img'), cv2.IMREAD_UNCHANGED)  # todo: quite long
                 if len(patch.shape) == 2:
                     patch = patch[:, :, np.newaxis]
 
