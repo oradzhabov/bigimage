@@ -188,29 +188,7 @@ def predict_field(**kwarguments):
         src_img_shape, _ = get_raster_info(dest_img_fname)
 
         # Collect bounding boxes
-        bbox_list = list()
-        offset_size_px = (max(crop_size_px[0] - overlap_px, crop_size_px[0] // 2),
-                          max(crop_size_px[1] - overlap_px, crop_size_px[1] // 2))
-        w0, w1, h0, h1 = kutils.get_tiled_bbox(src_img_shape, crop_size_px, offset_size_px)
-        for i in range(len(w0)):
-            cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
-            cr_x2, extr_x2 = (w1[i], 0) if w1[i] < src_img_shape[1] else (src_img_shape[1],
-                                                                          w1[i] - src_img_shape[1])
-
-            cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
-            cr_y2, extr_y2 = (h1[i], 0) if h1[i] < src_img_shape[0] else (src_img_shape[0],
-                                                                          h1[i] - src_img_shape[0])
-
-            bbox = ((cr_x, cr_y), (cr_x2 - cr_x, cr_y2 - cr_y))
-
-            # Check ROIs if they exist
-            if roi_bbox_array is not None:
-                intersect = [kutils.is_bbox_intersected(roi_bbox, bbox) for roi_bbox in roi_bbox_array]
-                # Skip candidate if there is no intersections
-                if not (True in intersect):
-                    continue
-
-            bbox_list.append(bbox)
+        bbox_list = kutils.get_tiled_bbox(src_img_shape, crop_size_px, overlap_px, roi_bbox_array)
         logging.info('Source data represented by {} patches(in scale-space dimension {}) with cropping size {}'.
                      format(len(bbox_list)*used_scales, used_scales, crop_size_px))
 

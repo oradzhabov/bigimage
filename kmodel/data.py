@@ -59,7 +59,7 @@ def crop(input_root, output_root, subfolder_list, file_names, output_shape):
 
     for subfolder in subfolder_list:
         # Left output subfolders if it already exist.
-        # It allows to extend dataset by ne mask-subfolders
+        # It allows to extend dataset by new mask-subfolders
         if os.path.isdir(os.path.join(output_root, subfolder)):
             continue
         for fname in file_names:
@@ -69,14 +69,15 @@ def crop(input_root, output_root, subfolder_list, file_names, output_shape):
             if img is None:
                 continue
 
-            w0, w1, h0, h1 = get_tiled_bbox(img.shape, output_shape, output_shape)
             crop_img_idx = 0
-            for i in range(len(w0)):
-                cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
-                cr_x2, extr_x2 = (w1[i], 0) if w1[i] < img.shape[1] else (img.shape[1], w1[i] - img.shape[1])
-
-                cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
-                cr_y2, extr_y2 = (h1[i], 0) if h1[i] < img.shape[0] else (img.shape[0], h1[i] - img.shape[0])
+            bbox_list, extr_list = get_tiled_bbox(img.shape, output_shape, 0, return_extr=True)
+            for i in range(len(bbox_list)):
+                bbox = bbox_list[i]
+                extr_x, extr_x2, extr_y, extr_y2 = extr_list[i]
+                cr_x, cr_y = bbox[0]
+                cr_w, cr_h = bbox[1]
+                cr_x2 = cr_x + cr_w
+                cr_y2 = cr_y + cr_h
 
                 patch = cv2.copyMakeBorder((img[cr_y:cr_y2, cr_x:cr_x2]), extr_y, extr_y2,
                                            extr_x, extr_x2, cv2.BORDER_CONSTANT, value=0)
@@ -90,6 +91,31 @@ def crop(input_root, output_root, subfolder_list, file_names, output_shape):
                     os.makedirs(os.path.normpath(os.path.dirname(patch_path)))
                 if not os.path.isfile(patch_path):
                     cv2.imwrite(patch_path, patch)
+
+            """
+            w0, w1, h0, h1 = get_tiled_bbox(img.shape, output_shape, output_shape)
+            crop_img_idx = 0
+            src_img_shape = img.shape
+            for i in range(len(w0)):
+                cr_x, extr_x = (w0[i], 0) if w0[i] >= 0 else (0, -w0[i])
+                cr_x2, extr_x2 = (w1[i], 0) if w1[i] < src_img_shape[1] else (src_img_shape[1], w1[i] - src_img_shape[1])
+
+                cr_y, extr_y = (h0[i], 0) if h0[i] >= 0 else (0, -h0[i])
+                cr_y2, extr_y2 = (h1[i], 0) if h1[i] < src_img_shape[0] else (src_img_shape[0], h1[i] - src_img_shape[0])
+
+                patch = cv2.copyMakeBorder((img[cr_y:cr_y2, cr_x:cr_x2]), extr_y, extr_y2,
+                                           extr_x, extr_x2, cv2.BORDER_CONSTANT, value=0)
+
+                basename = os.path.basename(fi_path)
+                fname_wo_ext = basename[:basename.index('.')]
+                fname_ext = basename[basename.index('.'):]
+                patch_path = os.path.join(output_root, subfolder, fname_wo_ext + '_{}'.format(crop_img_idx) + fname_ext)
+                crop_img_idx = crop_img_idx + 1
+                if not os.path.isdir(os.path.dirname(patch_path)):
+                    os.makedirs(os.path.normpath(os.path.dirname(patch_path)))
+                if not os.path.isfile(patch_path):
+                    cv2.imwrite(patch_path, patch)
+            """
 
 
 def get_cropped_ids(conf):
